@@ -1,0 +1,5 @@
+{
+  "name": "OnePay",
+  "description": "Financial management system for medical clinics with cash flow, OFX reconciliation, and dashboards.",
+  "requestFramePermissions": []
+}
