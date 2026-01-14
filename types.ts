@@ -2,64 +2,134 @@ export interface Clinic {
   id: string;
   name: string;
   created_at: string;
+  plano?: string;
+  ativo?: boolean;
+  responsavel_nome?: string;
+  email_contato?: string;
+  telefone_contato?: string;
+  logo_url?: string | null;
+  paginas_liberadas?: string[];
+  bank_accounts?: any[];
+  categories?: any[];
+  clinic_users?: any[];
 }
 
 export interface BankAccount {
   id: string;
-  clinic_id: string;
-  name: string;
-  bank: string;
-  agency?: string;
-  account_number?: string;
-  initial_balance: number;
-  current_balance: number; // Calculated on frontend or via DB view
-}
-
-export enum TransactionType {
-  INCOME = 'INCOME', // Receita
-  EXPENSE = 'EXPENSE' // Despesa
+  name?: string; // alias for nome_conta
+  bank?: string; // alias for banco
+  nome_conta?: string;
+  banco?: string;
+  current_balance?: number;
+  initial_balance?: number;
+  ativo?: boolean;
 }
 
 export interface Category {
   id: string;
-  clinic_id: string;
   name: string;
-  type: TransactionType;
-  color?: string;
+  tipo?: 'receita' | 'despesa' | string;
+  type?: string; // legacy alias
+  cor_opcional?: string;
+  clinic_id?: string | null;
+}
+
+export type TransactionType = 'income' | 'expense' | 'transfer' | 'other';
+
+export const TransactionTypeEnum = {
+  INCOME: 'income' as TransactionType,
+  EXPENSE: 'expense' as TransactionType,
+  TRANSFER: 'transfer' as TransactionType,
+  OTHER: 'other' as TransactionType,
+};
+
+export type UserRole = 'owner' | 'admin' | 'user';
+
+export interface OrgProfile {
+  id: string;
+  user_id?: string;
+  full_name?: string;
+  email?: string;
+  role?: UserRole;
+  clinic_id?: string | null;
+  ativo?: boolean;
 }
 
 export interface Transaction {
   id: string;
-  clinic_id: string;
-  bank_account_id: string;
-  category_id: string;
-  description: string;
-  competency_date: string; // Data competência
-  payment_date: string; // Data pagamento/recebimento
-  amount: number; // Positive for income, negative for expense logic
   type: TransactionType;
-  status: 'paid' | 'pending';
-  // Specific fields
-  patient_name?: string; // For income
-  provider_name?: string; // For expense
-  payment_method?: string;
-  observations?: string;
+  description?: string;
+  amount?: number;
+  date?: string;
 }
 
-export interface OFXTransaction {
-  id: string; // generated ID
-  fitid: string; // OFX unique ID
-  date: string;
-  amount: number;
-  description: string;
-  type: 'DEBIT' | 'CREDIT';
-  conciliated_transaction_id?: string; // If linked to a system transaction
+export interface Procedure {
+  id: string;
+  categoria?: string;
+  procedimento?: string;
+  valor_cobrado?: number;
+  custo_insumo?: number;
+  tempo_minutos?: number;
+  clinic_id?: string;
 }
 
-export interface DashboardMetrics {
-  totalIncome: number;
-  totalExpense: number;
-  balance: number;
-  monthlyTrend: { name: string; income: number; expense: number }[];
-  categoryDistribution: { name: string; value: number }[];
+export interface Customer {
+  id: string;
+  name: string;
+  cpf?: string;
+  cep?: string;
+  clinic_id?: string;
+}
+
+export interface Professional {
+  id: string;
+  nome: string;
+  tipo?: string;
+  clinic_id?: string;
+}
+
+export interface Supplier {
+  id: string;
+  nome: string;
+  cnpj?: string;
+  telefone?: string;
+}
+
+export interface CardFee {
+  id: string;
+  bandeira: string;
+  taxa_percent: number;
+  metodo?: string;
+  min_installments?: number;
+  max_installments?: number;
+  clinic_id?: string | null;
+}
+
+export interface BankTransaction {
+  id: string;
+  bank_account_id: string;
+  data: string;
+  descricao: string;
+  valor: number;
+  tipo: 'CREDIT' | 'DEBIT' | string;
+  conciliado?: boolean;
+  hash_transacao?: string;
+}
+
+export interface Revenue {
+  id: string;
+  description?: string;
+  valor_bruto?: number;
+  valor_liquido?: number;
+  data_competencia?: string;
+  data_recebimento?: string;
+}
+
+export interface Expense {
+  id: string;
+  description?: string;
+  valor?: number;
+  data_competencia?: string;
+  data_pagamento?: string;
+  data_vencimento?: string;
 }

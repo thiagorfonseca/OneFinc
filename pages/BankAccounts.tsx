@@ -3,8 +3,11 @@ import { Plus, Trash2, Wallet, Loader2, Edit } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { BankAccount } from '../types';
 import { formatCurrency } from '../lib/utils';
+import { useAuth } from '../src/auth/AuthProvider';
 
 const BankAccounts: React.FC = () => {
+  const { clinicId, isAdmin, selectedClinicId } = useAuth();
+  const effectiveClinic = (isAdmin ? selectedClinicId : clinicId) || clinicId || null;
   const [loading, setLoading] = useState(true);
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -15,17 +18,202 @@ const BankAccounts: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
     bank: '',
-    initial_balance: '0,00'
+    initial_balance: '0,00',
+    current_balance: '0,00',
   });
+
+  const parseBalanceValue = (value: any) => {
+    if (typeof value === 'string') {
+      const num = Number(value.replace(',', '.'));
+      return isNaN(num) ? 0 : num;
+    }
+    const num = Number(value || 0);
+    return isNaN(num) ? 0 : num;
+  };
+
+  const recalcAccountBalances = async (accountList: BankAccount[]) => {
+    if (!effectiveClinic || accountList.length === 0) return accountList;
+    const [revenuesRes, expensesRes] = await Promise.all([
+      supabase
+        .from('revenues')
+        .select('bank_account_id, valor_liquido, valor_bruto, valor, status, data_competencia, data_recebimento, parcelas, forma_pagamento, recebimento_parcelas')
+        .eq('clinic_id', effectiveClinic),
+      supabase
+        .from('expenses')
+        .select('bank_account_id, valor, status')
+        .eq('clinic_id', effectiveClinic)
+        .eq('status', 'paid'),
+    ]);
+
+    const revenues = revenuesRes.data || [];
+    const expenses = expensesRes.data || [];
+
+    const toDate = (value?: string | null) => {
+      if (!value) return null;
+      const d = new Date(value);
+      if (!Number.isNaN(d.getTime())) return d;
+      const alt = new Date(`${value}T00:00:00`);
+      return Number.isNaN(alt.getTime()) ? null : alt;
+    };
+
+    const addDaysToDate = (date: Date, days: number) => {
+      const d = new Date(date);
+      d.setDate(d.getDate() + days);
+      return d;
+    };
+
+    const addBusinessDaysToDate = (date: Date, days: number) => {
+      const d = new Date(date);
+      let added = 0;
+      while (added < days) {
+        d.setDate(d.getDate() + 1);
+        const day = d.getDay();
+        if (day !== 0 && day !== 6) added += 1;
+      }
+      return d;
+    };
+
+    const addMonthsToDate = (date: Date, months: number) => {
+      const d = new Date(date);
+      d.setMonth(d.getMonth() + months);
+      return d;
+    };
+
+    const normalizeForma = (value?: string | null) => {
+      const raw = (value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toUpperCase();
+      if (raw.includes('CREDITO')) return 'CREDITO';
+      if (raw.includes('DEBITO')) return 'DEBITO';
+      if (raw.includes('PIX')) return 'PIX';
+      if (raw.includes('BOLETO')) return 'BOLETO';
+      if (raw.includes('CHEQUE')) return 'CHEQUE';
+      if (raw.includes('TRANSFER') || raw.includes('TED') || raw.includes('DOC')) return 'TRANSFERENCIA';
+      if (raw.includes('CONVENIO')) return 'CONVENIO';
+      if (raw.includes('DINHEIRO') || raw.includes('CASH')) return 'DINHEIRO';
+      return 'OUTRO';
+    };
+
+    const splitParcelas = (total: number, parcelas: number) => {
+      const base = Math.floor((total / parcelas) * 100) / 100;
+      const arr = Array(parcelas).fill(base);
+      const somaBase = base * parcelas;
+      const diff = Math.round((total - somaBase) * 100) / 100;
+      arr[arr.length - 1] = Math.round((arr[arr.length - 1] + diff) * 100) / 100;
+      return arr;
+    };
+
+    const parseManualParcelas = (value: any) => {
+      if (!value) return [];
+      try {
+        const arr = Array.isArray(value) ? value : typeof value === 'string' ? JSON.parse(value) : [];
+        if (!Array.isArray(arr)) return [];
+        return arr
+          .map((item) => {
+            if (typeof item === 'string') return { vencimento: item };
+            if (!item || typeof item !== 'object') return null;
+            return {
+              vencimento: item.vencimento || item.due_date || item.data || item.date || '',
+            };
+          })
+          .filter(Boolean) as Array<{ vencimento: string }>;
+      } catch {
+        return [];
+      }
+    };
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Calcula recebimento considerando regras por forma de pagamento e parcelas manuais.
+    const getReceitaRecebida = (r: any) => {
+      const total = Number(r.valor_liquido ?? r.valor_bruto ?? r.valor ?? 0);
+      if (!Number.isFinite(total) || total === 0) return 0;
+      const manualDates = parseManualParcelas(r.recebimento_parcelas)
+        .map(p => toDate(p.vencimento))
+        .filter(Boolean) as Date[];
+      const parcelas = Math.max(1, manualDates.length || parseInt(r.parcelas || '1', 10) || 1);
+      const forma = normalizeForma(r.forma_pagamento);
+      const baseReceb = toDate(r.data_recebimento);
+      const comp = toDate(r.data_competencia);
+      let base: Date | null = null;
+      if (forma === 'BOLETO' || forma === 'CHEQUE') {
+        base = baseReceb || comp;
+      } else if (forma === 'CREDITO' || forma === 'CONVENIO') {
+        base = baseReceb || (comp ? addDaysToDate(comp, 30) : null);
+      } else if (forma === 'DEBITO') {
+        base = baseReceb || (comp ? addBusinessDaysToDate(comp, 1) : null);
+      } else {
+        base = baseReceb || comp;
+      }
+      if (!base && manualDates.length === 0) return 0;
+
+      const intervalDays = (forma === 'CREDITO' || forma === 'CONVENIO') ? 30 : 0;
+      const valores = splitParcelas(total, parcelas);
+      let recebido = 0;
+      for (let i = 0; i < parcelas; i += 1) {
+        let dataPrevista = manualDates[i] || base;
+        if (!dataPrevista) continue;
+        if (!manualDates[i]) {
+          if (intervalDays && i > 0) dataPrevista = addDaysToDate(base as Date, intervalDays * i);
+          else if (!intervalDays && parcelas > 1 && i > 0) dataPrevista = addMonthsToDate(base as Date, i);
+        }
+        if (dataPrevista <= today) recebido += valores[i] || 0;
+      }
+      return recebido;
+    };
+
+    const receitaPorConta = new Map<string, number>();
+    revenues.forEach((r: any) => {
+      if (!r.bank_account_id) return;
+      const value = getReceitaRecebida(r);
+      if (!Number.isFinite(value) || value === 0) return;
+      receitaPorConta.set(r.bank_account_id, (receitaPorConta.get(r.bank_account_id) || 0) + value);
+    });
+
+    const despesaPorConta = new Map<string, number>();
+    expenses.forEach((e: any) => {
+      if (!e.bank_account_id) return;
+      const value = Number(e.valor ?? 0);
+      if (!Number.isFinite(value)) return;
+      despesaPorConta.set(e.bank_account_id, (despesaPorConta.get(e.bank_account_id) || 0) + value);
+    });
+
+    const updates: Array<{ id: string; current_balance: number }> = [];
+    const recalculated = accountList.map((acc: any) => {
+      const initial = parseBalanceValue(acc.initial_balance ?? 0);
+      const receitas = receitaPorConta.get(acc.id) || 0;
+      const despesas = despesaPorConta.get(acc.id) || 0;
+      const nextBalance = initial + receitas - despesas;
+      const current = parseBalanceValue(acc.current_balance ?? acc.initial_balance ?? 0);
+      if (Math.abs(current - nextBalance) > 0.009) {
+        updates.push({ id: acc.id, current_balance: nextBalance });
+      }
+      return { ...acc, current_balance: nextBalance };
+    });
+
+    if (updates.length) {
+      await Promise.all(
+        updates.map((u) =>
+          supabase.from('bank_accounts').update({ current_balance: u.current_balance }).eq('id', u.id)
+        )
+      );
+    }
+
+    return recalculated;
+  };
 
   const fetchAccounts = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('bank_accounts')
-        .select('*');
+      let query = supabase.from('bank_accounts').select('*');
+      if (effectiveClinic) query = query.eq('clinic_id', effectiveClinic);
+      const { data, error } = await query;
       if (error) throw error;
-      setAccounts(data as any || []);
+      const list = (data as any) || [];
+      const recalculated = await recalcAccountBalances(list);
+      setAccounts(recalculated as any || []);
     } catch (error) {
       console.error('Erro ao buscar contas:', error);
     } finally {
@@ -35,19 +223,27 @@ const BankAccounts: React.FC = () => {
 
   useEffect(() => {
     fetchAccounts();
-  }, []);
+  }, [effectiveClinic]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const balance = parseFloat(formData.initial_balance.replace(',', '.'));
+      const initialBalance = parseBalanceValue(formData.initial_balance);
       if (editingId) {
+        const editingAccount = accounts.find((acc) => acc.id === editingId);
+        const existingCurrent = parseBalanceValue(editingAccount?.current_balance ?? editingAccount?.initial_balance ?? 0);
+        const existingInitial = parseBalanceValue(editingAccount?.initial_balance ?? 0);
+        const desiredCurrent = parseBalanceValue(formData.current_balance);
+        const delta = desiredCurrent - existingCurrent;
+        const nextInitial = existingInitial + delta;
         const { error } = await supabase
           .from('bank_accounts')
           .update({
             nome_conta: formData.name,
             banco: formData.bank,
+            current_balance: desiredCurrent,
+            initial_balance: nextInitial,
           })
           .eq('id', editingId);
         if (error) throw error;
@@ -55,16 +251,17 @@ const BankAccounts: React.FC = () => {
         const { error } = await supabase.from('bank_accounts').insert([{
           nome_conta: formData.name, // Mapeando para o schema correto
           banco: formData.bank,
-          initial_balance: balance,
-          current_balance: balance, // Inicialmente igual
-          ativo: true
+          initial_balance: initialBalance,
+          current_balance: initialBalance, // Inicialmente igual
+          ativo: true,
+          clinic_id: effectiveClinic,
         }]);
         if (error) throw error;
       }
 
       setIsModalOpen(false);
       setEditingId(null);
-      setFormData({ name: '', bank: '', initial_balance: '0,00' });
+      setFormData({ name: '', bank: '', initial_balance: '0,00', current_balance: '0,00' });
       fetchAccounts();
     } catch (error: any) {
       alert('Erro ao salvar conta: ' + error.message);
@@ -79,6 +276,7 @@ const BankAccounts: React.FC = () => {
       name: acc.nome_conta || acc.name || '',
       bank: acc.banco || acc.bank || '',
       initial_balance: String((acc.initial_balance ?? acc.current_balance ?? 0)).replace('.', ','),
+      current_balance: String((acc.current_balance ?? acc.initial_balance ?? 0)).replace('.', ','),
     });
     setIsModalOpen(true);
   };
@@ -180,7 +378,19 @@ const BankAccounts: React.FC = () => {
                 />
               </div>
               <div>
-                {!editingId && (
+                {editingId ? (
+                  <>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Saldo Atual (R$)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      value={formData.current_balance}
+                      onChange={e => setFormData({ ...formData, current_balance: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-brand-500"
+                    />
+                  </>
+                ) : (
                   <>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Saldo Inicial (R$)</label>
                     <input
@@ -188,7 +398,7 @@ const BankAccounts: React.FC = () => {
                       step="0.01"
                       required
                       value={formData.initial_balance}
-                      onChange={e => setFormData({...formData, initial_balance: e.target.value})}
+                      onChange={e => setFormData({ ...formData, initial_balance: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-brand-500"
                     />
                   </>

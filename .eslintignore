@@ -1,0 +1,4 @@
+dist
+node_modules
+supabase/.temp
+workspace-backup-*.tar.gz

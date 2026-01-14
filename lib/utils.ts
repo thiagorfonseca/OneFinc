@@ -13,6 +13,17 @@ export const formatDate = (dateString: string) => {
   return `${day}/${month}/${year}`;
 };
 
+export const formatMonthYear = (value: string) => {
+  if (!value) return '';
+  const match = value.match(/^(\d{4})-(\d{2})(?:-\d{2})?$/);
+  if (!match) return value;
+  const year = match[1];
+  const monthIndex = Number(match[2]) - 1;
+  const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  if (Number.isNaN(monthIndex) || monthIndex < 0 || monthIndex > 11) return value;
+  return `${months[monthIndex]}/${year}`;
+};
+
 // Gera um hash simples baseado nos dados da transação para evitar duplicidade
 export const generateTransactionHash = (date: string, amount: number, description: string, fitid: string): string => {
   const data = `${date}-${amount}-${description}-${fitid}`;

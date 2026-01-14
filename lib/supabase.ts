@@ -1,17 +1,38 @@
 /// <reference types="vite/client" />
 import { createClient } from '@supabase/supabase-js';
+import type { Database } from '../src/types/supabase';
 
-// Use variáveis de ambiente; se não existirem, caímos no fallback conhecido para não quebrar a UI.
-const FALLBACK_URL = 'https://kevzqjffwbcjxvoebfll.supabase.co';
-const FALLBACK_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtldnpxamZmd2Jjanh2b2ViZmxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcyODk3MDAsImV4cCI6MjA3Mjg2NTcwMH0.ZFY7lNM4iUadRAyR4AyJoQzarPpJZT6diPCctPB-zx0';
+const getEnv = (key: string): string => {
+  // Vite (frontend)
+  const viteEnv =
+    (typeof import.meta !== 'undefined' ? ((import.meta as any).env as Record<string, string>) : undefined) || {};
+  // Node (scripts/testes)
+  const nodeEnv = (typeof process !== 'undefined' ? (process.env as Record<string, string>) : {}) || {};
 
-const env = (import.meta as any).env || {};
-const SUPABASE_URL = (env.VITE_SUPABASE_URL as string) || FALLBACK_URL;
-const SUPABASE_KEY = (env.VITE_SUPABASE_ANON_KEY as string) || FALLBACK_KEY;
+  return (viteEnv[key] || nodeEnv[key] || '').trim();
+};
 
-if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY) {
-  console.warn('⚠️ Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no .env.local. Usando fallback temporário.');
+export const SUPABASE_URL = getEnv('VITE_SUPABASE_URL') || getEnv('SUPABASE_URL');
+export const SUPABASE_ANON_KEY = getEnv('VITE_SUPABASE_ANON_KEY') || getEnv('SUPABASE_ANON_KEY');
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  // Fail fast: sem env correta, não deve gerar build/rodar apontando pra lugar errado
+  throw new Error(
+    'Config ausente: defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY (frontend) em .env.local. ' +
+      'Para scripts Node, use SUPABASE_URL e SUPABASE_ANON_KEY.'
+  );
 }
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const browserStorage = typeof window !== 'undefined' ? window.localStorage : undefined;
+
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    flowType: 'implicit',
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+    storage: browserStorage,
+    // storageKey pode ser fixo; se quiser separar staging/prod, dá pra anexar sufixo pelo hostname
+    storageKey: 'sb-auth',
+  },
+});

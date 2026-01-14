@@ -10,6 +10,7 @@ const Login: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSignUp, setIsSignUp] = useState(false);
   const navigate = useNavigate();
+  const callbackUrl = `${window.location.origin}/auth/callback`;
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,6 +22,9 @@ const Login: React.FC = () => {
         const { error, data } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            emailRedirectTo: callbackUrl,
+          },
         });
         if (error) throw error;
         
@@ -64,33 +68,46 @@ const Login: React.FC = () => {
   };
 
   const handleGoogle = async () => {
-    setLoading(true);
-    setError(null);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin }
-    });
-    setLoading(false);
-    if (error) setError('Erro ao entrar com Google: ' + error.message);
+    try {
+      setLoading(true);
+      setError(null);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: callbackUrl,
+          queryParams: { prompt: 'consent' },
+        }
+      });
+      if (error) setError('Erro ao entrar com Google: ' + error.message);
+    } catch (err: any) {
+      setError(err?.message || 'Erro inesperado ao entrar com Google.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleMagicLink = async () => {
-    setLoading(true);
-    setError(null);
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.origin }
-    });
-    setLoading(false);
-    if (error) setError('Erro ao enviar magic link: ' + error.message);
-    else alert('Enviamos um link de acesso para o seu email.');
+    try {
+      setLoading(true);
+      setError(null);
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: callbackUrl, shouldCreateUser: true }
+      });
+      if (error) setError('Erro ao enviar magic link: ' + error.message);
+      else alert('Enviamos um link de acesso para o seu email.');
+    } catch (err: any) {
+      setError(err?.message || 'Erro inesperado ao enviar magic link.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleResetPassword = async () => {
     setLoading(true);
     setError(null);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + '/auth/reset'
+      redirectTo: `${window.location.origin}/auth/reset`
     });
     setLoading(false);
     if (error) setError('Erro ao enviar reset de senha: ' + error.message);
@@ -106,7 +123,7 @@ const Login: React.FC = () => {
           </div>
         </div>
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          MediFin
+          OnePay
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
           {isSignUp ? 'Crie sua conta e da sua clínica' : 'Faça login para acessar o sistema'}
@@ -172,6 +189,7 @@ const Login: React.FC = () => {
           {!isSignUp && (
             <div className="mt-4 grid gap-2">
               <button
+                type="button"
                 onClick={handleGoogle}
                 className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
                 disabled={loading}
@@ -179,6 +197,7 @@ const Login: React.FC = () => {
                 Entrar com Google
               </button>
               <button
+                type="button"
                 onClick={handleMagicLink}
                 className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
                 disabled={loading || !email}
@@ -186,6 +205,7 @@ const Login: React.FC = () => {
                 Enviar Magic Link
               </button>
               <button
+                type="button"
                 onClick={handleResetPassword}
                 className="text-sm text-blue-600 hover:underline"
                 disabled={loading || !email}

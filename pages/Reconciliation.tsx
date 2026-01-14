@@ -3,8 +3,12 @@ import { Upload, CheckCircle, AlertCircle, PlusCircle, Link as LinkIcon, Loader2
 import { parseOFX, formatCurrency, formatDate } from '../lib/utils';
 import { BankAccount, Category } from '../types';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../src/auth/AuthProvider';
 
 const Reconciliation: React.FC = () => {
+  const { clinicId, isAdmin, selectedClinicId } = useAuth();
+  const effectiveClinic = (isAdmin ? selectedClinicId : clinicId) || clinicId || null;
+
   // State
   const [loading, setLoading] = useState(false);
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
@@ -29,13 +33,22 @@ const Reconciliation: React.FC = () => {
   // 1. Initial Load: Accounts & Categories
   useEffect(() => {
     const init = async () => {
-      const { data: accs } = await supabase.from('bank_accounts').select('*');
+      let accQuery = supabase.from('bank_accounts').select('*');
+      if (effectiveClinic) accQuery = accQuery.eq('clinic_id', effectiveClinic);
+      const { data: accs } = await accQuery;
       const { data: cats } = await supabase.from('categories').select('*');
       if (accs) setAccounts(accs as any);
       if (cats) setCategories(cats as any);
     };
     init();
-  }, []);
+  }, [effectiveClinic]);
+
+  useEffect(() => {
+    if (!selectedAccountId) return;
+    if (!accounts.some((acc: any) => acc.id === selectedAccountId)) {
+      setSelectedAccountId('');
+    }
+  }, [accounts, selectedAccountId]);
 
   // 2. Fetch Bank Transactions from DB when account changes
   useEffect(() => {

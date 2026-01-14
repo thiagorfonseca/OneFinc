@@ -1,11 +1,97 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Shield, Users, Building2, Wallet, RefreshCw, Plus, Loader2, CheckSquare } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { formatDate } from '../lib/utils';
 
-const Admin: React.FC = () => {
-  const PAGE_OPTIONS = ['/incomes','/expenses','/reconciliation','/accounts','/settings','/admin'];
-  const [tab, setTab] = useState<'overview' | 'clinics' | 'users'>('overview');
+interface AdminProps {
+  initialTab?: 'overview' | 'clinics' | 'users';
+}
+
+const USER_AVATAR_BUCKET = 'user-avatars';
+const MAX_AVATAR_DIMENSION = 350;
+
+const toSafeFileName = (name: string) => {
+  const withoutAccents = name.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+  const cleaned = withoutAccents.replace(/[^a-zA-Z0-9._-]+/g, '-');
+  const trimmed = cleaned.replace(/-+/g, '-').replace(/^-+|-+$/g, '');
+  return trimmed || `file-${crypto.randomUUID()}`;
+};
+
+const readImageDimensions = (file: File) =>
+  new Promise<{ width: number; height: number }>((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve({ width: img.width, height: img.height });
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Imagem inválida.'));
+    };
+    img.src = url;
+  });
+
+const validateSquareImage = async (file: File) => {
+  if (!file.type.startsWith('image/')) return 'Envie um arquivo de imagem.';
+  try {
+    const { width, height } = await readImageDimensions(file);
+    if (width !== height) return 'A imagem precisa ser quadrada.';
+    if (width > MAX_AVATAR_DIMENSION || height > MAX_AVATAR_DIMENSION) {
+      return `A imagem deve ter no máximo ${MAX_AVATAR_DIMENSION} x ${MAX_AVATAR_DIMENSION}px.`;
+    }
+    return null;
+  } catch {
+    return 'Não foi possível ler a imagem.';
+  }
+};
+
+const uploadClinicLogo = async (clinicId: string, file: File) => {
+  const safeName = toSafeFileName(file.name);
+  const path = `clinics/${clinicId}/${crypto.randomUUID()}-${safeName}`;
+  const { error } = await supabase.storage.from(USER_AVATAR_BUCKET).upload(path, file, { upsert: true });
+  if (error) throw error;
+  const { data } = supabase.storage.from(USER_AVATAR_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+};
+
+const getClinicInitials = (name: string) => {
+  const rawName = name.trim();
+  if (!rawName) return 'CL';
+  const parts = rawName.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0] || ''}${parts[parts.length - 1][0] || ''}`.toUpperCase();
+};
+
+const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
+  const navigate = useNavigate();
+  const PAGE_OPTIONS = [
+    { value: '/', label: 'Dashboard' },
+    { value: '/incomes', label: 'Receitas' },
+    { value: '/expenses', label: 'Despesas' },
+    { value: '/card-analysis', label: 'Análise de cartão' },
+    { value: '/reconciliation', label: 'Conciliação bancária' },
+    { value: '/profile', label: 'Meu perfil' },
+    { value: '/assistant', label: 'Assistente IA' },
+    { value: '/contents/courses', label: 'Conteúdos • Cursos' },
+    { value: '/contents/trainings', label: 'Conteúdos • Treinamentos' },
+    { value: '/accounts', label: 'Contas bancárias' },
+    { value: '/settings', label: 'Configurações' },
+    { value: '/settings?section=categorias', label: 'Configurações • Categorias' },
+    { value: '/settings?section=taxas', label: 'Configurações • Taxas' },
+    { value: '/settings?section=clientes', label: 'Configurações • Clientes' },
+    { value: '/settings?section=procedimentos', label: 'Configurações • Procedimentos' },
+    { value: '/settings?section=profissionais', label: 'Configurações • Profissionais' },
+    { value: '/settings?section=fornecedores', label: 'Configurações • Fornecedores' },
+    { value: '/settings?section=usuarios', label: 'Configurações • Usuários' },
+    { value: '/commercial/dashboard', label: 'Comercial • Dashboard' },
+    { value: '/commercial/ranking', label: 'Comercial • Ranking dos clientes' },
+    { value: '/commercial/recurrence', label: 'Comercial • Recorrência' },
+    { value: '/commercial/geo', label: 'Comercial • Geolocalização' },
+  ];
+  const PAGE_LABEL_MAP = useMemo(() => Object.fromEntries(PAGE_OPTIONS.map(p => [p.value, p.label])), []);
+  const [tab, setTab] = useState<'overview' | 'clinics' | 'users'>(initialTab);
   const [loading, setLoading] = useState(true);
   const [clinics, setClinics] = useState<any[]>([]);
   const [clinicForm, setClinicForm] = useState({
@@ -16,21 +102,62 @@ const Admin: React.FC = () => {
     telefone_contato: '',
     plano: 'basico',
     paginas_liberadas: [] as string[],
+    package_id: '',
     ativo: true,
+    logo_url: null as string | null,
   });
+  const [clinicLogoFile, setClinicLogoFile] = useState<File | null>(null);
+  const [clinicLogoPreview, setClinicLogoPreview] = useState<string | null>(null);
+  const [clinicLogoError, setClinicLogoError] = useState<string | null>(null);
+  const [packages, setPackages] = useState<any[]>([]);
+  const [clinicPackageMap, setClinicPackageMap] = useState<Record<string, string[]>>({});
   const [editingClinicId, setEditingClinicId] = useState<string | null>(null);
+  const [showClinicModal, setShowClinicModal] = useState(false);
+  const [editClinicForm, setEditClinicForm] = useState({
+    name: '',
+    responsavel_nome: '',
+    documento: '',
+    email_contato: '',
+    telefone_contato: '',
+    plano: 'basico',
+    paginas_liberadas: [] as string[],
+    package_id: '',
+    ativo: true,
+    logo_url: null as string | null,
+  });
+  const [editClinicLogoFile, setEditClinicLogoFile] = useState<File | null>(null);
+  const [editClinicLogoPreview, setEditClinicLogoPreview] = useState<string | null>(null);
+  const [editClinicLogoError, setEditClinicLogoError] = useState<string | null>(null);
   const [selectedClinics, setSelectedClinics] = useState<string[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'todas' | 'ativas' | 'inativas'>('todas');
   const [clinicUsers, setClinicUsers] = useState<any[]>([]);
   const [userForm, setUserForm] = useState({ clinic_id: '', name: '', email: '', role: 'user', ativo: true, paginas_liberadas: [] as string[] });
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [editUserForm, setEditUserForm] = useState({ clinic_id: '', name: '', email: '', role: 'user', ativo: true, paginas_liberadas: [] as string[] });
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [userSearch, setUserSearch] = useState('');
   const [bulkUserRole, setBulkUserRole] = useState('user');
   const [bulkUserPages, setBulkUserPages] = useState<string[]>([]);
   const [savingClinic, setSavingClinic] = useState(false);
   const [savingUser, setSavingUser] = useState(false);
+  const [invites, setInvites] = useState<any[]>([]);
+  const [invitesEnabled, setInvitesEnabled] = useState(true);
+  const [inviteForm, setInviteForm] = useState({ clinic_id: '', email: '', role: 'user' });
+  const [sendingInvite, setSendingInvite] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const callbackUrl = typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : '';
+  const clinicPagesRef = useRef<HTMLDetailsElement | null>(null);
+  const editClinicPagesRef = useRef<HTMLDetailsElement | null>(null);
+  const userPagesRef = useRef<HTMLDetailsElement | null>(null);
+  const editUserPagesRef = useRef<HTMLDetailsElement | null>(null);
+  const bulkPagesRef = useRef<HTMLDetailsElement | null>(null);
+  const tabRoutes: Record<'overview' | 'clinics' | 'users', string> = {
+    overview: '/admin/dashboard',
+    clinics: '/admin/clinics',
+    users: '/admin/users',
+  };
 
   const fetchClinics = async () => {
     setLoading(true);
@@ -49,6 +176,37 @@ const Admin: React.FC = () => {
     }
   };
 
+  const fetchPackages = async () => {
+    const { data, error } = await (supabase as any)
+      .from('content_packages')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (!error) setPackages((data || []) as any[]);
+  };
+
+  const fetchClinicPackages = async () => {
+    const { data, error } = await (supabase as any)
+      .from('clinic_packages')
+      .select('clinic_id, package_id');
+    if (error) return;
+    const map: Record<string, string[]> = {};
+    (data || []).forEach((row: any) => {
+      if (!row.clinic_id || !row.package_id) return;
+      if (!map[row.clinic_id]) map[row.clinic_id] = [];
+      map[row.clinic_id].push(row.package_id);
+    });
+    setClinicPackageMap(map);
+  };
+
+  const saveClinicPackages = async (clinicId: string, packageId: string) => {
+    await (supabase as any).from('clinic_packages').delete().eq('clinic_id', clinicId);
+    if (packageId) {
+      const rows = [{ clinic_id: clinicId, package_id: packageId }];
+      await (supabase as any).from('clinic_packages').insert(rows);
+    }
+    fetchClinicPackages();
+  };
+
   const handleToggleClinics = async (ids: string[], ativo: boolean) => {
     if (!ids.length) return;
     const { error } = await supabase.from('clinics').update({ ativo }).in('id', ids);
@@ -60,12 +218,365 @@ const Admin: React.FC = () => {
     fetchClinics();
   };
 
+  const resetClinicForm = () => {
+    setClinicForm({
+      name: '',
+      responsavel_nome: '',
+      documento: '',
+      email_contato: '',
+      telefone_contato: '',
+      plano: 'basico',
+      paginas_liberadas: [],
+      package_id: '',
+      ativo: true,
+      logo_url: null,
+    });
+    setClinicLogoFile(null);
+    setClinicLogoPreview(null);
+    setClinicLogoError(null);
+  };
+
+  const resetEditClinicForm = () => {
+    setEditingClinicId(null);
+    setEditClinicForm({
+      name: '',
+      responsavel_nome: '',
+      documento: '',
+      email_contato: '',
+      telefone_contato: '',
+      plano: 'basico',
+      paginas_liberadas: [],
+      package_id: '',
+      ativo: true,
+      logo_url: null,
+    });
+    setEditClinicLogoFile(null);
+    setEditClinicLogoPreview(null);
+    setEditClinicLogoError(null);
+  };
+
+  const handleClinicLogoChange = async (file: File) => {
+    const error = await validateSquareImage(file);
+    if (error) {
+      setClinicLogoError(error);
+      setClinicLogoFile(null);
+      setClinicLogoPreview(null);
+      return;
+    }
+    setClinicLogoError(null);
+    setClinicLogoFile(file);
+    setClinicLogoPreview(URL.createObjectURL(file));
+  };
+
+  const handleEditClinicLogoChange = async (file: File) => {
+    const error = await validateSquareImage(file);
+    if (error) {
+      setEditClinicLogoError(error);
+      setEditClinicLogoFile(null);
+      setEditClinicLogoPreview(null);
+      return;
+    }
+    setEditClinicLogoError(null);
+    setEditClinicLogoFile(file);
+    setEditClinicLogoPreview(URL.createObjectURL(file));
+  };
+
+  const openEditClinicModal = (clinic: any) => {
+    setEditingClinicId(clinic.id);
+    setEditClinicForm({
+      name: clinic.name || '',
+      responsavel_nome: clinic.responsavel_nome || '',
+      documento: clinic.documento || '',
+      email_contato: clinic.email_contato || '',
+      telefone_contato: clinic.telefone_contato || '',
+      plano: clinic.plano || 'basico',
+      paginas_liberadas: clinic.paginas_liberadas || [],
+      package_id: (clinicPackageMap[clinic.id] || [])[0] || '',
+      ativo: clinic.ativo ?? true,
+      logo_url: clinic.logo_url || null,
+    });
+    setEditClinicLogoFile(null);
+    setEditClinicLogoPreview(null);
+    setEditClinicLogoError(null);
+    setShowClinicModal(true);
+  };
+
+  const openEditUserModal = (user: any) => {
+    setEditingUserId(user.id);
+    setEditUserForm({
+      clinic_id: user.clinic_id || '',
+      name: user.name || '',
+      email: user.email || '',
+      role: user.role || 'user',
+      ativo: user.ativo ?? true,
+      paginas_liberadas: user.paginas_liberadas || [],
+    });
+    setShowUserModal(true);
+  };
+
+  const handleCreateClinic = async (ev: React.FormEvent) => {
+    ev.preventDefault();
+    if (!clinicForm.name.trim()) return;
+    if (clinicLogoError && clinicLogoFile) {
+      alert(clinicLogoError);
+      return;
+    }
+    setSavingClinic(true);
+    try {
+      const { package_id, ...clinicPayload } = clinicForm;
+      const selectedPackage = packages.find((pkg) => pkg.id === package_id);
+      const payloadWithPlan = {
+        ...clinicPayload,
+        plano: selectedPackage?.name || clinicForm.plano || 'basico',
+      };
+      const contactEmail = payloadWithPlan.email_contato?.trim().toLowerCase();
+      if (contactEmail) {
+        const { data: existingUser } = await supabase
+          .from('clinic_users')
+          .select('id, clinic_id')
+          .eq('email', contactEmail)
+          .maybeSingle();
+        if (existingUser) {
+          alert('Já existe um usuário com este e-mail em outra clínica. Use um e-mail diferente.');
+          return;
+        }
+      }
+      const { data: createdClinic, error } = await supabase
+        .from('clinics')
+        .insert([{ ...payloadWithPlan }])
+        .select()
+        .single();
+      if (error) throw error;
+      if (createdClinic?.id && clinicLogoFile) {
+        try {
+          const logoUrl = await uploadClinicLogo(createdClinic.id, clinicLogoFile);
+          await supabase.from('clinics').update({ logo_url: logoUrl }).eq('id', createdClinic.id);
+        } catch (logoError: any) {
+          alert(`Clínica criada, mas não foi possível enviar a imagem: ${logoError.message}`);
+        }
+      }
+      if (createdClinic?.id && contactEmail) {
+        const { data: existingUser } = await supabase
+          .from('clinic_users')
+          .select('id')
+          .eq('clinic_id', createdClinic.id)
+          .eq('email', contactEmail)
+          .maybeSingle();
+        if (!existingUser) {
+          const { error: userError } = await supabase.from('clinic_users').insert({
+            clinic_id: createdClinic.id,
+            email: contactEmail,
+            name: clinicForm.responsavel_nome?.trim() || contactEmail.split('@')[0] || 'Responsável',
+            role: 'owner',
+            ativo: true,
+            paginas_liberadas: clinicForm.paginas_liberadas || [],
+          });
+          if (userError) {
+            console.warn('Erro ao criar usuário da clínica:', userError.message);
+            alert(`Clínica criada, mas não foi possível criar o usuário automaticamente: ${userError.message}`);
+          } else {
+            const redirectTo = callbackUrl ? `${callbackUrl}?redirectTo=${encodeURIComponent('/')}` : undefined;
+            const otpOptions: { emailRedirectTo?: string; shouldCreateUser: boolean } = { shouldCreateUser: true };
+            if (redirectTo) otpOptions.emailRedirectTo = redirectTo;
+            const { error: otpError } = await supabase.auth.signInWithOtp({
+              email: contactEmail,
+              options: otpOptions,
+            });
+            if (otpError) {
+              alert(`Usuário criado, mas não foi possível enviar o e-mail de acesso: ${otpError.message}`);
+            }
+          }
+        }
+      }
+      if (createdClinic?.id) {
+        await saveClinicPackages(createdClinic.id, package_id || '');
+      }
+      resetClinicForm();
+      fetchClinics();
+    } catch (err: any) {
+      alert('Erro ao salvar clínica: ' + err.message);
+    } finally {
+      setSavingClinic(false);
+    }
+  };
+
+  const handleUpdateClinic = async (ev: React.FormEvent) => {
+    ev.preventDefault();
+    if (!editingClinicId) return;
+    if (!editClinicForm.name.trim()) return;
+    if (editClinicLogoError && editClinicLogoFile) {
+      alert(editClinicLogoError);
+      return;
+    }
+    setSavingClinic(true);
+    try {
+      const { package_id, ...clinicPayload } = editClinicForm;
+      const selectedPackage = packages.find((pkg) => pkg.id === package_id);
+      const payloadWithPlan = {
+        ...clinicPayload,
+        plano: selectedPackage?.name || editClinicForm.plano || 'basico',
+      };
+      let logoUrl = editClinicForm.logo_url || null;
+      if (editClinicLogoFile) {
+        logoUrl = await uploadClinicLogo(editingClinicId, editClinicLogoFile);
+      }
+      const { error } = await supabase
+        .from('clinics')
+        .update({ ...payloadWithPlan, logo_url: logoUrl })
+        .eq('id', editingClinicId);
+      if (error) throw error;
+      await saveClinicPackages(editingClinicId, package_id || '');
+      setShowClinicModal(false);
+      resetEditClinicForm();
+      fetchClinics();
+    } catch (err: any) {
+      alert('Erro ao atualizar clínica: ' + err.message);
+    } finally {
+      setSavingClinic(false);
+    }
+  };
+
+  const handleCreateUser = async () => {
+    setSavingUser(true);
+    try {
+      const normalizedEmail = userForm.email.trim().toLowerCase();
+      if (!normalizedEmail) {
+        alert('Informe um e-mail válido.');
+        return;
+      }
+      const { data: existingUser } = await supabase
+        .from('clinic_users')
+        .select('id')
+        .eq('email', normalizedEmail)
+        .maybeSingle();
+      if (existingUser) {
+        alert('Já existe um usuário com este e-mail em outra clínica. Use um e-mail diferente.');
+        return;
+      }
+      const { error } = await supabase
+        .from('clinic_users')
+        .insert([{ ...userForm, email: normalizedEmail }]);
+      if (error) throw error;
+      if (normalizedEmail) {
+        const redirectTo = callbackUrl ? `${callbackUrl}?redirectTo=${encodeURIComponent('/')}` : undefined;
+        const otpOptions: { emailRedirectTo?: string; shouldCreateUser: boolean } = { shouldCreateUser: true };
+        if (redirectTo) otpOptions.emailRedirectTo = redirectTo;
+        const { error: otpError } = await supabase.auth.signInWithOtp({
+          email: normalizedEmail,
+          options: otpOptions,
+        });
+        if (otpError) {
+          alert('Usuário criado, mas não foi possível enviar o email de acesso: ' + otpError.message);
+        }
+      }
+      const { data } = await supabase.from('clinic_users').select('*').order('created_at', { ascending: false });
+      if (data) setClinicUsers(data as any[]);
+      setUserForm({ clinic_id: '', name: '', email: '', role: 'user', ativo: true, paginas_liberadas: [] });
+    } catch (err: any) {
+      alert('Erro ao salvar usuário: ' + err.message);
+    } finally {
+      setSavingUser(false);
+    }
+  };
+
+  const handleUpdateUser = async (ev: React.FormEvent) => {
+    ev.preventDefault();
+    if (!editingUserId) return;
+    setSavingUser(true);
+    try {
+      const normalizedEmail = editUserForm.email.trim().toLowerCase();
+      if (!normalizedEmail) {
+        alert('Informe um e-mail válido.');
+        return;
+      }
+      const { data: existingUser } = await supabase
+        .from('clinic_users')
+        .select('id')
+        .eq('email', normalizedEmail)
+        .maybeSingle();
+      if (existingUser && existingUser.id !== editingUserId) {
+        alert('Já existe um usuário com este e-mail em outra clínica. Use um e-mail diferente.');
+        return;
+      }
+      const { error } = await supabase
+        .from('clinic_users')
+        .update({ ...editUserForm, email: normalizedEmail })
+        .eq('id', editingUserId);
+      if (error) throw error;
+      const { data } = await supabase.from('clinic_users').select('*').order('created_at', { ascending: false });
+      if (data) setClinicUsers(data as any[]);
+      setShowUserModal(false);
+      setEditingUserId(null);
+      setEditUserForm({ clinic_id: '', name: '', email: '', role: 'user', ativo: true, paginas_liberadas: [] });
+    } catch (err: any) {
+      alert('Erro ao atualizar usuário: ' + err.message);
+    } finally {
+      setSavingUser(false);
+    }
+  };
+
+  const handleDeleteUser = async (user: any) => {
+    const label = user.name || user.email || 'este usuário';
+    if (!confirm(`Excluir ${label}?`)) return;
+    const { error } = await supabase
+      .from('clinic_users')
+      .delete()
+      .eq('id', user.id);
+    if (error) {
+      alert('Erro ao excluir usuário: ' + error.message);
+      return;
+    }
+    setClinicUsers((prev) => prev.filter((item) => item.id !== user.id));
+    setSelectedUsers((prev) => prev.filter((id) => id !== user.id));
+    if (editingUserId === user.id) {
+      setShowUserModal(false);
+      setEditingUserId(null);
+      setEditUserForm({ clinic_id: '', name: '', email: '', role: 'user', ativo: true, paginas_liberadas: [] });
+    }
+  };
+
+  useEffect(() => {
+    setTab(initialTab);
+  }, [initialTab]);
+
+  const handleTabChange = (next: 'overview' | 'clinics' | 'users') => {
+    setTab(next);
+    navigate(tabRoutes[next]);
+  };
+
   useEffect(() => {
     fetchClinics();
+    fetchPackages();
+    fetchClinicPackages();
     supabase.from('clinic_users').select('*').order('created_at', { ascending: false }).then(({ data }) => {
       if (data) setClinicUsers(data as any[]);
     });
+    (supabase as any).from('clinic_invites').select('*').order('created_at', { ascending: false }).then(({ data, error }: any) => {
+      if (error) {
+        console.warn('Convites indisponíveis (tabela ausente?):', error.message);
+        setInvitesEnabled(false);
+        return;
+      }
+      setInvites(data as any[] || []);
+    });
+    supabase.auth.getSession().then(({ data }) => setCurrentUserId(data.session?.user.id || null));
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (clinicLogoPreview?.startsWith('blob:')) {
+        URL.revokeObjectURL(clinicLogoPreview);
+      }
+    };
+  }, [clinicLogoPreview]);
+
+  useEffect(() => {
+    return () => {
+      if (editClinicLogoPreview?.startsWith('blob:')) {
+        URL.revokeObjectURL(editClinicLogoPreview);
+      }
+    };
+  }, [editClinicLogoPreview]);
 
   const totals = useMemo(() => {
     const totalClinics = clinics.length;
@@ -100,19 +611,19 @@ const Admin: React.FC = () => {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => setTab('overview')}
+            onClick={() => handleTabChange('overview')}
             className={`px-3 py-2 text-sm rounded-lg border ${tab === 'overview' ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-700 border-gray-200'}`}
           >
             Visão geral
           </button>
           <button
-            onClick={() => setTab('clinics')}
+            onClick={() => handleTabChange('clinics')}
             className={`px-3 py-2 text-sm rounded-lg border ${tab === 'clinics' ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-700 border-gray-200'}`}
           >
             Clínicas
           </button>
           <button
-            onClick={() => setTab('users')}
+            onClick={() => handleTabChange('users')}
             className={`px-3 py-2 text-sm rounded-lg border ${tab === 'users' ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-700 border-gray-200'}`}
           >
             Usuários
@@ -255,39 +766,7 @@ const Admin: React.FC = () => {
             </div>
           </div>
 
-          <form
-            onSubmit={async (ev) => {
-              ev.preventDefault();
-              if (!clinicForm.name.trim()) return;
-              setSavingClinic(true);
-              try {
-                if (editingClinicId) {
-                  const { error } = await supabase.from('clinics').update(clinicForm).eq('id', editingClinicId);
-                  if (error) throw error;
-                } else {
-                  const { error } = await supabase.from('clinics').insert([{ ...clinicForm }]);
-                  if (error) throw error;
-                }
-                setClinicForm({
-                  name: '',
-                  responsavel_nome: '',
-                  documento: '',
-                  email_contato: '',
-                  telefone_contato: '',
-                  plano: 'basico',
-                  paginas_liberadas: [],
-                  ativo: true,
-                });
-                setEditingClinicId(null);
-                fetchClinics();
-              } catch (err: any) {
-                alert('Erro ao salvar clínica: ' + err.message);
-              } finally {
-                setSavingClinic(false);
-              }
-            }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-4"
-          >
+          <form onSubmit={handleCreateClinic} className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nome da Clínica</label>
               <input
@@ -295,6 +774,37 @@ const Admin: React.FC = () => {
                 onChange={e => setClinicForm(prev => ({ ...prev, name: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
               />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Imagem da clínica</label>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="h-16 w-16 rounded-full border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden text-xs font-semibold text-gray-500">
+                  {clinicLogoPreview || clinicForm.logo_url ? (
+                    <img
+                      src={clinicLogoPreview || clinicForm.logo_url || ''}
+                      alt="Imagem da clínica"
+                      className="h-full w-full object-cover object-center"
+                    />
+                  ) : (
+                    <span>{getClinicInitials(clinicForm.name || '')}</span>
+                  )}
+                </div>
+                <label className="px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                  {clinicLogoPreview || clinicForm.logo_url ? 'Trocar imagem' : 'Adicionar imagem'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) await handleClinicLogoChange(file);
+                      e.currentTarget.value = '';
+                    }}
+                  />
+                </label>
+                <span className="text-xs text-gray-500">Quadrada até 350 x 350.</span>
+              </div>
+              {clinicLogoError && <p className="text-xs text-red-600 mt-1">{clinicLogoError}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Responsável</label>
@@ -329,36 +839,66 @@ const Admin: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Plano</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Pacote</label>
               <select
-                value={clinicForm.plano}
-                onChange={e => setClinicForm(prev => ({ ...prev, plano: e.target.value }))}
+                value={clinicForm.package_id}
+                onChange={e => setClinicForm(prev => ({ ...prev, package_id: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none bg-white"
               >
-                <option value="basico">Básico</option>
-                <option value="pro">Pro</option>
-                <option value="enterprise">Enterprise</option>
+                <option value="">Selecione...</option>
+                {packages.map(pkg => (
+                  <option key={pkg.id} value={pkg.id}>{pkg.name || 'Sem nome'}</option>
+                ))}
               </select>
             </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Páginas liberadas</label>
               <div className="flex gap-2 mb-2">
-                <button type="button" onClick={() => setClinicForm(prev => ({ ...prev, paginas_liberadas: PAGE_OPTIONS }))} className="px-2 py-1 text-xs bg-emerald-50 text-emerald-700 rounded border border-emerald-100">Selecionar tudo</button>
+                <button type="button" onClick={() => setClinicForm(prev => ({ ...prev, paginas_liberadas: PAGE_OPTIONS.map(p => p.value) }))} className="px-2 py-1 text-xs bg-emerald-50 text-emerald-700 rounded border border-emerald-100">Selecionar tudo</button>
                 <button type="button" onClick={() => setClinicForm(prev => ({ ...prev, paginas_liberadas: [] }))} className="px-2 py-1 text-xs bg-red-50 text-red-700 rounded border border-red-100">Limpar</button>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {PAGE_OPTIONS.map(page => {
-                  const checked = clinicForm.paginas_liberadas.includes(page);
-                  return (
-                    <label key={page} className="flex items-center gap-2 text-sm text-gray-700 border border-gray-200 rounded-lg px-2 py-1">
-                      <input type="checkbox" checked={checked} onChange={e => {
-                        if (e.target.checked) setClinicForm(prev => ({ ...prev, paginas_liberadas: [...prev.paginas_liberadas, page] }));
-                        else setClinicForm(prev => ({ ...prev, paginas_liberadas: prev.paginas_liberadas.filter(p => p !== page) }));
-                      }} />
-                      {page}
-                    </label>
-                  );
-                })}
+              <div className="space-y-2">
+                <details ref={clinicPagesRef} className="relative">
+                  <summary className="list-none cursor-pointer w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm text-gray-700">
+                    Selecionar página...
+                  </summary>
+                  <div className="absolute z-20 mt-2 w-full max-h-56 overflow-auto border border-gray-200 rounded-lg bg-white shadow-lg">
+                    {PAGE_OPTIONS.map((page) => (
+                      <button
+                        key={page.value}
+                        type="button"
+                        onClick={() => {
+                          if (clinicForm.paginas_liberadas.includes(page.value)) return;
+                          setClinicForm((prev) => ({
+                            ...prev,
+                            paginas_liberadas: [...prev.paginas_liberadas, page.value],
+                          }));
+                          if (clinicPagesRef.current) clinicPagesRef.current.removeAttribute('open');
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        {page.label}
+                      </button>
+                    ))}
+                  </div>
+                </details>
+                <div className="flex flex-wrap gap-2">
+                  {clinicForm.paginas_liberadas.map((page) => (
+                    <button
+                      key={page}
+                      type="button"
+                      onClick={() =>
+                        setClinicForm((prev) => ({
+                          ...prev,
+                          paginas_liberadas: prev.paginas_liberadas.filter((p) => p !== page),
+                        }))
+                      }
+                      className="px-3 py-1 rounded-full border border-gray-200 text-xs text-gray-600 hover:border-gray-300"
+                    >
+                      {PAGE_LABEL_MAP[page] || page} ✕
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
             <div className="flex items-end gap-3">
@@ -368,7 +908,7 @@ const Admin: React.FC = () => {
               </label>
               <button type="submit" disabled={savingClinic} className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50 flex items-center gap-2 justify-center">
                 {savingClinic ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-                {editingClinicId ? 'Atualizar' : 'Salvar'}
+                Salvar
               </button>
             </div>
           </form>
@@ -391,30 +931,27 @@ const Admin: React.FC = () => {
                       if (e.target.checked) setSelectedClinics(prev => [...prev, clinic.id]);
                       else setSelectedClinics(prev => prev.filter(id => id !== clinic.id));
                     }} />
+                    <div className="h-12 w-12 rounded-full border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden text-xs font-semibold text-gray-500">
+                      {clinic.logo_url ? (
+                        <img src={clinic.logo_url} alt={`Logo de ${clinic.name || 'clínica'}`} className="h-full w-full object-cover object-center" />
+                      ) : (
+                        <span>{getClinicInitials(clinic.name || '')}</span>
+                      )}
+                    </div>
                     <div>
                       <p className="font-semibold text-gray-800">{clinic.name} {!clinic.ativo && <span className="text-xs text-red-600">(inativa)</span>}</p>
                       <p className="text-xs text-gray-500">ID: {clinic.id} • Plano: {clinic.plano || '—'}</p>
                       <p className="text-xs text-gray-500">Contato: {clinic.responsavel_nome || '-'} • {clinic.email_contato || '-'} • {clinic.telefone_contato || '-'}</p>
                       {clinic.paginas_liberadas && clinic.paginas_liberadas.length > 0 && (
-                        <p className="text-xs text-gray-500">Páginas: {clinic.paginas_liberadas.join(', ')}</p>
+                        <p className="text-xs text-gray-500">
+                          Páginas: {clinic.paginas_liberadas.map((p: string) => PAGE_LABEL_MAP[p] || p).join(', ')}
+                        </p>
                       )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => {
-                        setEditingClinicId(clinic.id);
-                        setClinicForm({
-                          name: clinic.name || '',
-                          responsavel_nome: clinic.responsavel_nome || '',
-                          documento: clinic.documento || '',
-                          email_contato: clinic.email_contato || '',
-                          telefone_contato: clinic.telefone_contato || '',
-                          plano: clinic.plano || 'basico',
-                          paginas_liberadas: clinic.paginas_liberadas || [],
-                          ativo: clinic.ativo ?? true,
-                        });
-                      }}
+                      onClick={() => openEditClinicModal(clinic)}
                       className="text-sm text-brand-600"
                     >
                       Editar
@@ -430,6 +967,205 @@ const Admin: React.FC = () => {
               <div className="p-4 text-sm text-gray-400 text-center">Nenhuma clínica cadastrada.</div>
             )}
           </div>
+
+          {showClinicModal && (
+            <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+              <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-3xl space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-lg font-semibold text-gray-800">Editar clínica</h4>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowClinicModal(false);
+                      resetEditClinicForm();
+                    }}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <form onSubmit={handleUpdateClinic} className="flex flex-col gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nome da Clínica</label>
+                    <input
+                      value={editClinicForm.name}
+                      onChange={e => setEditClinicForm(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                    />
+                    </div>
+                    <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Imagem da clínica</label>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="h-16 w-16 rounded-full border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden text-xs font-semibold text-gray-500">
+                        {editClinicLogoPreview || editClinicForm.logo_url ? (
+                          <img
+                            src={editClinicLogoPreview || editClinicForm.logo_url || ''}
+                            alt="Imagem da clínica"
+                            className="h-full w-full object-cover object-center"
+                          />
+                        ) : (
+                          <span>{getClinicInitials(editClinicForm.name || '')}</span>
+                        )}
+                      </div>
+                      <label className="px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                        {editClinicLogoPreview || editClinicForm.logo_url ? 'Trocar imagem' : 'Adicionar imagem'}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) await handleEditClinicLogoChange(file);
+                            e.currentTarget.value = '';
+                          }}
+                        />
+                      </label>
+                      <span className="text-xs text-gray-500">Quadrada até 350 x 350.</span>
+                    </div>
+                    {editClinicLogoError && <p className="text-xs text-red-600 mt-1">{editClinicLogoError}</p>}
+                    </div>
+                    <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Responsável</label>
+                    <input
+                      value={editClinicForm.responsavel_nome}
+                      onChange={e => setEditClinicForm(prev => ({ ...prev, responsavel_nome: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                    />
+                    </div>
+                    <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">CNPJ/CPF</label>
+                    <input
+                      value={editClinicForm.documento}
+                      onChange={e => setEditClinicForm(prev => ({ ...prev, documento: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                    />
+                    </div>
+                    <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
+                    <input
+                      value={editClinicForm.email_contato}
+                      onChange={e => setEditClinicForm(prev => ({ ...prev, email_contato: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                    />
+                    </div>
+                    <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
+                    <input
+                      value={editClinicForm.telefone_contato}
+                      onChange={e => setEditClinicForm(prev => ({ ...prev, telefone_contato: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                    />
+                    </div>
+                    <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Pacote</label>
+                    <select
+                      value={editClinicForm.package_id}
+                      onChange={e => setEditClinicForm(prev => ({ ...prev, package_id: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none bg-white"
+                    >
+                      <option value="">Selecione...</option>
+                      {packages.map(pkg => (
+                        <option key={pkg.id} value={pkg.id}>{pkg.name || 'Sem nome'}</option>
+                      ))}
+                    </select>
+                    </div>
+                    <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Páginas liberadas</label>
+                    <div className="flex gap-2 mb-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditClinicForm(prev => ({ ...prev, paginas_liberadas: PAGE_OPTIONS.map(p => p.value) }))}
+                        className="px-2 py-1 text-xs bg-emerald-50 text-emerald-700 rounded border border-emerald-100"
+                      >
+                        Selecionar tudo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditClinicForm(prev => ({ ...prev, paginas_liberadas: [] }))}
+                        className="px-2 py-1 text-xs bg-red-50 text-red-700 rounded border border-red-100"
+                      >
+                        Limpar
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      <details ref={editClinicPagesRef} className="relative">
+                        <summary className="list-none cursor-pointer w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm text-gray-700">
+                          Selecionar página...
+                        </summary>
+                        <div className="absolute z-20 mt-2 w-full max-h-56 overflow-auto border border-gray-200 rounded-lg bg-white shadow-lg">
+                          {PAGE_OPTIONS.map((page) => (
+                            <button
+                              key={page.value}
+                              type="button"
+                              onClick={() => {
+                                if (editClinicForm.paginas_liberadas.includes(page.value)) return;
+                                setEditClinicForm((prev) => ({
+                                  ...prev,
+                                  paginas_liberadas: [...prev.paginas_liberadas, page.value],
+                                }));
+                                if (editClinicPagesRef.current) editClinicPagesRef.current.removeAttribute('open');
+                              }}
+                              className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                            >
+                              {page.label}
+                            </button>
+                          ))}
+                        </div>
+                      </details>
+                      <div className="flex flex-wrap gap-2">
+                        {editClinicForm.paginas_liberadas.map((page) => (
+                          <button
+                            key={page}
+                            type="button"
+                            onClick={() =>
+                              setEditClinicForm((prev) => ({
+                                ...prev,
+                                paginas_liberadas: prev.paginas_liberadas.filter((p) => p !== page),
+                              }))
+                            }
+                            className="px-3 py-1 rounded-full border border-gray-200 text-xs text-gray-600 hover:border-gray-300"
+                          >
+                            {PAGE_LABEL_MAP[page] || page} ✕
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-end gap-2 w-full">
+                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={editClinicForm.ativo}
+                        onChange={e => setEditClinicForm(prev => ({ ...prev, ativo: e.target.checked }))}
+                        className="h-4 w-4 text-brand-600 border-gray-300 rounded"
+                      />
+                      Ativa
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowClinicModal(false);
+                        resetEditClinicForm();
+                      }}
+                      className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={savingClinic}
+                      className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50 flex items-center gap-2 justify-center"
+                    >
+                      {savingClinic ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                      Salvar alterações
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -444,6 +1180,151 @@ const Admin: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="md:col-span-4 bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
+                <div>
+                  <h4 className="font-semibold text-gray-800 text-sm">Convidar usuário</h4>
+                  <p className="text-xs text-gray-500">Gere um convite por e-mail (role: owner/admin/user)</p>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    value={inviteForm.email}
+                    onChange={e => setInviteForm(prev => ({ ...prev, email: e.target.value }))}
+                    placeholder="email@dominio.com"
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-500"
+                  />
+                  <select
+                    value={inviteForm.clinic_id}
+                    onChange={e => setInviteForm(prev => ({ ...prev, clinic_id: e.target.value }))}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-brand-500"
+                  >
+                    <option value="">Clínica...</option>
+                    {clinics.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                  <select
+                    value={inviteForm.role}
+                    onChange={e => setInviteForm(prev => ({ ...prev, role: e.target.value }))}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-brand-500"
+                  >
+                    <option value="owner">Owner</option>
+                    <option value="admin">Admin</option>
+                    <option value="user">Usuário</option>
+                  </select>
+                  <button
+                    type="button"
+                    disabled={sendingInvite || !invitesEnabled}
+                    onClick={async () => {
+                      if (!invitesEnabled) {
+                        alert('Convites indisponíveis: tabela clinic_invites não encontrada no Supabase.');
+                        return;
+                      }
+                      if (!inviteForm.email || !inviteForm.clinic_id) {
+                        alert('Informe e-mail e clínica');
+                        return;
+                      }
+                      const inviteEmail = inviteForm.email.trim().toLowerCase();
+                      const { data: existingInviteUser } = await supabase
+                        .from('clinic_users')
+                        .select('id')
+                        .eq('email', inviteEmail)
+                        .maybeSingle();
+                      if (existingInviteUser) {
+                        alert('Já existe um usuário com este e-mail em outra clínica. Use um e-mail diferente.');
+                        return;
+                      }
+                      setSendingInvite(true);
+                      try {
+                        const token = crypto.randomUUID();
+                        const expires_at = new Date(Date.now() + 7*24*60*60*1000).toISOString();
+                        const { error, data } = await (supabase as any)
+                          .from('clinic_invites')
+                          .insert([{
+                            clinic_id: inviteForm.clinic_id,
+                            email: inviteEmail,
+                            role: inviteForm.role,
+                            token,
+                            invited_by: currentUserId,
+                            expires_at
+                          }])
+                          .select()
+                          .single();
+                        if (error) throw error;
+                        const redirectTo = callbackUrl
+                          ? `${callbackUrl}?redirectTo=${encodeURIComponent(`/accept-invite?token=${data.token}`)}`
+                          : undefined;
+                        const otpOptions: { emailRedirectTo?: string; shouldCreateUser: boolean } = { shouldCreateUser: true };
+                        if (redirectTo) otpOptions.emailRedirectTo = redirectTo;
+                        const { error: inviteEmailError } = await supabase.auth.signInWithOtp({
+                          email: inviteEmail,
+                          options: otpOptions,
+                        });
+                        if (inviteEmailError) {
+                          alert(`Convite gerado, mas não foi possível enviar o email: ${inviteEmailError.message}. Link: /accept-invite?token=${data.token}`);
+                        } else {
+                          alert(`Convite enviado por email. Se necessário, use o link /accept-invite?token=${data.token}`);
+                        }
+                        const { data: inv } = await (supabase as any).from('clinic_invites').select('*').order('created_at', { ascending: false });
+                        if (inv) setInvites(inv as any[]);
+                        setInviteForm({ clinic_id: '', email: '', role: 'user' });
+                      } catch (err: any) {
+                        alert('Erro ao enviar convite: ' + err.message);
+                      } finally {
+                        setSendingInvite(false);
+                      }
+                    }}
+                    className={`px-4 py-2 rounded-lg text-sm ${invitesEnabled ? 'bg-brand-600 text-white hover:bg-brand-700' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
+                  >
+                    {invitesEnabled ? (sendingInvite ? 'Enviando...' : 'Enviar convite') : 'Convites indisponíveis'}
+                  </button>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-white text-gray-500 border border-gray-200">
+                    <tr>
+                      <th className="px-3 py-2">E-mail</th>
+                      <th className="px-3 py-2">Clínica</th>
+                      <th className="px-3 py-2">Role</th>
+                      <th className="px-3 py-2">Expira</th>
+                      <th className="px-3 py-2">Token</th>
+                      <th className="px-3 py-2 text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {invitesEnabled ? (
+                      invites.map((i) => (
+                        <tr key={i.id}>
+                          <td className="px-3 py-2 text-gray-800">{i.email}</td>
+                          <td className="px-3 py-2 text-gray-600">{i.clinic_id}</td>
+                          <td className="px-3 py-2 text-gray-600 capitalize">{i.role}</td>
+                          <td className="px-3 py-2 text-gray-600">{formatDate(i.expires_at)}</td>
+                          <td className="px-3 py-2 text-xs text-gray-500 break-all">{i.token}</td>
+                          <td className="px-3 py-2 text-right">
+                            <button
+                              onClick={async () => {
+                                if (!confirm('Revogar convite?')) return;
+                                const { error } = await (supabase as any).from('clinic_invites').delete().eq('id', i.id);
+                                if (error) { alert(error.message); return; }
+                                setInvites(prev => prev.filter(p => p.id !== i.id));
+                              }}
+                              className="text-sm text-red-600 hover:underline"
+                            >
+                              Revogar
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr><td colSpan={6} className="px-3 py-3 text-center text-gray-400">Convites indisponíveis (tabela clinic_invites ausente).</td></tr>
+                    )}
+                    {invitesEnabled && invites.length === 0 && (
+                      <tr><td colSpan={6} className="px-3 py-3 text-center text-gray-400">Nenhum convite pendente.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Clínica</label>
               <select
@@ -483,31 +1364,59 @@ const Admin: React.FC = () => {
                 onChange={e => setUserForm({ ...userForm, role: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none bg-white"
               >
+                <option value="owner">Owner</option>
                 <option value="admin">Admin</option>
-                <option value="gestor">Gestor</option>
-                <option value="financeiro">Financeiro</option>
                 <option value="user">Usuário</option>
               </select>
             </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Páginas liberadas</label>
               <div className="flex gap-2 mb-2">
-                <button type="button" onClick={() => setUserForm(prev => ({ ...prev, paginas_liberadas: PAGE_OPTIONS }))} className="px-2 py-1 text-xs bg-emerald-50 text-emerald-700 rounded border border-emerald-100">Selecionar tudo</button>
+                <button type="button" onClick={() => setUserForm(prev => ({ ...prev, paginas_liberadas: PAGE_OPTIONS.map(p => p.value) }))} className="px-2 py-1 text-xs bg-emerald-50 text-emerald-700 rounded border border-emerald-100">Selecionar tudo</button>
                 <button type="button" onClick={() => setUserForm(prev => ({ ...prev, paginas_liberadas: [] }))} className="px-2 py-1 text-xs bg-red-50 text-red-700 rounded border border-red-100">Limpar</button>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {PAGE_OPTIONS.map((page) => {
-                  const checked = userForm.paginas_liberadas.includes(page);
-                  return (
-                    <label key={page} className="flex items-center gap-2 text-sm text-gray-700 border border-gray-200 rounded-lg px-2 py-1">
-                      <input type="checkbox" checked={checked} onChange={(e) => {
-                        if (e.target.checked) setUserForm(prev => ({ ...prev, paginas_liberadas: [...prev.paginas_liberadas, page] }));
-                        else setUserForm(prev => ({ ...prev, paginas_liberadas: prev.paginas_liberadas.filter(p => p !== page) }));
-                      }} />
-                      {page}
-                    </label>
-                  );
-                })}
+              <div className="space-y-2">
+                <details ref={userPagesRef} className="relative">
+                  <summary className="list-none cursor-pointer w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm text-gray-700">
+                    Selecionar página...
+                  </summary>
+                  <div className="absolute z-20 mt-2 w-full max-h-56 overflow-auto border border-gray-200 rounded-lg bg-white shadow-lg">
+                    {PAGE_OPTIONS.map((page) => (
+                      <button
+                        key={page.value}
+                        type="button"
+                        onClick={() => {
+                          if (userForm.paginas_liberadas.includes(page.value)) return;
+                          setUserForm((prev) => ({
+                            ...prev,
+                            paginas_liberadas: [...prev.paginas_liberadas, page.value],
+                          }));
+                          if (userPagesRef.current) userPagesRef.current.removeAttribute('open');
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        {page.label}
+                      </button>
+                    ))}
+                  </div>
+                </details>
+                <div className="flex flex-wrap gap-2">
+                  {userForm.paginas_liberadas.map((page) => (
+                    <button
+                      key={page}
+                      type="button"
+                      onClick={() =>
+                        setUserForm((prev) => ({
+                          ...prev,
+                          paginas_liberadas: prev.paginas_liberadas.filter((p) => p !== page),
+                        }))
+                      }
+                      className="px-3 py-1 rounded-full border border-gray-200 text-xs text-gray-600 hover:border-gray-300"
+                    >
+                      {PAGE_LABEL_MAP[page] || page} ✕
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
             <div className="flex items-end gap-3">
@@ -517,30 +1426,11 @@ const Admin: React.FC = () => {
               </label>
               <button
                 type="button"
-                onClick={async () => {
-                  setSavingUser(true);
-                  try {
-                    if (editingUserId) {
-                      const { error } = await supabase.from('clinic_users').update(userForm).eq('id', editingUserId);
-                      if (error) throw error;
-                    } else {
-                      const { error } = await supabase.from('clinic_users').insert([userForm]);
-                      if (error) throw error;
-                    }
-                    const { data } = await supabase.from('clinic_users').select('*').order('created_at', { ascending: false });
-                    if (data) setClinicUsers(data as any[]);
-                    setUserForm({ clinic_id: '', name: '', email: '', role: 'user', ativo: true, paginas_liberadas: [] });
-                    setEditingUserId(null);
-                  } catch (err: any) {
-                    alert('Erro ao salvar usuário: ' + err.message);
-                  } finally {
-                    setSavingUser(false);
-                  }
-                }}
+                onClick={handleCreateUser}
                 className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50 flex items-center gap-2 justify-center"
               >
                 {savingUser ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-                {editingUserId ? 'Atualizar' : 'Adicionar'}
+                Adicionar
               </button>
             </div>
           </div>
@@ -573,31 +1463,51 @@ const Admin: React.FC = () => {
                 onChange={e => setBulkUserRole(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none bg-white"
               >
+                <option value="owner">Owner</option>
                 <option value="admin">Admin</option>
-                <option value="gestor">Gestor</option>
-                <option value="financeiro">Financeiro</option>
                 <option value="user">Usuário</option>
               </select>
             </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Páginas liberadas (aplicar aos selecionados)</label>
               <div className="flex gap-2 mb-2">
-                <button type="button" onClick={() => setBulkUserPages(PAGE_OPTIONS)} className="px-2 py-1 text-xs bg-emerald-50 text-emerald-700 rounded border border-emerald-100">Selecionar tudo</button>
+                <button type="button" onClick={() => setBulkUserPages(PAGE_OPTIONS.map(p => p.value))} className="px-2 py-1 text-xs bg-emerald-50 text-emerald-700 rounded border border-emerald-100">Selecionar tudo</button>
                 <button type="button" onClick={() => setBulkUserPages([])} className="px-2 py-1 text-xs bg-red-50 text-red-700 rounded border border-red-100">Limpar</button>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {PAGE_OPTIONS.map((page) => {
-                  const checked = bulkUserPages.includes(page);
-                  return (
-                    <label key={page} className="flex items-center gap-2 text-sm text-gray-700 border border-gray-200 rounded-lg px-2 py-1">
-                      <input type="checkbox" checked={checked} onChange={(e) => {
-                        if (e.target.checked) setBulkUserPages(prev => [...prev, page]);
-                        else setBulkUserPages(prev => prev.filter(p => p !== page));
-                      }} />
-                      {page}
-                    </label>
-                  );
-                })}
+              <div className="space-y-2">
+                <details ref={bulkPagesRef} className="relative">
+                  <summary className="list-none cursor-pointer w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm text-gray-700">
+                    Selecionar página...
+                  </summary>
+                  <div className="absolute z-20 mt-2 w-full max-h-56 overflow-auto border border-gray-200 rounded-lg bg-white shadow-lg">
+                    {PAGE_OPTIONS.map((page) => (
+                      <button
+                        key={page.value}
+                        type="button"
+                        onClick={() => {
+                          if (bulkUserPages.includes(page.value)) return;
+                          setBulkUserPages((prev) => [...prev, page.value]);
+                          if (bulkPagesRef.current) bulkPagesRef.current.removeAttribute('open');
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        {page.label}
+                      </button>
+                    ))}
+                  </div>
+                </details>
+                <div className="flex flex-wrap gap-2">
+                  {bulkUserPages.map((page) => (
+                    <button
+                      key={page}
+                      type="button"
+                      onClick={() => setBulkUserPages((prev) => prev.filter((p) => p !== page))}
+                      className="px-3 py-1 rounded-full border border-gray-200 text-xs text-gray-600 hover:border-gray-300"
+                    >
+                      {PAGE_LABEL_MAP[page] || page} ✕
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -622,26 +1532,22 @@ const Admin: React.FC = () => {
                         <p className="font-semibold text-gray-800">{u.name} <span className="text-xs text-gray-500">({u.role || 'user'})</span></p>
                         <p className="text-xs text-gray-500">{u.email} • Clínica: {u.clinic_id}</p>
                         {u.paginas_liberadas && u.paginas_liberadas.length > 0 && (
-                          <p className="text-xs text-gray-500">Páginas: {u.paginas_liberadas.join(', ')}</p>
+                          <p className="text-xs text-gray-500">Páginas: {u.paginas_liberadas.map((p: string) => PAGE_LABEL_MAP[p] || p).join(', ')}</p>
                         )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => {
-                          setEditingUserId(u.id);
-                          setUserForm({
-                            clinic_id: u.clinic_id,
-                            name: u.name || '',
-                            email: u.email || '',
-                            role: u.role || 'user',
-                            ativo: u.ativo ?? true,
-                            paginas_liberadas: u.paginas_liberadas || [],
-                          });
-                        }}
+                        onClick={() => openEditUserModal(u)}
                         className="text-sm text-brand-600"
                       >
                         Editar
+                      </button>
+                      <button
+                        onClick={() => handleDeleteUser(u)}
+                        className="text-sm text-red-600"
+                      >
+                        Excluir
                       </button>
                       <span className={`px-2 py-1 text-xs rounded-full ${u.ativo ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
                         {u.ativo ? 'Ativo' : 'Inativo'}
@@ -654,6 +1560,169 @@ const Admin: React.FC = () => {
               <div className="p-4 text-sm text-gray-400 text-center">Nenhum usuário cadastrado.</div>
             )}
           </div>
+
+          {showUserModal && (
+            <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+              <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-2xl space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-lg font-semibold text-gray-800">Editar usuário</h4>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowUserModal(false);
+                      setEditingUserId(null);
+                      setEditUserForm({ clinic_id: '', name: '', email: '', role: 'user', ativo: true, paginas_liberadas: [] });
+                    }}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <form onSubmit={handleUpdateUser} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Clínica</label>
+                      <select
+                        value={editUserForm.clinic_id}
+                        onChange={e => setEditUserForm({ ...editUserForm, clinic_id: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none bg-white"
+                      >
+                        <option value="">Selecione...</option>
+                        {clinics.map(c => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+                      <input
+                        value={editUserForm.name}
+                        onChange={e => setEditUserForm({ ...editUserForm, name: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                        placeholder="Nome do usuário"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
+                      <input
+                        type="email"
+                        value={editUserForm.email}
+                        onChange={e => setEditUserForm({ ...editUserForm, email: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                        placeholder="email@dominio.com"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Papel/Acesso</label>
+                      <select
+                        value={editUserForm.role}
+                        onChange={e => setEditUserForm({ ...editUserForm, role: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none bg-white"
+                      >
+                        <option value="owner">Owner</option>
+                        <option value="admin">Admin</option>
+                        <option value="user">Usuário</option>
+                      </select>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Páginas liberadas</label>
+                      <div className="flex gap-2 mb-2">
+                        <button
+                          type="button"
+                          onClick={() => setEditUserForm(prev => ({ ...prev, paginas_liberadas: PAGE_OPTIONS.map(p => p.value) }))}
+                          className="px-2 py-1 text-xs bg-emerald-50 text-emerald-700 rounded border border-emerald-100"
+                        >
+                          Selecionar tudo
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditUserForm(prev => ({ ...prev, paginas_liberadas: [] }))}
+                          className="px-2 py-1 text-xs bg-red-50 text-red-700 rounded border border-red-100"
+                        >
+                          Limpar
+                        </button>
+                      </div>
+                      <div className="space-y-2">
+                        <details ref={editUserPagesRef} className="relative">
+                          <summary className="list-none cursor-pointer w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm text-gray-700">
+                            Selecionar página...
+                          </summary>
+                          <div className="absolute z-20 mt-2 w-full max-h-56 overflow-auto border border-gray-200 rounded-lg bg-white shadow-lg">
+                            {PAGE_OPTIONS.map((page) => (
+                              <button
+                                key={page.value}
+                                type="button"
+                                onClick={() => {
+                                  if (editUserForm.paginas_liberadas.includes(page.value)) return;
+                                  setEditUserForm((prev) => ({
+                                    ...prev,
+                                    paginas_liberadas: [...prev.paginas_liberadas, page.value],
+                                  }));
+                                  if (editUserPagesRef.current) editUserPagesRef.current.removeAttribute('open');
+                                }}
+                                className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                              >
+                                {page.label}
+                              </button>
+                            ))}
+                          </div>
+                        </details>
+                        <div className="flex flex-wrap gap-2">
+                          {editUserForm.paginas_liberadas.map((page) => (
+                            <button
+                              key={page}
+                              type="button"
+                              onClick={() =>
+                                setEditUserForm((prev) => ({
+                                  ...prev,
+                                  paginas_liberadas: prev.paginas_liberadas.filter((p) => p !== page),
+                                }))
+                              }
+                              className="px-3 py-1 rounded-full border border-gray-200 text-xs text-gray-600 hover:border-gray-300"
+                            >
+                              {PAGE_LABEL_MAP[page] || page} ✕
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="edit-user-active"
+                        type="checkbox"
+                        checked={editUserForm.ativo}
+                        onChange={(e) => setEditUserForm({ ...editUserForm, ativo: e.target.checked })}
+                        className="h-4 w-4 text-brand-600 border-gray-300 rounded"
+                      />
+                      <label htmlFor="edit-user-active" className="text-sm text-gray-700">Ativo</label>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowUserModal(false);
+                        setEditingUserId(null);
+                        setEditUserForm({ clinic_id: '', name: '', email: '', role: 'user', ativo: true, paginas_liberadas: [] });
+                      }}
+                      className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={savingUser}
+                      className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50 flex items-center gap-2"
+                    >
+                      {savingUser ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                      Salvar alterações
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

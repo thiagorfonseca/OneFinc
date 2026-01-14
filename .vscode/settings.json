@@ -1,8 +1,35 @@
 {
-    "CodeGPT.apiKey": "OpenAI",
-    "editor.defaultFormatter": "DanielSanMedium.dscodegpt",
-    "notebook.defaultFormatter": "DanielSanMedium.dscodegpt",
-    "[jsonc]": {
-        "editor.defaultFormatter": "vscode.json-language-features"
-    }
+  "CodeGPT.apiKey": "OpenAI",
+  "[jsonc]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "denoland.vscode-deno"
+  },
+  "deno.enablePaths": [
+    "supabase/functions"
+  ],
+  "deno.lint": true,
+  "deno.unstable": [
+    "bare-node-builtins",
+    "byonm",
+    "sloppy-imports",
+    "unsafe-proto",
+    "webgpu",
+    "broadcast-channel",
+    "worker-options",
+    "cron",
+    "kv",
+    "ffi",
+    "fs",
+    "http",
+    "net"
+  ],
+  "editor.defaultFormatter": "DanielSanMedium.dscodegpt",
+  "editor.formatOnPaste": true,
+  "editor.formatOnSave": true,
+  "notebook.defaultFormatter": "DanielSanMedium.dscodegpt",
+  "projectManager.git.baseFolders": [
+    ""
+  ]
 }

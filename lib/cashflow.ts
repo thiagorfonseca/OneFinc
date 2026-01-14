@@ -14,6 +14,8 @@ export type FormaPagamento =
   | 'DEBITO'
   | 'CREDITO'
   | 'BOLETO'
+  | 'CHEQUE'
+  | 'TRANSFERENCIA'
   | 'CONVENIO'
   | 'OUTRO';
 
@@ -23,6 +25,7 @@ export interface Lancamento {
   descricao: string;
   dataEmissao: Date; // data da venda/compra
   dataVencimento?: Date; // usado para boletos/despesas
+  datasParcelas?: Date[]; // opcional: vencimentos por parcela (receitas)
   formaPagamento: FormaPagamento;
   valorTotal: number;
   numeroParcelas: number; // mínimo 1
@@ -55,16 +58,23 @@ export interface ResumoMensal {
   saldoPrevistoMes: number;
 }
 
-// Regras de recebimento por forma de pagamento (parametrizável)
+// Regras de liquidação por forma de pagamento (prazo, intervalo e uso de dia útil).
 const regrasRecebimento: Record<
   FormaPagamento,
-  { diasAtePrimeiroRecebimento?: number; intervaloDias?: number; usarDataVencimento?: boolean }
+  {
+    diasAtePrimeiroRecebimento?: number;
+    intervaloDias?: number;
+    usarDataVencimento?: boolean;
+    usarDiasUteis?: boolean;
+  }
 > = {
   DINHEIRO: { diasAtePrimeiroRecebimento: 0, intervaloDias: 0 },
   PIX: { diasAtePrimeiroRecebimento: 0, intervaloDias: 0 },
-  DEBITO: { diasAtePrimeiroRecebimento: 1, intervaloDias: 0 },
+  DEBITO: { diasAtePrimeiroRecebimento: 1, intervaloDias: 0, usarDiasUteis: true },
   CREDITO: { diasAtePrimeiroRecebimento: 30, intervaloDias: 30 },
   BOLETO: { usarDataVencimento: true },
+  CHEQUE: { usarDataVencimento: true },
+  TRANSFERENCIA: { diasAtePrimeiroRecebimento: 0, intervaloDias: 0 },
   CONVENIO: { diasAtePrimeiroRecebimento: 30, intervaloDias: 30 },
   OUTRO: { diasAtePrimeiroRecebimento: 0, intervaloDias: 0 },
 };
@@ -72,6 +82,17 @@ const regrasRecebimento: Record<
 const addDays = (date: Date, days: number) => {
   const d = new Date(date);
   d.setDate(d.getDate() + days);
+  return d;
+};
+
+const addBusinessDays = (date: Date, days: number) => {
+  const d = new Date(date);
+  let added = 0;
+  while (added < days) {
+    d.setDate(d.getDate() + 1);
+    const day = d.getDay();
+    if (day !== 0 && day !== 6) added += 1;
+  }
   return d;
 };
 
@@ -96,17 +117,22 @@ export function gerarParcelasDeCaixa(lancamentos: Lancamento[]): ParcelaCaixa[] 
   const parcelas: ParcelaCaixa[] = [];
 
   lancamentos.forEach((l) => {
-    const numParcelas = Math.max(1, l.numeroParcelas || 1);
+    const datasParcelas = (l.datasParcelas || []).filter(Boolean);
+    const numParcelas = Math.max(1, datasParcelas.length || l.numeroParcelas || 1);
     const valores = dividirParcelas(l.valorTotal, numParcelas);
 
     // Define datas base conforme tipo/forma de pagamento
     const baseDates: Date[] = [];
-    if (l.tipo === 'RECEITA') {
+    if (datasParcelas.length) {
+      baseDates.push(...datasParcelas.slice(0, numParcelas));
+    } else if (l.tipo === 'RECEITA') {
       const regra = regrasRecebimento[l.formaPagamento];
-      const primeiraData = regra.usarDataVencimento && l.dataVencimento ? l.dataVencimento : l.dataEmissao;
-      const start = regra.diasAtePrimeiroRecebimento
-        ? addDays(primeiraData, regra.diasAtePrimeiroRecebimento)
-        : primeiraData;
+      const baseReferencia = l.dataVencimento || l.dataEmissao;
+      const start = regra.usarDataVencimento
+        ? baseReferencia
+        : regra.diasAtePrimeiroRecebimento && !l.dataVencimento
+          ? (regra.usarDiasUteis ? addBusinessDays(baseReferencia, regra.diasAtePrimeiroRecebimento) : addDays(baseReferencia, regra.diasAtePrimeiroRecebimento))
+          : baseReferencia;
       for (let i = 0; i < numParcelas; i++) {
         if (regra.intervaloDias && i > 0) {
           baseDates.push(addDays(start, regra.intervaloDias * i));
@@ -117,7 +143,7 @@ export function gerarParcelasDeCaixa(lancamentos: Lancamento[]): ParcelaCaixa[] 
         }
       }
     } else {
-      // DESPESA: usa dataVencimento se existir como base; parcelas mensais
+      // DESPESA: usa vencimento/emissão para previsão (ignora dataBaixa)
       const base = l.dataVencimento || l.dataEmissao;
       for (let i = 0; i < numParcelas; i++) {
         baseDates.push(addMonths(base, i));
