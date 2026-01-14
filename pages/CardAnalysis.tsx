@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { formatCurrency, formatDate, formatMonthYear } from '../lib/utils';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Filter, Calendar, RefreshCw, BarChart2, TrendingUp as TrendingUpIcon, ArrowUpDown, Download } from 'lucide-react';
+import { useAuth } from '../src/auth/AuthProvider';
 
 type Period = 'dia' | 'semana' | 'quinzenal' | 'mes' | 'ano';
 
@@ -116,6 +117,33 @@ const toDate = (dateStr: string) => {
   return isNaN(d.getTime()) ? null : d;
 };
 
+const getBucketSortKey = (dateStr: string, period: Period) => {
+  const d = toDate(dateStr);
+  if (!d) return Number.POSITIVE_INFINITY;
+  const key = new Date(d);
+  key.setHours(0, 0, 0, 0);
+  switch (period) {
+    case 'semana': {
+      const dayNum = (key.getDay() + 6) % 7;
+      key.setDate(key.getDate() - dayNum);
+      break;
+    }
+    case 'quinzenal':
+      key.setDate(key.getDate() <= 15 ? 1 : 16);
+      break;
+    case 'mes':
+      key.setDate(1);
+      break;
+    case 'ano':
+      key.setMonth(0, 1);
+      break;
+    case 'dia':
+    default:
+      break;
+  }
+  return key.getTime();
+};
+
 const bucketKey = (dateStr: string, period: Period) => {
   const d = toDate(dateStr);
   if (!d) return dateStr;
@@ -151,7 +179,8 @@ const bucketKey = (dateStr: string, period: Period) => {
 const formatBucketLabel = (label: string) => {
   if (!label) return '';
   if (label.includes('Semana') || label.includes('quinzena')) return label;
-  if (/^\d{4}-\d{2}(-\d{2})?$/.test(label)) return formatMonthYear(label);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(label)) return formatDate(label);
+  if (/^\d{4}-\d{2}$/.test(label)) return formatMonthYear(label);
   return label;
 };
 
@@ -173,6 +202,8 @@ const formatNumber = (value: number) => {
 };
 
 const CardAnalysis: React.FC = () => {
+  const { clinicId, isAdmin, selectedClinicId } = useAuth();
+  const effectiveClinic = (isAdmin ? selectedClinicId : clinicId) || clinicId || null;
   const [revenues, setRevenues] = useState<RevenueRow[]>([]);
   const [period, setPeriod] = useState<Period>('mes');
   const [dateStart, setDateStart] = useState(getRange('mes').start);
@@ -188,7 +219,8 @@ const CardAnalysis: React.FC = () => {
       setFetchError(null);
       let selectCols = 'id, data_competencia, data_recebimento, recebimento_parcelas, valor_bruto, valor_liquido, valor, forma_pagamento, paciente, parcelas, bandeira, nsu, observacoes';
       let query = supabase.from('revenues').select(selectCols);
-      if (dateStart) query = query.gte('data_competencia', dateStart);
+      if (effectiveClinic) query = query.eq('clinic_id', effectiveClinic);
+      if (tab === 'vendas' && dateStart) query = query.gte('data_competencia', dateStart);
       if (dateEnd) query = query.lte('data_competencia', dateEnd);
       let { data, error } = await query;
       // Fallback se algumas colunas não existirem
@@ -197,7 +229,8 @@ const CardAnalysis: React.FC = () => {
         if (msg.includes('nsu') || msg.includes('recebimento_parcelas')) {
           selectCols = 'id, data_competencia, data_recebimento, valor_bruto, valor_liquido, valor, forma_pagamento, paciente, parcelas, bandeira, observacoes';
           query = supabase.from('revenues').select(selectCols);
-          if (dateStart) query = query.gte('data_competencia', dateStart);
+          if (effectiveClinic) query = query.eq('clinic_id', effectiveClinic);
+          if (tab === 'vendas' && dateStart) query = query.gte('data_competencia', dateStart);
           if (dateEnd) query = query.lte('data_competencia', dateEnd);
           ({ data, error } = await query);
         }
@@ -223,7 +256,7 @@ const CardAnalysis: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, [dateStart, dateEnd]);
+  }, [dateStart, dateEnd, tab, effectiveClinic]);
 
   const expandParcelas = (rows: RevenueRow[]) => {
     const list: any[] = [];
@@ -231,9 +264,11 @@ const CardAnalysis: React.FC = () => {
       if (!r.data_competencia) return;
       const manualDates = getManualDates(r);
       const totalParcelas = Math.max(1, manualDates.length || Number(r.parcelas || 1));
+      const baseBruto = Number(r.valor_bruto ?? r.valor ?? r.valor_liquido ?? 0);
+      const baseLiquido = Number(r.valor_liquido ?? r.valor ?? r.valor_bruto ?? 0);
       for (let i = 1; i <= totalParcelas; i++) {
-        const parcelaValor = Number(r.valor_bruto || r.valor_liquido || 0) / totalParcelas;
-        const parcelaLiquido = Number(r.valor_liquido || r.valor_bruto || 0) / totalParcelas;
+        const parcelaValor = baseBruto / totalParcelas;
+        const parcelaLiquido = baseLiquido / totalParcelas;
         const dataVenda = r.data_competencia;
         const dataReceb = manualDates[i - 1] || settlementDate(r, i) || dataVenda;
         list.push({
@@ -268,29 +303,33 @@ const CardAnalysis: React.FC = () => {
   const parcelasExpandidas = useMemo(() => expandParcelas(revenues), [revenues]);
 
   const vendasBucket = useMemo(() => {
-    const map = new Map<string, { bucket: string; bruto: number; liquido: number }>();
+    const map = new Map<string, { bucket: string; bruto: number; liquido: number; sortKey: number }>();
     vendasFiltradas.forEach(r => {
       const bucket = bucketKey(r.data_competencia, period);
-      const item = map.get(bucket) || { bucket, bruto: 0, liquido: 0 };
-      item.bruto += Number(r.valor_bruto || 0);
-      item.liquido += Number(r.valor_liquido || 0);
+      const sortKey = getBucketSortKey(r.data_competencia, period);
+      const item = map.get(bucket) || { bucket, bruto: 0, liquido: 0, sortKey };
+      item.bruto += Number(r.valor_bruto ?? r.valor ?? 0);
+      item.liquido += Number(r.valor_liquido ?? r.valor ?? 0);
+      item.sortKey = Math.min(item.sortKey, sortKey);
       map.set(bucket, item);
     });
-    return Array.from(map.values()).sort((a, b) => a.bucket.localeCompare(b.bucket));
+    return Array.from(map.values()).sort((a, b) => a.sortKey - b.sortKey);
   }, [vendasFiltradas, period]);
 
   const recebiveisFuturos = useMemo(() => {
-    const map = new Map<string, { bucket: string; liquido: number }>();
+    const map = new Map<string, { bucket: string; liquido: number; sortKey: number }>();
     const startReceb = dateStart > todayStr ? dateStart : todayStr;
     const parcelas = parcelasExpandidas.filter(p => p.data_recebimento && p.data_recebimento >= startReceb && p.data_recebimento <= dateEnd);
     parcelas.forEach(r => {
       const recebedata = r.data_recebimento as string;
       const bucket = bucketKey(recebedata, period);
-      const item = map.get(bucket) || { bucket, liquido: 0 };
+      const sortKey = getBucketSortKey(recebedata, period);
+      const item = map.get(bucket) || { bucket, liquido: 0, sortKey };
       item.liquido += Number(r.valorParcelaLiquido || r.valor_liquido || 0);
+      item.sortKey = Math.min(item.sortKey, sortKey);
       map.set(bucket, item);
     });
-    return Array.from(map.values()).sort((a, b) => a.bucket.localeCompare(b.bucket));
+    return Array.from(map.values()).sort((a, b) => a.sortKey - b.sortKey);
   }, [parcelasExpandidas, dateStart, dateEnd, todayStr, period]);
 
   const vendasDetalhadas = useMemo(() => {
@@ -398,8 +437,8 @@ const CardAnalysis: React.FC = () => {
   };
 
   const totais = useMemo(() => {
-    const vendidoBruto = revenues.reduce((s, r) => s + Number(r.valor_bruto || 0), 0);
-    const vendidoLiquido = revenues.reduce((s, r) => s + Number(r.valor_liquido || 0), 0);
+    const vendidoBruto = vendasFiltradas.reduce((s, r) => s + Number(r.valor_bruto ?? r.valor ?? 0), 0);
+    const vendidoLiquido = vendasFiltradas.reduce((s, r) => s + Number(r.valor_liquido ?? r.valor ?? 0), 0);
     const startReceb = dateStart > todayStr ? dateStart : todayStr;
     const receberPeriodo = parcelasExpandidas.reduce((s, r) => {
       const liqDate = r.data_recebimento as string;
@@ -408,9 +447,9 @@ const CardAnalysis: React.FC = () => {
       }
       return s;
     }, 0);
-    const taxaPercentual = vendidoLiquido > 0 ? ((vendidoBruto / vendidoLiquido) - 1) * 100 : 0;
+    const taxaPercentual = vendidoBruto > 0 ? (1 - (vendidoLiquido / vendidoBruto)) * 100 : 0;
     return { vendidoBruto, vendidoLiquido, receberPeriodo, taxaPercentual };
-  }, [revenues, parcelasExpandidas, dateStart, dateEnd, todayStr]);
+  }, [vendasFiltradas, parcelasExpandidas, dateStart, dateEnd, todayStr]);
 
   return (
     <div className="space-y-6">

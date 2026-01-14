@@ -146,7 +146,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
   const [dueDateDirty, setDueDateDirty] = useState(false);
 
   // Form States
-  const [formData, setFormData] = useState({
+  const INITIAL_FORM_DATA = {
     description: '',
     gross_amount: '', // Valor Bruto
     discount: '', // Desconto absoluto
@@ -176,7 +176,9 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
     status: 'pending',
     pessoa_tipo: '',
     is_installment: false,
-  });
+  };
+  type FormDataType = typeof INITIAL_FORM_DATA;
+  const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_DATA);
 
   // --- Data Fetching ---
   const fetchData = async () => {
@@ -1259,37 +1261,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
   }, [filteredData, isIncome]);
 
   const resetForm = () => {
-    setFormData({
-      description: '',
-      gross_amount: '',
-      discount: '',
-      tax_rate: PAYMENT_FEE_DEFAULTS.PIX,
-      tax_amount: '0',
-      liquid_amount: '',
-      date: new Date().toISOString().split('T')[0],
-      due_date: new Date().toISOString().split('T')[0],
-      category_id: '',
-      bank_account_id: '',
-      entity_name: '',
-      payment_method: 'PIX',
-      observations: '',
-      installments: '1',
-      nsu: '',
-      boleto_due_date: '',
-      cheque_number: '',
-      cheque_bank: '',
-      cheque_due_date: '',
-      cheque_pages: '1',
-      cheque_value: '',
-      is_recurring: false,
-      recurrence_interval: 'mensal',
-      recurrence_count: '1',
-      card_brand: '',
-      tipo_despesa: '',
-      status: 'pending',
-      pessoa_tipo: '',
-      is_installment: false,
-    });
+    setFormData(INITIAL_FORM_DATA);
     setDueDateDirty(false);
     setSelectedProcedures([]);
     setFormProfessionals({ venda: '', execucao: '' });
