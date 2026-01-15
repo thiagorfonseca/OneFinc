@@ -1,5 +1,5 @@
 <div align="center">
-  <img width="1200" height="475" alt="OnePay" src="https://ibb.co/gK1hZD4" />
+  <img width="1200" height="675" alt="OnePay" src="public/onepay-banner.svg" />
 </div>
 
 # OnePay
@@ -94,4 +94,3 @@ npm run preview
 
 - Suporte: defina um canal interno (helpdesk/Slack) ou um email de suporte.
 - Contato tecnico: atualize este README com o email do responsavel.
-
