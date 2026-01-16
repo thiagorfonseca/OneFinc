@@ -511,7 +511,7 @@ const AdminContentDetail: React.FC = () => {
   const { data: content, loading, refresh } = useContentItem(id);
   const { data: modules, refresh: refreshModules } = useModules(id);
   const [saving, setSaving] = useState(false);
-  const [moduleDrafts, setModuleDrafts] = useState<Record<string, { title: string; order_index: number }>>({});
+  const [moduleDrafts, setModuleDrafts] = useState<Record<string, { title: string; order_index: number; thumbnail_url: string }>>({});
 
   const [form, setForm] = useState({
     title: '',
@@ -534,11 +534,12 @@ const AdminContentDetail: React.FC = () => {
   }, [content]);
 
   useEffect(() => {
-    const map: Record<string, { title: string; order_index: number }> = {};
+    const map: Record<string, { title: string; order_index: number; thumbnail_url: string }> = {};
     modules.forEach((module) => {
       map[module.id] = {
         title: module.title || '',
         order_index: module.order_index ?? 0,
+        thumbnail_url: module.thumbnail_url || '',
       };
     });
     setModuleDrafts(map);
@@ -586,6 +587,24 @@ const AdminContentDetail: React.FC = () => {
     }
   };
 
+  const handleUploadModuleImage = async (moduleId: string, file: File) => {
+    try {
+      const safeName = toSafeFileName(file.name);
+      const path = `content-modules/${moduleId}/thumbnail-${crypto.randomUUID()}-${safeName}`;
+      const publicUrl = await uploadAsset(path, file);
+      setModuleDrafts((prev) => ({
+        ...prev,
+        [moduleId]: {
+          title: prev[moduleId]?.title || '',
+          order_index: prev[moduleId]?.order_index ?? 0,
+          thumbnail_url: publicUrl,
+        },
+      }));
+    } catch (error) {
+      alert(`Erro ao enviar imagem do módulo: ${(error as Error).message}`);
+    }
+  };
+
   const handleCreateModule = async () => {
     if (!content?.id) return;
     const { error } = await supabase.from('content_modules').insert({
@@ -600,10 +619,15 @@ const AdminContentDetail: React.FC = () => {
     refreshModules();
   };
 
-  const handleUpdateModule = async (moduleId: string, title: string, orderIndex: number | null) => {
+  const handleUpdateModule = async (
+    moduleId: string,
+    title: string,
+    orderIndex: number | null,
+    thumbnailUrl: string | null
+  ) => {
     const { error } = await supabase
       .from('content_modules')
-      .update({ title: title.trim(), order_index: orderIndex })
+      .update({ title: title.trim(), order_index: orderIndex, thumbnail_url: thumbnailUrl || null })
       .eq('id', moduleId);
     if (error) {
       alert(`Erro ao atualizar módulo: ${error.message}`);
@@ -927,7 +951,12 @@ const AdminContentDetail: React.FC = () => {
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          handleUpdateModule(module.id, draft?.title || '', draft?.order_index ?? 0);
+                          handleUpdateModule(
+                            module.id,
+                            draft?.title || '',
+                            draft?.order_index ?? 0,
+                            draft?.thumbnail_url || ''
+                          );
                         }}
                         className="text-xs px-2 py-1 bg-gray-900 text-white rounded"
                       >
@@ -947,6 +976,37 @@ const AdminContentDetail: React.FC = () => {
                     </div>
                     <span className="text-xs text-gray-500">Módulo {index + 1}</span>
                   </summary>
+                  <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-end">
+                    <div>
+                      <label className="text-xs text-gray-500">Imagem do módulo (URL)</label>
+                      <input
+                        value={draft?.thumbnail_url || ''}
+                        onChange={(e) =>
+                          setModuleDrafts((prev) => ({
+                            ...prev,
+                            [module.id]: {
+                              title: prev[module.id]?.title || '',
+                              order_index: prev[module.id]?.order_index ?? 0,
+                              thumbnail_url: e.target.value,
+                            },
+                          }))
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                    </div>
+                    <label className="text-xs px-2 py-2 bg-gray-100 rounded cursor-pointer text-gray-600 text-center">
+                      Upload imagem
+                      <input
+                        type="file"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleUploadModuleImage(module.id, file);
+                          e.currentTarget.value = '';
+                        }}
+                      />
+                    </label>
+                  </div>
                   <ModuleCard moduleId={module.id} />
                 </details>
                 );

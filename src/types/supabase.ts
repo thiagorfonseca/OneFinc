@@ -559,6 +559,7 @@ export type Database = {
           id: string
           order_index: number | null
           title: string | null
+          thumbnail_url: string | null
         }
         Insert: {
           content_id?: string | null
@@ -566,6 +567,7 @@ export type Database = {
           id?: string
           order_index?: number | null
           title?: string | null
+          thumbnail_url?: string | null
         }
         Update: {
           content_id?: string | null
@@ -573,6 +575,7 @@ export type Database = {
           id?: string
           order_index?: number | null
           title?: string | null
+          thumbnail_url?: string | null
         }
         Relationships: [
           {

@@ -684,6 +684,23 @@ const Dashboard: React.FC = () => {
     [fluxoDiarioBase, saldoInicialBanco]
   );
 
+  const cashChartData = useMemo(() => (
+    fluxoDiarioFiltrado.map((d) => {
+      const entrada = Number(d.totalReceitasPrevistas ?? 0);
+      const saida = Number(d.totalDespesasPrevistas ?? 0);
+      const saldoDia = Number(d.saldoPrevistoDia ?? entrada - saida);
+      const saldo = Number(d.saldoAcumulado ?? 0);
+      const saldoBanco = saldo - saldoDia;
+      return {
+        data: d.data.toISOString().split('T')[0],
+        saldo,
+        entrada,
+        saida,
+        saldoBanco,
+      };
+    })
+  ), [fluxoDiarioFiltrado]);
+
   const fluxoDiarioTabela = useMemo(
     () => fluxoDiarioSemBanco.map((d, idx) => ({
       ...d,
@@ -738,6 +755,23 @@ const Dashboard: React.FC = () => {
     setTab(next);
     searchParams.set('tab', next);
     setSearchParams(searchParams);
+  };
+
+  const CashflowTooltip = ({ active, payload }: any) => {
+    if (!active || !payload?.length) return null;
+    const data = payload[0]?.payload;
+    if (!data) return null;
+    return (
+      <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700 shadow-md">
+        <div className="font-semibold text-gray-900">Data: {formatDate(data.data)}</div>
+        <div className="mt-1 space-y-1">
+          <div>Saldo Banco: {formatCurrency(data.saldoBanco ?? 0)}</div>
+          <div>Entrada: {formatCurrency(data.entrada ?? 0)}</div>
+          <div>Saída: {formatCurrency(data.saida ?? 0)}</div>
+          <div className="font-semibold">Saldo: {formatCurrency(data.saldo ?? 0)}</div>
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
@@ -951,26 +985,20 @@ const Dashboard: React.FC = () => {
               {fluxoDiarioFiltrado.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   {cashChartMode === 'linha' ? (
-                    <LineChart data={fluxoDiarioFiltrado.map(d => ({
-                      data: d.data.toISOString().split('T')[0],
-                      saldo: d.saldoAcumulado,
-                    }))}>
+                    <LineChart data={cashChartData}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                       <XAxis dataKey="data" tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={formatDate} />
                       <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={(val) => `R$${(val/1000).toFixed(1)}k`} />
-                      <Tooltip formatter={(value: number) => formatCurrency(value)} labelFormatter={(label: string) => formatDate(label)} />
+                      <Tooltip content={<CashflowTooltip />} />
                       <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="4 4" />
                       <Line type="linear" dataKey="saldo" stroke="#0ea5e9" strokeWidth={2} dot={false} />
                     </LineChart>
                   ) : (
-                    <BarChart data={fluxoDiarioFiltrado.map(d => ({
-                      data: d.data.toISOString().split('T')[0],
-                      saldo: d.saldoAcumulado,
-                    }))}>
+                    <BarChart data={cashChartData}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                       <XAxis dataKey="data" tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={formatDate} />
                       <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={(val) => `R$${(val/1000).toFixed(1)}k`} />
-                      <Tooltip formatter={(value: number) => formatCurrency(value)} labelFormatter={(label: string) => formatDate(label)} />
+                      <Tooltip content={<CashflowTooltip />} />
                       <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="4 4" />
                       <Bar dataKey="saldo" name="Saldo" fill="#0ea5e9" radius={[6, 6, 0, 0]} />
                     </BarChart>

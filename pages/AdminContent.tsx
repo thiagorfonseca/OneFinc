@@ -16,6 +16,7 @@ interface ContentModule {
   content_id: string | null;
   title: string | null;
   order_index: number | null;
+  thumbnail_url: string | null;
 }
 
 interface ContentLesson {
@@ -58,7 +59,7 @@ const AdminContent: React.FC<Props> = ({ type }) => {
     published: false,
   });
 
-  const [newModule, setNewModule] = useState({ title: '', order_index: 1 });
+  const [newModule, setNewModule] = useState({ title: '', order_index: 1, thumbnail_url: '' });
   const [newLessonByModule, setNewLessonByModule] = useState<Record<string, {
     title: string;
     description: string;
@@ -176,9 +177,10 @@ const AdminContent: React.FC<Props> = ({ type }) => {
       content_id: selectedItem.id,
       title: newModule.title.trim(),
       order_index: newModule.order_index,
+      thumbnail_url: newModule.thumbnail_url || null,
     });
     if (!error) {
-      setNewModule({ title: '', order_index: newModule.order_index + 1 });
+      setNewModule({ title: '', order_index: newModule.order_index + 1, thumbnail_url: '' });
       loadModules(selectedItem.id);
     }
   };
@@ -189,6 +191,7 @@ const AdminContent: React.FC<Props> = ({ type }) => {
       .update({
         title: module.title,
         order_index: module.order_index,
+        thumbnail_url: module.thumbnail_url || null,
       })
       .eq('id', module.id);
   };
@@ -390,6 +393,20 @@ const AdminContent: React.FC<Props> = ({ type }) => {
                       >
                         Salvar módulo
                       </button>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500">Imagem do módulo (URL)</label>
+                      <input
+                        value={module.thumbnail_url || ''}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setModules((prev) =>
+                            prev.map((m) => (m.id === module.id ? { ...m, thumbnail_url: value } : m))
+                          );
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                      <p className="text-[11px] text-gray-400 mt-1">Tamanho recomendado: 640x360 (16:9).</p>
                     </div>
 
                     <div className="space-y-3">
@@ -621,6 +638,13 @@ const AdminContent: React.FC<Props> = ({ type }) => {
                       Adicionar módulo
                     </button>
                   </div>
+                  <input
+                    value={newModule.thumbnail_url}
+                    onChange={(e) => setNewModule((prev) => ({ ...prev, thumbnail_url: e.target.value }))}
+                    placeholder="Imagem do módulo (URL)"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  />
+                  <p className="text-[11px] text-gray-400">Tamanho recomendado: 640x360 (16:9).</p>
                 </div>
               </div>
             </>

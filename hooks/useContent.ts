@@ -17,6 +17,7 @@ type ContentModule = {
   content_id: string | null;
   title: string | null;
   order_index: number | null;
+  thumbnail_url: string | null;
 };
 
 type ContentLesson = {
