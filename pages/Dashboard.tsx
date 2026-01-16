@@ -12,7 +12,7 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { ArrowUpCircle, ArrowDownCircle, Wallet, Loader2, Calendar } from 'lucide-react';
-import { formatCurrency, formatMonthYear } from '../lib/utils';
+import { formatCurrency, formatDate, formatMonthYear } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import {
   gerarParcelasDeCaixa,
@@ -956,9 +956,9 @@ const Dashboard: React.FC = () => {
                       saldo: d.saldoAcumulado,
                     }))}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="data" tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={formatMonthYear} />
+                      <XAxis dataKey="data" tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={formatDate} />
                       <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={(val) => `R$${(val/1000).toFixed(1)}k`} />
-                      <Tooltip formatter={(value: number) => formatCurrency(value)} labelFormatter={(label: string) => formatMonthYear(label)} />
+                      <Tooltip formatter={(value: number) => formatCurrency(value)} labelFormatter={(label: string) => formatDate(label)} />
                       <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="4 4" />
                       <Line type="linear" dataKey="saldo" stroke="#0ea5e9" strokeWidth={2} dot={false} />
                     </LineChart>
@@ -968,9 +968,9 @@ const Dashboard: React.FC = () => {
                       saldo: d.saldoAcumulado,
                     }))}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="data" tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={formatMonthYear} />
+                      <XAxis dataKey="data" tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={formatDate} />
                       <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={(val) => `R$${(val/1000).toFixed(1)}k`} />
-                      <Tooltip formatter={(value: number) => formatCurrency(value)} labelFormatter={(label: string) => formatMonthYear(label)} />
+                      <Tooltip formatter={(value: number) => formatCurrency(value)} labelFormatter={(label: string) => formatDate(label)} />
                       <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="4 4" />
                       <Bar dataKey="saldo" name="Saldo" fill="#0ea5e9" radius={[6, 6, 0, 0]} />
                     </BarChart>

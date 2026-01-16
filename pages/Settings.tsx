@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Trash2, Tag, Loader2, CreditCard, User, CheckSquare, Upload, Download, Users } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { buildPublicUrl } from '../lib/utils';
 import { Category } from '../types';
 import { useAuth } from '../src/auth/AuthProvider';
 import { useSearchParams } from 'react-router-dom';
@@ -259,7 +260,7 @@ const Settings: React.FC = () => {
 
   const availablePageSet = useMemo(() => new Set(availablePageOptions.map((p) => p.value)), [availablePageOptions]);
   const isClinicOwner = role === 'owner';
-  const resetRedirectUrl = typeof window !== 'undefined' ? `${window.location.origin}/auth/reset` : '';
+  const resetRedirectUrl = buildPublicUrl('/auth/reset');
 
   useEffect(() => {
     return () => {

@@ -133,7 +133,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <aside className={`
         fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 transform transition-transform duration-200 ease-in-out
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
-        lg:translate-x-0 lg:static lg:block
+        lg:translate-x-0 lg:block
         ${isCollapsed ? 'lg:w-20' : 'lg:w-64'}
       `}>
         <div className="h-full flex flex-col">
@@ -168,7 +168,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         ? 'bg-brand-50 text-brand-700' 
                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}
                     `}>
-                      <Link to={parentHref} className="flex items-center gap-3 flex-1">
+                      <Link
+                        to={parentHref}
+                        className={`flex items-center gap-3 ${isCollapsed ? 'justify-center w-full' : 'flex-1'}`}
+                      >
                         <item.icon size={20} />
                         {!isCollapsed && <span>{item.name}</span>}
                       </Link>
@@ -256,7 +259,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">
+      <main className={`flex-1 overflow-auto ${isCollapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 lg:hidden">
           <div className="w-8"></div> {/* Spacer for menu button */}
           <span className="font-semibold text-gray-700">OnePay</span>

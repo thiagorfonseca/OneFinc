@@ -35,7 +35,7 @@ const AdminLayout: React.FC = () => {
         className={`
           fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 transform transition-transform duration-200 ease-in-out
           ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:translate-x-0 lg:static lg:block
+          lg:translate-x-0 lg:block
         `}
       >
         <div className="h-full flex flex-col">
@@ -79,7 +79,7 @@ const AdminLayout: React.FC = () => {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto lg:ml-64">
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 lg:hidden">
           <div className="w-8"></div>
           <span className="font-semibold text-gray-700">Admin</span>

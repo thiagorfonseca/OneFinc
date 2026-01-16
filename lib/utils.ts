@@ -24,6 +24,20 @@ export const formatMonthYear = (value: string) => {
   return `${months[monthIndex]}/${year}`;
 };
 
+export const getPublicSiteUrl = () => {
+  const envUrl = (import.meta as any).env?.VITE_PUBLIC_SITE_URL || (import.meta as any).env?.VITE_SITE_URL || '';
+  const fallback = typeof window !== 'undefined' ? window.location.origin : '';
+  const raw = (envUrl || fallback || '').trim();
+  return raw ? raw.replace(/\/+$/, '') : '';
+};
+
+export const buildPublicUrl = (path: string) => {
+  const base = getPublicSiteUrl();
+  if (!base) return '';
+  const normalized = path.startsWith('/') ? path : `/${path}`;
+  return `${base}${normalized}`;
+};
+
 // Gera um hash simples baseado nos dados da transação para evitar duplicidade
 export const generateTransactionHash = (date: string, amount: number, description: string, fitid: string): string => {
   const data = `${date}-${amount}-${description}-${fitid}`;

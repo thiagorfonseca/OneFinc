@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { Wallet } from 'lucide-react';
+import { buildPublicUrl } from '../lib/utils';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -10,7 +11,8 @@ const Login: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSignUp, setIsSignUp] = useState(false);
   const navigate = useNavigate();
-  const callbackUrl = `${window.location.origin}/auth/callback`;
+  const callbackUrl = buildPublicUrl('/auth/callback');
+  const resetRedirectUrl = buildPublicUrl('/auth/reset');
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,7 +109,7 @@ const Login: React.FC = () => {
     setLoading(true);
     setError(null);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset`
+      redirectTo: resetRedirectUrl,
     });
     setLoading(false);
     if (error) setError('Erro ao enviar reset de senha: ' + error.message);

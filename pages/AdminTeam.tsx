@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Plus, Loader2, Users, Mail, Shield } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { buildPublicUrl } from '../lib/utils';
 import { useAuth } from '../src/auth/AuthProvider';
 
 const USER_AVATAR_BUCKET = 'user-avatars';
@@ -99,7 +100,7 @@ const AdminTeam: React.FC = () => {
   const [savingMember, setSavingMember] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const callbackUrl = typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : '';
+  const callbackUrl = buildPublicUrl('/auth/callback');
   const adminPagesRef = useRef<HTMLDetailsElement | null>(null);
 
   const fetchMembers = async () => {

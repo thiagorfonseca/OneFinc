@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Users, Building2, Wallet, RefreshCw, Plus, Loader2, CheckSquare } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { formatDate } from '../lib/utils';
+import { buildPublicUrl, formatDate } from '../lib/utils';
 
 interface AdminProps {
   initialTab?: 'overview' | 'clinics' | 'users';
@@ -147,7 +147,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
   const [inviteForm, setInviteForm] = useState({ clinic_id: '', email: '', role: 'user' });
   const [sendingInvite, setSendingInvite] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const callbackUrl = typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : '';
+  const callbackUrl = buildPublicUrl('/auth/callback');
   const clinicPagesRef = useRef<HTMLDetailsElement | null>(null);
   const editClinicPagesRef = useRef<HTMLDetailsElement | null>(null);
   const userPagesRef = useRef<HTMLDetailsElement | null>(null);
