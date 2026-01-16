@@ -577,7 +577,7 @@ const CardAnalysis: React.FC = () => {
               </span>
               <div className="flex gap-2">
                 <button
-                  onClick={() => exportCSV(vendasDetalhadas, 'onepay-vendas')}
+                  onClick={() => exportCSV(vendasDetalhadas, 'onefinc-vendas')}
                   className="flex items-center gap-1 px-3 py-1 text-xs border rounded-lg text-gray-700 hover:bg-gray-50"
                 >
                   <Download size={14}/> CSV
@@ -676,7 +676,7 @@ const CardAnalysis: React.FC = () => {
               </span>
               <div className="flex gap-2">
                 <button
-                  onClick={() => exportCSV(recebiveisDetalhados, 'onepay-recebiveis')}
+                  onClick={() => exportCSV(recebiveisDetalhados, 'onefinc-recebiveis')}
                   className="flex items-center gap-1 px-3 py-1 text-xs border rounded-lg text-gray-700 hover:bg-gray-50"
                 >
                   <Download size={14}/> CSV

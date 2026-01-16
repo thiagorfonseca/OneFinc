@@ -13,12 +13,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [isCollapsed, setIsCollapsed] = React.useState(false);
-  const { isSystemAdmin, isAdmin, hasPageAccess, clinic } = useAuth();
+  const { isSystemAdmin, isAdmin, hasPageAccess, clinic, user, profile, clinicUser } = useAuth();
   const [expanded, setExpanded] = React.useState<Record<string, boolean>>(() => {
     if (typeof window === 'undefined') return {};
     try {
       const saved = window.localStorage.getItem('sidebarExpandedSections');
-      return saved ? JSON.parse(saved) : {};
+      if (!saved) return {};
+      const parsed = JSON.parse(saved);
+      if (!parsed || typeof parsed !== 'object') return {};
+      const openEntry = Object.entries(parsed).find(([, value]) => value);
+      return openEntry ? { [openEntry[0]]: true } : {};
     } catch {
       return {};
     }
@@ -83,10 +87,37 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     return location.pathname.startsWith(path);
   };
 
+  const formatDisplayName = (fullName: string) => {
+    const cleaned = fullName.trim().replace(/\s+/g, ' ');
+    if (!cleaned) return '';
+    const parts = cleaned.split(' ');
+    if (parts.length === 1) return parts[0];
+    if (parts.length === 2 && cleaned.length <= 20) return cleaned;
+    const initials = parts
+      .slice(1)
+      .map((part) => part[0]?.toUpperCase())
+      .filter(Boolean)
+      .join('.');
+    return initials ? `${parts[0]} ${initials}.` : parts[0];
+  };
+
+  const rawDisplayName =
+    profile?.full_name?.trim() ||
+    clinicUser?.name?.trim() ||
+    (typeof user?.user_metadata?.full_name === 'string' ? user.user_metadata.full_name.trim() : '') ||
+    (typeof user?.user_metadata?.name === 'string' ? user.user_metadata.name.trim() : '') ||
+    '';
+  const displayName = formatDisplayName(rawDisplayName) || (user?.email ? user.email.split('@')[0] : '');
+  const displayEmail = user?.email || clinicUser?.email || '';
+
   const toggleExpand = (name: string) => {
     setExpanded((prev) => {
-      const next = { ...prev, [name]: !prev[name] };
-      if (typeof window !== 'undefined') window.localStorage.setItem('sidebarExpandedSections', JSON.stringify(next));
+      const nextValue = !(prev[name] ?? false);
+      const next = { [name]: nextValue };
+      if (typeof window !== 'undefined') {
+        const persisted = nextValue ? next : {};
+        window.localStorage.setItem('sidebarExpandedSections', JSON.stringify(persisted));
+      }
       return next;
     });
   };
@@ -119,6 +150,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     return parents;
   }, [filteredNavigation, location.pathname]);
 
+  const hasManualExpand = React.useMemo(() => Object.values(expanded).some(Boolean), [expanded]);
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Mobile Menu Button */}
@@ -139,8 +172,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <div className="h-full flex flex-col">
           <div className="h-16 flex items-center px-4 border-b border-gray-100">
             <div className={`flex items-center gap-2 text-brand-600 font-bold text-xl ${isCollapsed ? 'justify-center w-full' : ''}`}>
-              <img src="/logo-onepay.svg" alt="OnePay" className="w-8 h-8" />
-              {!isCollapsed && 'OnePay'}
+              <img src="/onefinc_azul.png" alt="OneFinc" className="w-8 h-8 object-contain" />
+              {!isCollapsed && 'OneFinc'}
             </div>
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
@@ -154,7 +187,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <nav className="flex-1 px-4 py-6 space-y-1">
             {filteredNavigation.map((item) => {
               const isParentActive = openParentForActive[item.name];
-              const isExpanded = expanded[item.name] ?? isParentActive;
+              const isExpanded = hasManualExpand ? !!expanded[item.name] : (expanded[item.name] ?? isParentActive);
               const hasChildren = !!(item.children && item.children.length);
               const isConfig = item.name === 'Configurações';
               const isFinanceiro = item.name === 'Financeiro';
@@ -238,6 +271,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </nav>
 
           <div className="p-4 border-t border-gray-100">
+            {!isCollapsed && (displayName || displayEmail) && (
+              <div className="mb-3 px-4 py-2 rounded-lg bg-gray-50">
+                {displayName && (
+                  <div className="text-sm font-medium text-gray-700 leading-tight">{displayName}</div>
+                )}
+                {displayEmail && (
+                  <div className="text-xs text-gray-500 break-all leading-tight">{displayEmail}</div>
+                )}
+              </div>
+            )}
             <button
               onClick={async () => {
                 await supabase.auth.signOut();
@@ -262,7 +305,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <main className={`flex-1 overflow-auto ${isCollapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 lg:hidden">
           <div className="w-8"></div> {/* Spacer for menu button */}
-          <span className="font-semibold text-gray-700">OnePay</span>
+          <span className="font-semibold text-gray-700">OneFinc</span>
         </header>
         <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-3">
           {isSystemAdmin && (

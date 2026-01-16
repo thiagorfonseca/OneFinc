@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
-import { Wallet } from 'lucide-react';
 import { buildPublicUrl } from '../lib/utils';
 
 const Login: React.FC = () => {
@@ -119,13 +118,11 @@ const Login: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center text-brand-600">
-          <div className="w-12 h-12 bg-brand-500 rounded-lg flex items-center justify-center text-white">
-            <Wallet size={32} />
-          </div>
+        <div className="flex justify-center">
+          <img src="/logo-onefinc.png" alt="OneFinc" className="h-14 w-14 object-contain" />
         </div>
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          OnePay
+          OneFinc
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
           {isSignUp ? 'Crie sua conta e da sua clínica' : 'Faça login para acessar o sistema'}

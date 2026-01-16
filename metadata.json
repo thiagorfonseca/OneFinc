@@ -1,5 +1,5 @@
 {
-  "name": "OnePay",
+  "name": "OneFinc",
   "description": "Financial management system for medical clinics with cash flow, OFX reconciliation, and dashboards.",
   "requestFramePermissions": []
 }

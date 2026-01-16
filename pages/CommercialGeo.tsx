@@ -17,7 +17,7 @@ type GeoPoint = {
 
 type LeafletModule = any;
 
-const GEO_CACHE_KEY = 'onepayGeoCache';
+const GEO_CACHE_KEY = 'onefincGeoCache';
 let leafletPromise: Promise<LeafletModule> | null = null;
 
 const loadLeaflet = () => {

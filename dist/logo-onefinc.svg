@@ -1,0 +1,11 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="OneFinc logo">
+  <defs>
+    <linearGradient id="op-blue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4db9ff"/>
+      <stop offset="100%" stop-color="#1d9bf0"/>
+    </linearGradient>
+  </defs>
+  <circle cx="256" cy="256" r="232" fill="url(#op-blue)"/>
+  <path d="M146 330c0-6.6 5.4-12 12-12h36c6.6 0 12 5.4 12 12v46c0 6.6-5.4 12-12 12h-36c-6.6 0-12-5.4-12-12v-46zm80-84c0-6.6 5.4-12 12-12h36c6.6 0 12 5.4 12 12v130c0 6.6-5.4 12-12 12h-36c-6.6 0-12-5.4-12-12V246zm80-74c0-6.6 5.4-12 12-12h36c6.6 0 12 5.4 12 12v204c0 6.6-5.4 12-12 12h-36c-6.6 0-12-5.4-12-12V172z" fill="#fff" opacity=".92"/>
+  <path d="M160 308l93.9-93.9a12 12 0 0 1 17 0l45 45 75.5-75.5a12 12 0 0 1 20.5 8.5v76.6a12 12 0 0 1-12 12h-76.6a12 12 0 0 1-8.5-20.5l9.1-9.1-36.5-36.5-82.4 82.4a12 12 0 0 1-8.5 3.5H172a12 12 0 0 1-12-12z" fill="#fff"/>
+</svg>

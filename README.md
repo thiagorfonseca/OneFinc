@@ -1,8 +1,8 @@
 <div align="center">
-  <img width="1200" height="675" alt="OnePay" src="public/onepay-banner.svg" />
+  <img width="1200" height="675" alt="OneFinc" src="public/onefinc-banner.svg" />
 </div>
 
-# OnePay
+# OneFinc
 
 Plataforma web para gestao financeira de clinicas medicas. Centraliza receitas, despesas, fluxo de caixa, DRE e indicadores para tomada de decisao com dados em tempo real.
 
