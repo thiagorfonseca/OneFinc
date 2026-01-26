@@ -14,9 +14,14 @@ const allowedOrigins = (() => {
     .map((s) => s.trim())
     .filter(Boolean);
 
-  // fallback seguro: somente dev local
+  // fallback seguro: dev local + dominio principal da plataforma
   if (list.length === 0) {
-    return ["http://localhost:5173", "http://127.0.0.1:5173", "http://127.0.0.1:3000"];
+    return [
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      "http://127.0.0.1:3000",
+      "https://app.odeducacao.com.br",
+    ];
   }
   return list;
 })();

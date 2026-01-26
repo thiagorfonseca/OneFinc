@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Send, Sparkles } from 'lucide-react';
-import { supabase, SUPABASE_ANON_KEY } from '../lib/supabase';
+import { supabase, SUPABASE_ANON_KEY, SUPABASE_URL } from '../lib/supabase';
 import { useAuth } from '../src/auth/AuthProvider';
 
 interface ChatMessage {
@@ -20,6 +20,10 @@ const ClinicAssistant: React.FC = () => {
   const listRef = useRef<HTMLDivElement | null>(null);
 
   const canChat = useMemo(() => !!user?.id && !!effectiveClinicId, [user?.id, effectiveClinicId]);
+  const assistantEndpoint = useMemo(() => {
+    const base = SUPABASE_URL.replace(/\/+$/, '');
+    return `${base}/functions/v1/clinic-assistant`;
+  }, []);
 
   const loadMessages = async () => {
     if (!user?.id || !effectiveClinicId) return;
@@ -66,7 +70,7 @@ const ClinicAssistant: React.FC = () => {
       const token = sessionData.session?.access_token;
       if (!token) throw new Error('Sessão expirada. Faça login novamente.');
 
-      const response = await fetch('/api/ai/clinic-assistant', {
+      const response = await fetch(assistantEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

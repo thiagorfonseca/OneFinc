@@ -130,8 +130,14 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
 
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
-  const [dateStart, setDateStart] = useState('');
-  const [dateEnd, setDateEnd] = useState('');
+  const [dateStart, setDateStart] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  });
+  const [dateEnd, setDateEnd] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+  });
 
   // UI
   const [isModalOpen, setIsModalOpen] = useState(false);

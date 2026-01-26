@@ -12,6 +12,9 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const callbackUrl = buildPublicUrl('/auth/callback');
   const resetRedirectUrl = buildPublicUrl('/auth/reset');
+  const trimmedEmail = email.trim();
+  const canUseEmail = trimmedEmail.length > 0;
+  const canUsePassword = canUseEmail && password.trim().length > 0;
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,7 +24,7 @@ const Login: React.FC = () => {
     try {
       if (isSignUp) {
         const { error, data } = await supabase.auth.signUp({
-          email,
+          email: trimmedEmail,
           password,
           options: {
             emailRedirectTo: callbackUrl,
@@ -55,7 +58,7 @@ const Login: React.FC = () => {
         setIsSignUp(false);
       } else {
         const { error } = await supabase.auth.signInWithPassword({
-          email,
+          email: trimmedEmail,
           password,
         });
         if (error) throw error;
@@ -92,7 +95,7 @@ const Login: React.FC = () => {
       setLoading(true);
       setError(null);
       const { error } = await supabase.auth.signInWithOtp({
-        email,
+        email: trimmedEmail,
         options: { emailRedirectTo: callbackUrl, shouldCreateUser: true }
       });
       if (error) setError('Erro ao enviar magic link: ' + error.message);
@@ -107,7 +110,7 @@ const Login: React.FC = () => {
   const handleResetPassword = async () => {
     setLoading(true);
     setError(null);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
       redirectTo: resetRedirectUrl,
     });
     setLoading(false);
@@ -116,126 +119,104 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center">
-          <img src="/logo-onefinc.png" alt="OneFinc" className="h-14 w-14 object-contain" />
+    <div className="auth-shell">
+      <div className="auth-card">
+        <div className="auth-icon">
+          <img src="/logo-onefinc.png" alt="OneFinc" className="h-8 w-8 object-contain" />
         </div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          OneFinc
-        </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          {isSignUp ? 'Crie sua conta e da sua clínica' : 'Faça login para acessar o sistema'}
-        </p>
-      </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleAuth}>
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email
-              </label>
-              <div className="mt-1">
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-brand-500 focus:border-brand-500 sm:text-sm"
-                />
-              </div>
-            </div>
+        <div className="auth-header">
+          <h1>Entrar ou cadastrar-se</h1>
+          <p>{isSignUp ? 'Crie sua conta para começar com a OneFinc.' : 'Escolha seu método de acesso para continuar.'}</p>
+        </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Senha
-              </label>
-              <div className="mt-1">
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-brand-500 focus:border-brand-500 sm:text-sm"
-                />
-              </div>
-            </div>
+        <div className="auth-socials">
+          <button type="button" onClick={handleGoogle} className="auth-social-button" disabled={loading}>
+            <span className="auth-social-icon google">G</span>
+            Continuar com Google
+          </button>
+        </div>
 
-            {error && (
-              <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
-                {error}
-              </div>
-            )}
+        <div className="auth-divider">
+          <span>Ou</span>
+        </div>
 
-            <div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 disabled:opacity-50"
-              >
-                {loading ? 'Processando...' : isSignUp ? 'Criar Conta' : 'Entrar'}
-              </button>
-            </div>
-          </form>
+        <form className="auth-form" onSubmit={handleAuth}>
+          <div className="auth-field">
+            <label htmlFor="email">E-mail</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Digite seu endereço de e-mail"
+              className="auth-input"
+            />
+          </div>
+
+          <div className="auth-field">
+            <label htmlFor="password">Senha</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete={isSignUp ? 'new-password' : 'current-password'}
+              required={isSignUp}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="auth-input"
+            />
+          </div>
+
+          {error && <div className="auth-error">{error}</div>}
+
+          <button
+            type="submit"
+            disabled={loading || !canUsePassword}
+            className="auth-primary"
+          >
+            {loading ? 'Processando...' : isSignUp ? 'Criar conta com senha' : 'Entrar com senha'}
+          </button>
 
           {!isSignUp && (
-            <div className="mt-4 grid gap-2">
-              <button
-                type="button"
-                onClick={handleGoogle}
-                className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
-                disabled={loading}
-              >
-                Entrar com Google
-              </button>
+            <>
               <button
                 type="button"
                 onClick={handleMagicLink}
-                className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
-                disabled={loading || !email}
+                className="auth-magic"
+                disabled={loading || !canUseEmail}
               >
-                Enviar Magic Link
+                <svg className="auth-magic-icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3zM18.5 15.5l.7 1.9 1.8.7-1.8.7-.7 1.9-.7-1.9-1.8-.7 1.8-.7.7-1.9z"
+                    fill="currentColor"
+                  />
+                </svg>
+                Enviar link mágico
               </button>
               <button
                 type="button"
                 onClick={handleResetPassword}
-                className="text-sm text-blue-600 hover:underline"
-                disabled={loading || !email}
+                className="auth-link"
+                disabled={loading || !canUseEmail}
               >
                 Esqueci minha senha
               </button>
-            </div>
+            </>
           )}
+        </form>
 
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">
-                  {isSignUp ? 'Já tem uma conta?' : 'Novo por aqui?'}
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <button
-                onClick={() => setIsSignUp(!isSignUp)}
-                className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
-              >
-                {isSignUp ? 'Voltar para Login' : 'Criar nova conta'}
-              </button>
-            </div>
-          </div>
+        <div className="auth-divider auth-divider-soft">
+          <span>{isSignUp ? 'Já tem uma conta?' : 'Novo por aqui?'}</span>
         </div>
+
+        <button onClick={() => setIsSignUp(!isSignUp)} className="auth-secondary">
+          {isSignUp ? 'Voltar para Login' : 'Criar nova conta'}
+        </button>
       </div>
     </div>
   );
