@@ -80,6 +80,9 @@ const normalizeExpensePaymentMethod = (value?: string | null) => {
   return 'Outros';
 };
 
+const getIncomeGrossValue = (item: any) =>
+  Number(item?.valor_bruto ?? item?.valor ?? item?.valor_liquido ?? 0) || 0;
+
 type ManualParcela = {
   vencimento: string;
   numero_folha?: string;
@@ -143,6 +146,8 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<null | { id: string; amount: number; accountId: string; description?: string; shouldAffect: boolean }>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
+  const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<any | null>(null);
@@ -1010,7 +1015,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
         case 'categoria':
           return item.categories?.name || item.revenue_procedures?.[0]?.categoria || '';
         case 'valor':
-          return Number(isIncome ? item.valor_liquido : item.valor);
+          return Number(isIncome ? getIncomeGrossValue(item) : item.valor);
         default:
           return '';
       }
@@ -1029,6 +1034,9 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
 
   const totalPages = Math.max(1, Math.ceil(sortedData.length / pageSize));
   const pageData = sortedData.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const allFilteredIds = sortedData.map((item) => item.id);
+  const allFilteredSelected =
+    allFilteredIds.length > 0 && allFilteredIds.every((id) => selectedIds.includes(id));
 
   const handleAddProcedure = () => {
     if (!procedureToAdd) return;
@@ -1065,7 +1073,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
 
   const exportTable = (format: 'csv' | 'pdf') => {
     const headers = isIncome
-      ? ['Descrição', 'Paciente', 'Data', 'Categoria', 'Forma pag.', 'Valor líquido']
+      ? ['Descrição', 'Paciente', 'Data', 'Categoria', 'Forma pag.', 'Valor faturado']
       : ['Descrição', 'Fornecedor', 'Data', 'Vencimento', 'Categoria', 'Status', 'Valor'];
 
     const rows = sortedData.map(item => {
@@ -1076,7 +1084,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
           formatDate(item.data_competencia),
           item.categories?.name || item.revenue_procedures?.[0]?.categoria || 'Geral',
           item.forma_pagamento || '-',
-          formatCsvNumber(item.valor_liquido),
+          formatCsvNumber(getIncomeGrossValue(item)),
         ];
       }
       return [
@@ -1143,6 +1151,15 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
     }
   };
 
+  const toggleSelectAllFiltered = () => {
+    if (allFilteredIds.length === 0) return;
+    if (allFilteredSelected) {
+      setSelectedIds((prev) => prev.filter((id) => !allFilteredIds.includes(id)));
+      return;
+    }
+    setSelectedIds((prev) => Array.from(new Set([...prev, ...allFilteredIds])));
+  };
+
   const handleBulkUpdate = async () => {
     if (selectedIds.length === 0) {
       alert('Selecione ao menos um registro.');
@@ -1173,7 +1190,15 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
       alert('Selecione ao menos um registro.');
       return;
     }
-    if (!confirm(`Excluir ${selectedIds.length} registro(s)? O saldo das contas será ajustado individualmente.`)) return;
+    setBulkDeleteModalOpen(true);
+  };
+
+  const confirmBulkDelete = async () => {
+    if (selectedIds.length === 0) {
+      setBulkDeleteModalOpen(false);
+      return;
+    }
+    setBulkDeleteLoading(true);
     try {
       for (const id of selectedIds) {
         const item = transactions.find(t => t.id === id);
@@ -1189,10 +1214,13 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
           await updateAccountBalance(accountId, delta);
         }
       }
+      setBulkDeleteModalOpen(false);
       setSelectedIds([]);
       fetchData();
     } catch (err: any) {
       alert('Erro ao excluir em massa: ' + err.message);
+    } finally {
+      setBulkDeleteLoading(false);
     }
   };
 
@@ -1205,15 +1233,15 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
     if (!isIncome) return null;
     const parseNum = (v: any) => Number(v || 0);
     const data = filteredData;
-    const totalReceita = data.reduce((s, r) => s + parseNum(r.valor_liquido), 0);
+    const totalReceita = data.reduce((s, r) => s + parseNum(getIncomeGrossValue(r)), 0);
     const totalCredito = data.filter(r => (r.forma_pagamento || '').toLowerCase().includes('crédito') || (r.forma_pagamento || '').toLowerCase().includes('credito'))
-      .reduce((s, r) => s + parseNum(r.valor_liquido), 0);
+      .reduce((s, r) => s + parseNum(getIncomeGrossValue(r)), 0);
     const totalDebito = data.filter(r => (r.forma_pagamento || '').toLowerCase().includes('débito') || (r.forma_pagamento || '').toLowerCase().includes('debito'))
-      .reduce((s, r) => s + parseNum(r.valor_liquido), 0);
+      .reduce((s, r) => s + parseNum(getIncomeGrossValue(r)), 0);
     const totalPix = data.filter(r => (r.forma_pagamento || '').toLowerCase().includes('pix'))
-      .reduce((s, r) => s + parseNum(r.valor_liquido), 0);
+      .reduce((s, r) => s + parseNum(getIncomeGrossValue(r)), 0);
     const totalDinheiro = data.filter(r => (r.forma_pagamento || '').toLowerCase().includes('dinheiro'))
-      .reduce((s, r) => s + parseNum(r.valor_liquido), 0);
+      .reduce((s, r) => s + parseNum(getIncomeGrossValue(r)), 0);
 
     const pacientes = Array.from(new Set(data.map(r => (r.paciente || '').trim()).filter(Boolean)));
     const ticketMedio = pacientes.length ? totalReceita / pacientes.length : 0;
@@ -1392,7 +1420,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
       {isIncome && metrics && (
         <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4">
           <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
-            <p className="text-xs uppercase text-gray-500">Total Receita</p>
+            <p className="text-xs uppercase text-gray-500">Total Receita Faturada</p>
             <p className="text-xl font-bold text-gray-800">{formatCurrency(metrics.totalReceita)}</p>
           </div>
           <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
@@ -1497,6 +1525,13 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
             <div className="flex flex-col gap-2 px-4 py-3 border-b border-gray-100">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm text-gray-700">Selecionados: {selectedIds.length}</span>
+                <button
+                  onClick={toggleSelectAllFiltered}
+                  disabled={allFilteredIds.length === 0}
+                  className="px-3 py-1 text-xs rounded border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {allFilteredSelected ? 'Desmarcar todos os registros' : `Selecionar todos os registros (${allFilteredIds.length})`}
+                </button>
                 <select
                   value={bulkUpdate.bank_account_id}
                   onChange={e => setBulkUpdate(prev => ({ ...prev, bank_account_id: e.target.value }))}
@@ -1599,7 +1634,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
                   {isIncome && <th className="px-6 py-4">Forma Pag.</th>}
                   {!isIncome && <th className="px-6 py-4">Status</th>}
                   <th className="px-6 py-4 text-right cursor-pointer" onClick={() => { setSortKey('valor'); setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); }}>
-                    Valor {sortKey === 'valor' && (sortDir === 'asc' ? '▲' : '▼')}
+                    {isIncome ? 'Valor faturado' : 'Valor'} {sortKey === 'valor' && (sortDir === 'asc' ? '▲' : '▼')}
                   </th>
                   <th className="px-6 py-4 text-right">Ações</th>
                 </tr>
@@ -1645,7 +1680,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
                       </td>
                     )}
                     <td className={`px-6 py-4 font-medium text-right ${isIncome ? 'text-green-600' : 'text-red-600'}`}>
-                      {formatCurrency(isIncome ? item.valor_liquido : item.valor)}
+                      {formatCurrency(isIncome ? getIncomeGrossValue(item) : item.valor)}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -1738,6 +1773,48 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
                 className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-60"
               >
                 {deleteLoading ? 'Excluindo...' : 'Sim, excluir'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {bulkDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-red-900/20 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full border border-red-200">
+            <div className="flex items-start gap-3 p-5 border-b border-red-100">
+              <div className="h-10 w-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center">
+                <AlertTriangle size={20} />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-red-700">Ação irreversível</h3>
+                <p className="text-sm text-gray-600">
+                  Você está prestes a excluir {selectedIds.length} registro(s).
+                  Essa ação não pode ser desfeita.
+                </p>
+              </div>
+            </div>
+            <div className="p-5 space-y-2">
+              <p className="text-sm text-gray-700">
+                O saldo das contas será ajustado automaticamente para cada registro excluído.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2 p-4 bg-red-50/60">
+              <button
+                type="button"
+                onClick={() => setBulkDeleteModalOpen(false)}
+                className="px-3 py-2 text-sm border border-gray-200 rounded-lg text-gray-700 hover:bg-white"
+                disabled={bulkDeleteLoading}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmBulkDelete}
+                disabled={bulkDeleteLoading}
+                className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-60"
+              >
+                {bulkDeleteLoading ? 'Excluindo...' : 'Sim, excluir'}
               </button>
             </div>
           </div>

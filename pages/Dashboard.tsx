@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   XAxis,
   YAxis,
@@ -11,7 +11,7 @@ import {
   Line,
   ReferenceLine,
 } from 'recharts';
-import { ArrowUpCircle, ArrowDownCircle, Wallet, Loader2, Calendar } from 'lucide-react';
+import { ArrowUpCircle, ArrowDownCircle, Wallet, Loader2, Calendar, AlertTriangle, Trash2 } from 'lucide-react';
 import { formatCurrency, formatDate, formatMonthYear } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import {
@@ -25,8 +25,11 @@ import {
 import { useAuth } from '../src/auth/AuthProvider';
 import { useSearchParams } from 'react-router-dom';
 
+const getIncomeBilledValue = (income: any) =>
+  Number(income?.valor_bruto ?? income?.valor ?? income?.valor_liquido ?? 0) || 0;
+
 const Dashboard: React.FC = () => {
-  const { effectiveClinicId, isAdmin, selectedClinicId } = useAuth();
+  const { effectiveClinicId, isAdmin, isSystemAdmin, selectedClinicId } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -35,6 +38,9 @@ const Dashboard: React.FC = () => {
   const [expensesRaw, setExpensesRaw] = useState<any[]>([]);
   const [dateStart, setDateStart] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [dateEnd, setDateEnd] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0));
+  const [clearModalOpen, setClearModalOpen] = useState(false);
+  const [clearLoading, setClearLoading] = useState(false);
+  const [clearError, setClearError] = useState<string | null>(null);
 
   const formatDateInput = (date: Date) => {
     if (!date || Number.isNaN(date.getTime())) return '';
@@ -222,126 +228,147 @@ const Dashboard: React.FC = () => {
   const [cashChartMode, setCashChartMode] = useState<'linha' | 'coluna'>('linha');
   const dreChartRef = useRef<HTMLDivElement | null>(null);
 
-  // Buscar dados reais do Supabase
-  useEffect(() => {
+  const fetchDashboardData = useCallback(async () => {
     // Para admin, permitir quando houver seleção (ou todas = null); para user, exige clinic
     if (!effectiveClinicId && !isAdmin) return;
-    const fetchDashboardData = async () => {
-      setLoading(true);
-      try {
-        const clinicFilter = effectiveClinicId;
-        // 1. Buscar todas as Receitas
-        let revQuery = supabase
-          .from('revenues')
-          .select('id, description, valor_liquido, valor_bruto, data_competencia, data_recebimento, forma_pagamento, parcelas, status, recebimento_parcelas, categories(name), bank_account_id');
-        if (clinicFilter) revQuery = revQuery.eq('clinic_id', clinicFilter);
-        const { data: incomes } = await revQuery;
+    setLoading(true);
+    try {
+      const clinicFilter = effectiveClinicId;
+      // 1. Buscar todas as Receitas
+      let revQuery = supabase
+        .from('revenues')
+        .select('id, description, valor_liquido, valor_bruto, data_competencia, data_recebimento, forma_pagamento, parcelas, status, recebimento_parcelas, categories(name), bank_account_id');
+      if (clinicFilter) revQuery = revQuery.eq('clinic_id', clinicFilter);
+      const { data: incomes } = await revQuery;
 
-        // 2. Buscar todas as Despesas
-        let expQuery = supabase
-          .from('expenses')
-          .select('id, description, valor, data_competencia, data_pagamento, data_vencimento, forma_pagamento, parcelas, status, categories(name), bank_account_id');
-        if (clinicFilter) expQuery = expQuery.eq('clinic_id', clinicFilter);
-        const { data: expenses } = await expQuery;
+      // 2. Buscar todas as Despesas
+      let expQuery = supabase
+        .from('expenses')
+        .select('id, description, valor, data_competencia, data_pagamento, data_vencimento, forma_pagamento, parcelas, status, categories(name), bank_account_id');
+      if (clinicFilter) expQuery = expQuery.eq('clinic_id', clinicFilter);
+      const { data: expenses } = await expQuery;
 
-        // 3. Buscar Contas Bancárias (para saldo atual)
-        let accQuery = supabase.from('bank_accounts').select('id, clinic_id, current_balance, initial_balance');
-        if (clinicFilter) accQuery = accQuery.eq('clinic_id', clinicFilter);
-        const { data: bankAccs } = await accQuery;
-        const recalculated = await recalcAccountBalances(bankAccs || [], incomes || [], expenses || []);
-        setAccounts(recalculated || []);
-        setIncomesRaw(incomes || []);
-        setExpensesRaw(expenses || []);
+      // 3. Buscar Contas Bancárias (para saldo atual)
+      let accQuery = supabase.from('bank_accounts').select('id, clinic_id, current_balance, initial_balance');
+      if (clinicFilter) accQuery = accQuery.eq('clinic_id', clinicFilter);
+      const { data: bankAccs } = await accQuery;
+      const recalculated = await recalcAccountBalances(bankAccs || [], incomes || [], expenses || []);
+      setAccounts(recalculated || []);
+      setIncomesRaw(incomes || []);
+      setExpensesRaw(expenses || []);
 
-        // -------- Fluxo de Caixa Inteligente --------
-        const parseDate = (d?: string | null) => {
-          if (!d) return undefined;
-          const parsed = new Date(d);
-          return Number.isNaN(parsed.getTime()) ? undefined : parsed;
-        };
-        const mapForma = (f?: string | null) => {
-          const t = (f || '')
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toUpperCase();
-          if (t.includes('CREDITO')) return 'CREDITO';
-          if (t.includes('DEBITO')) return 'DEBITO';
-          if (t.includes('PIX')) return 'PIX';
-          if (t.includes('BOLETO')) return 'BOLETO';
-          if (t.includes('CHEQUE')) return 'CHEQUE';
-          if (t.includes('TRANSFER') || t.includes('TED') || t.includes('DOC')) return 'TRANSFERENCIA';
-          if (t.includes('CONVENIO')) return 'CONVENIO';
-          if (t.includes('DINHEIRO') || t.includes('CASH')) return 'DINHEIRO';
-          return 'OUTRO';
-        };
+      // -------- Fluxo de Caixa Inteligente --------
+      const parseDate = (d?: string | null) => {
+        if (!d) return undefined;
+        const parsed = new Date(d);
+        return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+      };
+      const mapForma = (f?: string | null) => {
+        const t = (f || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toUpperCase();
+        if (t.includes('CREDITO')) return 'CREDITO';
+        if (t.includes('DEBITO')) return 'DEBITO';
+        if (t.includes('PIX')) return 'PIX';
+        if (t.includes('BOLETO')) return 'BOLETO';
+        if (t.includes('CHEQUE')) return 'CHEQUE';
+        if (t.includes('TRANSFER') || t.includes('TED') || t.includes('DOC')) return 'TRANSFERENCIA';
+        if (t.includes('CONVENIO')) return 'CONVENIO';
+        if (t.includes('DINHEIRO') || t.includes('CASH')) return 'DINHEIRO';
+        return 'OUTRO';
+      };
 
-        const parseManualDates = (value: any) => {
-          if (!value) return [];
-          try {
-            const arr = Array.isArray(value) ? value : typeof value === 'string' ? JSON.parse(value) : [];
-            if (!Array.isArray(arr)) return [];
-            return arr
-              .map((item) => {
-                if (typeof item === 'string') return parseDate(item);
-                if (!item || typeof item !== 'object') return null;
-                return parseDate(item.vencimento || item.due_date || item.data || item.date || '');
-              })
-              .filter(Boolean) as Date[];
-          } catch {
-            return [];
-          }
-        };
+      const parseManualDates = (value: any) => {
+        if (!value) return [];
+        try {
+          const arr = Array.isArray(value) ? value : typeof value === 'string' ? JSON.parse(value) : [];
+          if (!Array.isArray(arr)) return [];
+          return arr
+            .map((item) => {
+              if (typeof item === 'string') return parseDate(item);
+              if (!item || typeof item !== 'object') return null;
+              return parseDate(item.vencimento || item.due_date || item.data || item.date || '');
+            })
+            .filter(Boolean) as Date[];
+        } catch {
+          return [];
+        }
+      };
 
-        const lancamentos: Lancamento[] = [];
+      const lancamentos: Lancamento[] = [];
 
-        (incomes || []).forEach((i: any) => {
-          const dataEmissao = parseDate(i.data_competencia);
-          if (!dataEmissao) return;
-          const manualDates = parseManualDates(i.recebimento_parcelas);
-          lancamentos.push({
-            id: i.id,
-            tipo: 'RECEITA',
-            descricao: i.description || 'Receita',
-            dataEmissao,
-            dataVencimento: parseDate(i.data_recebimento),
-            formaPagamento: mapForma(i.forma_pagamento),
-            valorTotal: i.valor_liquido || i.valor_bruto || 0,
-            numeroParcelas: Math.max(1, manualDates.length || parseInt(i.parcelas || 1, 10)),
-            datasParcelas: manualDates.length ? manualDates : undefined,
-            status: i.status === 'paid' ? 'REALIZADO' : 'PREVISTO',
-            dataBaixa: parseDate(i.data_recebimento),
-          });
+      (incomes || []).forEach((i: any) => {
+        const dataEmissao = parseDate(i.data_competencia);
+        if (!dataEmissao) return;
+        const manualDates = parseManualDates(i.recebimento_parcelas);
+        lancamentos.push({
+          id: i.id,
+          tipo: 'RECEITA',
+          descricao: i.description || 'Receita',
+          dataEmissao,
+          dataVencimento: parseDate(i.data_recebimento),
+          formaPagamento: mapForma(i.forma_pagamento),
+          valorTotal: i.valor_liquido || i.valor_bruto || 0,
+          numeroParcelas: Math.max(1, manualDates.length || parseInt(i.parcelas || 1, 10)),
+          datasParcelas: manualDates.length ? manualDates : undefined,
+          status: i.status === 'paid' ? 'REALIZADO' : 'PREVISTO',
+          dataBaixa: parseDate(i.data_recebimento),
         });
+      });
 
-        (expenses || []).forEach((e: any) => {
-          const dataEmissao = parseDate(e.data_competencia);
-          if (!dataEmissao) return;
-          lancamentos.push({
-            id: e.id,
-            tipo: 'DESPESA',
-            descricao: e.description || 'Despesa',
-            dataEmissao,
-            dataVencimento: parseDate(e.data_vencimento || e.data_competencia),
-            formaPagamento: mapForma(e.forma_pagamento),
-            valorTotal: e.valor || 0,
-            numeroParcelas: parseInt(e.parcelas || 1, 10),
-            status: e.status === 'paid' ? 'REALIZADO' : 'PREVISTO',
-            dataBaixa: parseDate(e.data_pagamento),
-          });
+      (expenses || []).forEach((e: any) => {
+        const dataEmissao = parseDate(e.data_competencia);
+        if (!dataEmissao) return;
+        lancamentos.push({
+          id: e.id,
+          tipo: 'DESPESA',
+          descricao: e.description || 'Despesa',
+          dataEmissao,
+          dataVencimento: parseDate(e.data_vencimento || e.data_competencia),
+          formaPagamento: mapForma(e.forma_pagamento),
+          valorTotal: e.valor || 0,
+          numeroParcelas: parseInt(e.parcelas || 1, 10),
+          status: e.status === 'paid' ? 'REALIZADO' : 'PREVISTO',
+          dataBaixa: parseDate(e.data_pagamento),
         });
+      });
 
-        const parcelas = gerarParcelasDeCaixa(lancamentos);
-        setCashParcels(parcelas);
-
-      } catch (error) {
-        console.error('Erro ao carregar dashboard:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDashboardData();
+      const parcelas = gerarParcelasDeCaixa(lancamentos);
+      setCashParcels(parcelas);
+    } catch (error) {
+      console.error('Erro ao carregar dashboard:', error);
+    } finally {
+      setLoading(false);
+    }
   }, [effectiveClinicId, isAdmin, selectedClinicId]);
+
+  // Buscar dados reais do Supabase
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
+
+  useEffect(() => {
+    if (!effectiveClinicId && !isAdmin) return;
+    const filter = effectiveClinicId ? `clinic_id=eq.${effectiveClinicId}` : undefined;
+    const channel = supabase.channel(`dashboard-updates-${effectiveClinicId ?? 'all'}`);
+    channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'revenues', ...(filter ? { filter } : {}) },
+      () => fetchDashboardData()
+    );
+    channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'expenses', ...(filter ? { filter } : {}) },
+      () => fetchDashboardData()
+    );
+    channel.subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [effectiveClinicId, isAdmin, fetchDashboardData]);
+
+  // Atualização apenas via realtime ou ações do usuário
 
   const withinRange = (d?: string | Date | null) => {
     if (!d) return false;
@@ -603,7 +630,7 @@ const Dashboard: React.FC = () => {
   const totalReceitaDRE = useMemo(() => {
     return incomesRaw
       .filter((i: any) => withinRange(i.data_competencia))
-      .reduce((acc, i: any) => acc + (i.valor_liquido || i.valor_bruto || 0), 0);
+      .reduce((acc, i: any) => acc + getIncomeBilledValue(i), 0);
   }, [incomesRaw, dateStart, dateEnd]);
 
   const totalDespesaDRE = useMemo(() => {
@@ -757,6 +784,31 @@ const Dashboard: React.FC = () => {
     setSearchParams(searchParams);
   };
 
+  const canClearData = isAdmin || isSystemAdmin;
+
+  const handleClearAllData = async () => {
+    if (!effectiveClinicId) {
+      setClearError('Selecione uma clínica antes de apagar.');
+      return;
+    }
+    setClearLoading(true);
+    setClearError(null);
+    try {
+      const [revRes, expRes] = await Promise.all([
+        supabase.from('revenues').delete().eq('clinic_id', effectiveClinicId),
+        supabase.from('expenses').delete().eq('clinic_id', effectiveClinicId),
+      ]);
+      if (revRes.error) throw revRes.error;
+      if (expRes.error) throw expRes.error;
+      setClearModalOpen(false);
+      fetchDashboardData();
+    } catch (err: any) {
+      setClearError(err?.message || 'Erro ao apagar dados.');
+    } finally {
+      setClearLoading(false);
+    }
+  };
+
   const CashflowTooltip = ({ active, payload }: any) => {
     if (!active || !payload?.length) return null;
     const data = payload[0]?.payload;
@@ -859,7 +911,7 @@ const Dashboard: React.FC = () => {
 
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-500 mb-1">Total Receitas (competência)</p>
+                <p className="text-sm font-medium text-gray-500 mb-1">Total Receitas Faturadas (competência)</p>
                 <h3 className="text-2xl font-bold text-green-600">{formatCurrency(totalReceitaDRE)}</h3>
               </div>
               <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center text-green-600">
@@ -883,7 +935,7 @@ const Dashboard: React.FC = () => {
             <h3 className="text-lg font-semibold text-gray-800 mb-4">DRE (competência)</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="p-4 rounded-lg border border-gray-100 bg-green-50">
-                <p className="text-xs uppercase text-gray-600">Receitas</p>
+                <p className="text-xs uppercase text-gray-600">Receitas (faturado)</p>
                 <p className="text-xl font-bold text-green-700">{formatCurrency(totalReceitaDRE)}</p>
               </div>
               <div className="p-4 rounded-lg border border-gray-100 bg-red-50">
@@ -945,6 +997,31 @@ const Dashboard: React.FC = () => {
 
       {tab === 'caixa' && (
         <>
+          {canClearData && (
+            <div className="bg-white p-4 rounded-xl border border-red-100 shadow-sm flex flex-col md:flex-row md:items-center gap-3 justify-between">
+              <div>
+                <p className="text-sm font-semibold text-red-700">Limpeza de dados financeiros</p>
+                <p className="text-xs text-gray-600">
+                  Remove todas as receitas e despesas da clínica selecionada. Ação irreversível.
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                {!effectiveClinicId && (
+                  <span className="text-xs text-gray-500">Selecione uma clínica no topo.</span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setClearModalOpen(true)}
+                  disabled={!effectiveClinicId || clearLoading}
+                  className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-50"
+                >
+                  <Trash2 size={16} />
+                  Limpar receitas e despesas
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Diferença Faturamento (emitido) vs Caixa previsto do mês */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-white p-4 rounded-xl border border-gray-100">
@@ -1116,6 +1193,51 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
         </>
+      )}
+
+      {clearModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-red-900/20 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full border border-red-200">
+            <div className="flex items-start gap-3 p-5 border-b border-red-100">
+              <div className="h-10 w-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center">
+                <AlertTriangle size={20} />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-red-700">Ação irreversível</h3>
+                <p className="text-sm text-gray-600">
+                  Você está prestes a apagar todas as receitas e despesas da clínica selecionada.
+                  Essa ação não pode ser desfeita.
+                </p>
+              </div>
+            </div>
+            <div className="p-5 space-y-2">
+              <p className="text-sm text-gray-700">
+                <span className="font-medium">Clínica:</span> {effectiveClinicId ? effectiveClinicId : 'Não selecionada'}
+              </p>
+              {clearError && (
+                <p className="text-sm text-red-600">{clearError}</p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 p-4 bg-red-50/60">
+              <button
+                type="button"
+                onClick={() => { setClearModalOpen(false); setClearError(null); }}
+                className="px-3 py-2 text-sm border border-gray-200 rounded-lg text-gray-700 hover:bg-white"
+                disabled={clearLoading}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleClearAllData}
+                disabled={clearLoading || !effectiveClinicId}
+                className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-60"
+              >
+                {clearLoading ? 'Apagando...' : 'Sim, apagar tudo'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

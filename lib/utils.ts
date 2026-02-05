@@ -50,40 +50,66 @@ export const generateTransactionHash = (date: string, amount: number, descriptio
   return Math.abs(hash).toString(16);
 };
 
-// Simple OFX Parser implementation
+// Simple OFX Parser implementation (compatível com OFX SGML sem tags de fechamento)
 export const parseOFX = (ofxContent: string) => {
   const transactions: any[] = [];
+  if (!ofxContent) return transactions;
 
-  // Basic regex to find STMTTRN blocks
-  const transactionBlockRegex = /<STMTTRN>([\s\S]*?)<\/STMTTRN>/g;
-  const matches = [...ofxContent.matchAll(transactionBlockRegex)];
+  const content = ofxContent.replace(/\r\n/g, '\n');
 
-  matches.forEach((match) => {
-    const block = match[1];
+  const stmtRegex = /<STMTTRN>/gi;
+  const positions: Array<{ start: number; len: number }> = [];
+  let match: RegExpExecArray | null;
+  while ((match = stmtRegex.exec(content)) !== null) {
+    positions.push({ start: match.index, len: match[0].length });
+  }
+  if (!positions.length) return transactions;
 
-    // Extract fields
-    const dateMatch = block.match(/<DTPOSTED>(.*)/);
-    const amountMatch = block.match(/<TRNAMT>(.*)/);
-    const fitidMatch = block.match(/<FITID>(.*)/);
-    const memoMatch = block.match(/<MEMO>(.*)/);
+  const getTagValue = (block: string, tag: string) => {
+    const regex = new RegExp(`<${tag}>([^<\\r\\n]*)`, 'i');
+    const m = block.match(regex);
+    return m ? m[1].trim() : '';
+  };
 
-    if (amountMatch && dateMatch && fitidMatch) {
-      const rawDate = dateMatch[1].trim().substring(0, 8); // YYYYMMDD
-      const formattedDate = `${rawDate.substring(0, 4)}-${rawDate.substring(4, 6)}-${rawDate.substring(6, 8)}`;
-
-      const amount = parseFloat(amountMatch[1].replace(',', '.'));
-      const fitid = fitidMatch[1].trim();
-      const description = memoMatch ? memoMatch[1].trim() : 'Sem descrição';
-
-      transactions.push({
-        fitid: fitid,
-        date: formattedDate,
-        amount: amount,
-        description: description,
-        type: amount < 0 ? 'DEBIT' : 'CREDIT',
-        hash: generateTransactionHash(formattedDate, amount, description, fitid)
-      });
+  const parseAmount = (raw: string) => {
+    const cleaned = raw.trim();
+    if (!cleaned) return NaN;
+    if (cleaned.includes(',') && cleaned.includes('.')) {
+      return parseFloat(cleaned.replace(/\./g, '').replace(',', '.'));
     }
+    return parseFloat(cleaned.replace(',', '.'));
+  };
+
+  positions.forEach((pos, idx) => {
+    const start = pos.start + pos.len;
+    const nextStart = positions[idx + 1]?.start ?? content.length;
+    const closeRel = content.slice(start, nextStart).search(/<\/STMTTRN>/i);
+    const end = closeRel >= 0 ? start + closeRel : nextStart;
+    const block = content.slice(start, end);
+
+    const rawDate = getTagValue(block, 'DTPOSTED');
+    const dateDigits = rawDate.match(/\d{8}/)?.[0] || '';
+    if (!dateDigits) return;
+    const formattedDate = `${dateDigits.substring(0, 4)}-${dateDigits.substring(4, 6)}-${dateDigits.substring(6, 8)}`;
+
+    const amountRaw = getTagValue(block, 'TRNAMT');
+    const amount = parseAmount(amountRaw);
+    if (!Number.isFinite(amount)) return;
+
+    const fitidRaw = getTagValue(block, 'FITID');
+    const memo = getTagValue(block, 'MEMO') || getTagValue(block, 'NAME') || 'Sem descrição';
+    const trnType = getTagValue(block, 'TRNTYPE').toUpperCase();
+    const inferredType = trnType === 'DEBIT' || trnType === 'CREDIT' ? trnType : (amount < 0 ? 'DEBIT' : 'CREDIT');
+    const fitid = fitidRaw || `${dateDigits}-${amount}-${memo}`;
+
+    transactions.push({
+      fitid,
+      date: formattedDate,
+      amount,
+      description: memo,
+      type: inferredType,
+      hash: generateTransactionHash(formattedDate, amount, memo, fitid),
+    });
   });
 
   return transactions;

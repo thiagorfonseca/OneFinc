@@ -109,6 +109,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     '';
   const displayName = formatDisplayName(rawDisplayName) || (user?.email ? user.email.split('@')[0] : '');
   const displayEmail = user?.email || clinicUser?.email || '';
+  const displayClinic = clinic?.name?.trim() || '';
 
   const toggleExpand = (name: string) => {
     setExpanded((prev) => {
@@ -278,6 +279,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 )}
                 {displayEmail && (
                   <div className="text-xs text-gray-500 break-all leading-tight">{displayEmail}</div>
+                )}
+                {displayClinic && (
+                  <div className="text-xs text-gray-500 leading-tight">Clínica: {displayClinic}</div>
                 )}
               </div>
             )}

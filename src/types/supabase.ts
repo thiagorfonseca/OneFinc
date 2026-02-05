@@ -162,6 +162,7 @@ export type Database = {
       bank_transactions: {
         Row: {
           bank_account_id: string | null
+          arquivado: boolean | null
           conciliado: boolean | null
           created_at: string | null
           data: string | null
@@ -175,6 +176,7 @@ export type Database = {
         }
         Insert: {
           bank_account_id?: string | null
+          arquivado?: boolean | null
           conciliado?: boolean | null
           created_at?: string | null
           data?: string | null
@@ -188,6 +190,7 @@ export type Database = {
         }
         Update: {
           bank_account_id?: string | null
+          arquivado?: boolean | null
           conciliado?: boolean | null
           created_at?: string | null
           data?: string | null

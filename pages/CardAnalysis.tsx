@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { formatCurrency, formatDate, formatMonthYear } from '../lib/utils';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { Filter, Calendar, RefreshCw, BarChart2, TrendingUp as TrendingUpIcon, ArrowUpDown, Download } from 'lucide-react';
+import { Filter, Calendar, RefreshCw, BarChart2, TrendingUp as TrendingUpIcon, ArrowUpDown, Download, Trash2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../src/auth/AuthProvider';
 
 type Period = 'dia' | 'semana' | 'quinzenal' | 'mes' | 'ano';
@@ -212,9 +212,11 @@ const CardAnalysis: React.FC = () => {
   const [sortVendas, setSortVendas] = useState<{ column: string; direction: 'asc' | 'desc' }>({ column: 'data_competencia', direction: 'asc' });
   const [sortRecebiveis, setSortRecebiveis] = useState<{ column: string; direction: 'asc' | 'desc' }>({ column: 'data_recebimento', direction: 'asc' });
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<null | { id: string; paciente?: string | null; data?: string }>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setFetchError(null);
       let selectCols = 'id, data_competencia, data_recebimento, recebimento_parcelas, valor_bruto, valor_liquido, valor, forma_pagamento, paciente, parcelas, bandeira, nsu, observacoes';
@@ -246,7 +248,7 @@ const CardAnalysis: React.FC = () => {
       setFetchError(err?.message || 'Erro ao carregar dados');
       setRevenues([]);
     }
-  };
+  }, [dateStart, dateEnd, tab, effectiveClinic]);
 
   useEffect(() => {
     const { start, end } = getRange(period);
@@ -256,7 +258,47 @@ const CardAnalysis: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, [dateStart, dateEnd, tab, effectiveClinic]);
+  }, [fetchData]);
+
+  useEffect(() => {
+    const filter = effectiveClinic ? `clinic_id=eq.${effectiveClinic}` : undefined;
+    const channel = supabase.channel(`card-analysis-updates-${effectiveClinic ?? 'all'}`);
+    channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'revenues', ...(filter ? { filter } : {}) },
+      () => fetchData()
+    );
+    channel.subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [effectiveClinic, fetchData]);
+
+  useEffect(() => {
+    const handleFocus = () => fetchData();
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [fetchData]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => fetchData(), 30000);
+    return () => window.clearInterval(interval);
+  }, [fetchData]);
+
+  const handleDeleteRevenue = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      const { error } = await supabase.from('revenues').delete().eq('id', deleteTarget.id);
+      if (error) throw error;
+      setDeleteTarget(null);
+      fetchData();
+    } catch (err: any) {
+      alert('Erro ao excluir venda: ' + (err?.message || 'Erro desconhecido'));
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   const expandParcelas = (rows: RevenueRow[]) => {
     const list: any[] = [];
@@ -614,6 +656,7 @@ const CardAnalysis: React.FC = () => {
                         <span className="inline-flex items-center gap-1">{col.label} <ArrowUpDown size={12} className="text-gray-400" /></span>
                       </th>
                     ))}
+                    <th className="py-2 pr-3 font-medium">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -637,11 +680,21 @@ const CardAnalysis: React.FC = () => {
                       <td className="py-2 pr-3 text-gray-600 truncate max-w-[140px]" title={row.bandeira || '-'}>
                         {row.bandeira || '-'}
                       </td>
+                      <td className="py-2 pr-3">
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget({ id: row.id, paciente: row.paciente, data: row.data_venda || row.data_competencia })}
+                          className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                          title="Excluir venda"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                   {vendasDetalhadas.length === 0 && (
                     <tr>
-                      <td colSpan={9} className="py-3 text-center text-gray-400">Nenhum registro no período selecionado.</td>
+                      <td colSpan={11} className="py-3 text-center text-gray-400">Nenhum registro no período selecionado.</td>
                     </tr>
                   )}
                 </tbody>
@@ -749,6 +802,51 @@ const CardAnalysis: React.FC = () => {
           </>
         )}
       </div>
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-red-900/20 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full border border-red-200">
+            <div className="flex items-start gap-3 p-5 border-b border-red-100">
+              <div className="h-10 w-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center">
+                <AlertTriangle size={20} />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-red-700">Ação irreversível</h3>
+                <p className="text-sm text-gray-600">
+                  Você está prestes a excluir esta venda e todas as parcelas associadas.
+                  Essa ação não pode ser desfeita.
+                </p>
+              </div>
+            </div>
+            <div className="p-5 space-y-2">
+              <p className="text-sm text-gray-700">
+                <span className="font-medium">Paciente:</span> {deleteTarget.paciente || '-'}
+              </p>
+              <p className="text-sm text-gray-700">
+                <span className="font-medium">Data da venda:</span> {deleteTarget.data ? formatDate(deleteTarget.data) : '-'}
+              </p>
+            </div>
+            <div className="flex justify-end gap-2 p-4 bg-red-50/60">
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                className="px-3 py-2 text-sm border border-gray-200 rounded-lg text-gray-700 hover:bg-white"
+                disabled={deleteLoading}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteRevenue}
+                disabled={deleteLoading}
+                className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-60"
+              >
+                {deleteLoading ? 'Excluindo...' : 'Sim, excluir'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

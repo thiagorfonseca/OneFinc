@@ -243,6 +243,7 @@ create table if not exists public.bank_transactions (
   tipo text,
   hash_transacao text unique,
   conciliado boolean default false,
+  arquivado boolean default false,
   revenue_id_opcional uuid references public.revenues(id) on delete set null,
   expense_id_opcional uuid references public.expenses(id) on delete set null,
   created_at timestamptz default now()
