@@ -343,11 +343,13 @@ const CommercialGeo: React.FC = () => {
       const cep = cleanCep(target.cep);
       if (!cep) return;
       uniqueCeps.add(cep);
-      if (target.lat !== null && target.lng !== null) {
-        cacheRef.current[cep] = { lat: target.lat, lng: target.lng };
+      const latValue = toNumberOrNull(target.lat);
+      const lngValue = toNumberOrNull(target.lng);
+      if (latValue !== null && lngValue !== null) {
+        cacheRef.current[cep] = { lat: latValue, lng: lngValue };
         return;
       }
-      if (target.lat === null || target.lng === null) {
+      if (latValue === null || lngValue === null) {
         if (!missingByCepRef.current[cep]) missingByCepRef.current[cep] = [];
         missingByCepRef.current[cep].push(target.customerId);
       }

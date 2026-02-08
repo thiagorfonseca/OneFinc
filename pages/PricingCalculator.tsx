@@ -138,7 +138,9 @@ const PricingCalculator: React.FC = () => {
       });
   }, [procedures, procedureFilter, costPerHour, totalRates, commissionRate]);
 
-  const classifyProcedure = (rentability: number, durationHours: number) => {
+  type ProcedureClass = { type: 'estrela' | 'vaca' | 'abacaxi'; percent: number };
+
+  const classifyProcedure = (rentability: number, durationHours: number): ProcedureClass => {
     if (!costPerHour || !durationHours) return { type: 'vaca', percent: 0 };
     const profitPerHour = rentability / durationHours;
     const percentOfCostHour = (profitPerHour / costPerHour) * 100;

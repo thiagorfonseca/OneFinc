@@ -186,6 +186,7 @@ const AnalyticsArchetypePage: React.FC = () => {
     setDetailAnswers([]);
     try {
       const detail = await fetchRespondentDetail(row.id, clinicId);
+      if (!detail) return;
       setDetailRespondent(detail as ArchetypeRespondentRow);
       setDetailAnswers(((detail as any).archetype_answers || []) as ArchetypeAnswerRow[]);
     } catch (err) {

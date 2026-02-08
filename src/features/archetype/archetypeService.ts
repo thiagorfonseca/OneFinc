@@ -1,5 +1,14 @@
 import { supabase } from '../../../lib/supabase';
-import type { ArchetypeAnswer, ArchetypeRespondentRow, PublicLinkRow, PublicTokenResolution } from './types';
+import type { ArchetypeAnswer, ArchetypeRespondentRow, ArchetypeScores, PublicLinkRow, PublicTokenResolution } from './types';
+
+const normalizeScores = (scores: any): ArchetypeScores => {
+  return {
+    FACILITADOR: Number(scores?.FACILITADOR ?? 0) || 0,
+    ANALISTA: Number(scores?.ANALISTA ?? 0) || 0,
+    REALIZADOR: Number(scores?.REALIZADOR ?? 0) || 0,
+    VISIONÁRIO: Number(scores?.VISIONÁRIO ?? 0) || 0,
+  };
+};
 
 export const resolvePublicToken = async (token: string): Promise<PublicTokenResolution | null> => {
   const { data, error } = await supabase
@@ -78,7 +87,10 @@ export const fetchRespondents = async (filters: {
 
   const { data, error } = await query;
   if (error) throw error;
-  return (data || []) as ArchetypeRespondentRow[];
+  return (data || []).map((row: any) => ({
+    ...row,
+    scores: normalizeScores(row.scores),
+  })) as ArchetypeRespondentRow[];
 };
 
 export const fetchRespondentDetail = async (id: string, clinicId: string) => {
@@ -89,7 +101,11 @@ export const fetchRespondentDetail = async (id: string, clinicId: string) => {
     .eq('id', id)
     .single();
   if (error) throw error;
-  return data;
+  if (!data) return null;
+  return {
+    ...data,
+    scores: normalizeScores((data as any).scores),
+  };
 };
 
 export const listPublicLinks = async (clinicId: string) => {
