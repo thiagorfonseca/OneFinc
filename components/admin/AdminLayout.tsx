@@ -84,7 +84,7 @@ const AdminLayout: React.FC = () => {
           <div className="w-8"></div>
           <span className="font-semibold text-gray-700">Admin</span>
         </header>
-        <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-3">
+        <div className="py-4 md:py-8 px-4 md:px-6 max-w-screen-2xl mx-auto space-y-3">
           <Outlet />
         </div>
       </main>

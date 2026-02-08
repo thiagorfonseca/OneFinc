@@ -23,6 +23,7 @@ import {
   ParcelaCaixa,
 } from '../lib/cashflow';
 import { useAuth } from '../src/auth/AuthProvider';
+import { useModalControls } from '../hooks/useModalControls';
 import { useSearchParams } from 'react-router-dom';
 
 const getIncomeBilledValue = (income: any) =>
@@ -226,6 +227,7 @@ const Dashboard: React.FC = () => {
     return t === 'caixa' ? 'caixa' : 'dre';
   });
   const [cashChartMode, setCashChartMode] = useState<'linha' | 'coluna'>('linha');
+  const [isCashChartExpanded, setIsCashChartExpanded] = useState(false);
   const dreChartRef = useRef<HTMLDivElement | null>(null);
 
   const fetchDashboardData = useCallback(async () => {
@@ -826,40 +828,9 @@ const Dashboard: React.FC = () => {
     );
   };
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-96 text-gray-400">
-        <Loader2 size={48} className="animate-spin mb-4 text-brand-500" />
-        <p>Carregando indicadores financeiros...</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-800">Visão Geral</h1>
-        <p className="text-gray-500">Resumo financeiro em tempo real</p>
-      </div>
-
-      {/* Tabs internas */}
-      <div className="flex gap-2 mb-4">
-        <button
-          onClick={() => handleTab('dre')}
-          className={`px-4 py-2 text-sm rounded-lg border ${tab === 'dre' ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-700 border-gray-200'}`}
-        >
-          DRE
-        </button>
-        <button
-          onClick={() => handleTab('caixa')}
-          className={`px-4 py-2 text-sm rounded-lg border ${tab === 'caixa' ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-700 border-gray-200'}`}
-        >
-          Fluxo de Caixa
-        </button>
-      </div>
-
-      {/* Filtros de período */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center gap-3">
+  const renderPeriodFilters = (variant: 'page' | 'modal') => (
+    <div className={variant === 'modal' ? 'bg-white border border-gray-100 rounded-xl shadow-sm p-4' : 'bg-white p-4 rounded-xl shadow-sm border border-gray-100'}>
+      <div className="flex flex-col md:flex-row md:items-center gap-3">
         <div className="flex gap-2 flex-wrap">
           <button onClick={() => setPresetRange('today')} className="px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Dia</button>
           <button onClick={() => setPresetRange('week')} className="px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Semana</button>
@@ -894,6 +865,56 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
+    </div>
+  );
+
+  const cashChartModalControls = useModalControls({
+    isOpen: isCashChartExpanded,
+    onClose: () => setIsCashChartExpanded(false),
+  });
+
+  const clearModalControls = useModalControls({
+    isOpen: clearModalOpen,
+    onClose: () => {
+      setClearModalOpen(false);
+      setClearError(null);
+    },
+  });
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 text-gray-400">
+        <Loader2 size={48} className="animate-spin mb-4 text-brand-500" />
+        <p>Carregando indicadores financeiros...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-800">Visão Geral</h1>
+        <p className="text-gray-500">Resumo financeiro em tempo real</p>
+      </div>
+
+      {/* Tabs internas */}
+      <div className="flex gap-2 mb-4">
+        <button
+          onClick={() => handleTab('dre')}
+          className={`px-4 py-2 text-sm rounded-lg border ${tab === 'dre' ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-700 border-gray-200'}`}
+        >
+          DRE
+        </button>
+        <button
+          onClick={() => handleTab('caixa')}
+          className={`px-4 py-2 text-sm rounded-lg border ${tab === 'caixa' ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-700 border-gray-200'}`}
+        >
+          Fluxo de Caixa
+        </button>
+      </div>
+
+      {/* Filtros de período */}
+      {renderPeriodFilters('page')}
 
       {tab === 'dre' && (
         <>
@@ -1038,56 +1059,136 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-              <h3 className="text-lg font-semibold text-gray-800">Fluxo de Caixa (Saldo Previsto)+ Saldo Banco </h3>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setCashChartMode('linha')}
-                  className={`px-3 py-2 text-sm border rounded-lg ${cashChartMode === 'linha' ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-700 border-gray-200'}`}
-                >
-                  Linha
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCashChartMode('coluna')}
-                  className={`px-3 py-2 text-sm border rounded-lg ${cashChartMode === 'coluna' ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-700 border-gray-200'}`}
-                >
-                  Coluna
-                </button>
+          {!isCashChartExpanded && (
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+                <h3 className="text-lg font-semibold text-gray-800">Fluxo de Caixa (Saldo Previsto)+ Saldo Banco </h3>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCashChartMode('linha')}
+                    className={`px-3 py-2 text-sm border rounded-lg ${cashChartMode === 'linha' ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-700 border-gray-200'}`}
+                  >
+                    Linha
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCashChartMode('coluna')}
+                    className={`px-3 py-2 text-sm border rounded-lg ${cashChartMode === 'coluna' ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-700 border-gray-200'}`}
+                  >
+                    Coluna
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsCashChartExpanded(true)}
+                    className="px-3 py-2 text-sm border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50"
+                  >
+                    Tela cheia
+                  </button>
+                </div>
+              </div>
+              <div className="h-72">
+                {fluxoDiarioFiltrado.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    {cashChartMode === 'linha' ? (
+                      <LineChart data={cashChartData}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis dataKey="data" tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={formatDate} />
+                        <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={(val) => `R$${(val/1000).toFixed(1)}k`} />
+                        <Tooltip content={<CashflowTooltip />} />
+                        <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="4 4" />
+                        <Line type="linear" dataKey="saldo" stroke="#0ea5e9" strokeWidth={2} dot={false} />
+                      </LineChart>
+                    ) : (
+                      <BarChart data={cashChartData}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis dataKey="data" tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={formatDate} />
+                        <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={(val) => `R$${(val/1000).toFixed(1)}k`} />
+                        <Tooltip content={<CashflowTooltip />} />
+                        <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="4 4" />
+                        <Bar dataKey="saldo" name="Saldo" fill="#0ea5e9" radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    )}
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-gray-400 text-sm">
+                    Nenhuma previsão no período.
+                  </div>
+                )}
               </div>
             </div>
-            <div className="h-72">
-              {fluxoDiarioFiltrado.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  {cashChartMode === 'linha' ? (
-                    <LineChart data={cashChartData}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="data" tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={formatDate} />
-                      <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={(val) => `R$${(val/1000).toFixed(1)}k`} />
-                      <Tooltip content={<CashflowTooltip />} />
-                      <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="4 4" />
-                      <Line type="linear" dataKey="saldo" stroke="#0ea5e9" strokeWidth={2} dot={false} />
-                    </LineChart>
-                  ) : (
-                    <BarChart data={cashChartData}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="data" tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={formatDate} />
-                      <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={(val) => `R$${(val/1000).toFixed(1)}k`} />
-                      <Tooltip content={<CashflowTooltip />} />
-                      <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="4 4" />
-                      <Bar dataKey="saldo" name="Saldo" fill="#0ea5e9" radius={[6, 6, 0, 0]} />
-                    </BarChart>
-                  )}
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-full flex items-center justify-center text-gray-400 text-sm">
-                  Nenhuma previsão no período.
+          )}
+
+          {isCashChartExpanded && (
+            <div
+              className="fixed inset-0 z-50 bg-black/40 p-4 sm:p-6"
+              onClick={cashChartModalControls.onBackdropClick}
+            >
+              <div
+                className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 h-full flex flex-col"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800">Fluxo de Caixa (Saldo Previsto)+ Saldo Banco </h3>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCashChartMode('linha')}
+                      className={`px-3 py-2 text-sm border rounded-lg ${cashChartMode === 'linha' ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-700 border-gray-200'}`}
+                    >
+                      Linha
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCashChartMode('coluna')}
+                      className={`px-3 py-2 text-sm border rounded-lg ${cashChartMode === 'coluna' ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-700 border-gray-200'}`}
+                    >
+                      Coluna
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsCashChartExpanded(false)}
+                      className="px-3 py-2 text-sm border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50"
+                    >
+                      Fechar
+                    </button>
+                  </div>
                 </div>
-              )}
+                <div className="mb-4">
+                  {renderPeriodFilters('modal')}
+                </div>
+                <div className="relative flex-1 min-h-[360px]">
+                  {fluxoDiarioFiltrado.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      {cashChartMode === 'linha' ? (
+                        <LineChart data={cashChartData}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                          <XAxis dataKey="data" tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={formatDate} />
+                          <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={(val) => `R$${(val/1000).toFixed(1)}k`} />
+                          <Tooltip content={<CashflowTooltip />} />
+                          <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="4 4" />
+                          <Line type="linear" dataKey="saldo" stroke="#0ea5e9" strokeWidth={2} dot={false} />
+                        </LineChart>
+                      ) : (
+                        <BarChart data={cashChartData}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                          <XAxis dataKey="data" tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={formatDate} />
+                          <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={(val) => `R$${(val/1000).toFixed(1)}k`} />
+                          <Tooltip content={<CashflowTooltip />} />
+                          <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="4 4" />
+                          <Bar dataKey="saldo" name="Saldo" fill="#0ea5e9" radius={[6, 6, 0, 0]} />
+                        </BarChart>
+                      )}
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-gray-400 text-sm">
+                      Nenhuma previsão no período.
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Fluxo previsto mensal (período selecionado) */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
@@ -1196,8 +1297,14 @@ const Dashboard: React.FC = () => {
       )}
 
       {clearModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-red-900/20 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full border border-red-200">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-red-900/20 p-4"
+          onClick={clearModalControls.onBackdropClick}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl max-w-md w-full border border-red-200"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-start gap-3 p-5 border-b border-red-100">
               <div className="h-10 w-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center">
                 <AlertTriangle size={20} />

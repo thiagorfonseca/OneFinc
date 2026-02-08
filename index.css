@@ -369,3 +369,30 @@
     transform: translateY(0);
   }
 }
+
+.rte-editor:empty::before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+}
+
+.rte-editor {
+  white-space: pre-wrap;
+}
+
+.rte-editor ul,
+.rte-content ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+  margin: 0.25rem 0;
+}
+
+.rte-editor ol,
+.rte-content ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+  margin: 0.25rem 0;
+}
+
+.rte-content p {
+  margin: 0.25rem 0;
+}

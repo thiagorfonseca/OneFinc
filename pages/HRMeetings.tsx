@@ -3,6 +3,8 @@ import { Calendar, CheckCircle2, Clock, Download, Link2, Plus, Search, Users } f
 import { supabase } from '../lib/supabase';
 import { formatDate } from '../lib/utils';
 import { useAuth } from '../src/auth/AuthProvider';
+import RichTextEditor from '../components/RichTextEditor';
+import { useModalControls } from '../hooks/useModalControls';
 
 type MeetingStatus = 'Agendada' | 'Em andamento' | 'Finalizada' | 'Cancelada';
 
@@ -125,6 +127,19 @@ const HRMeetings: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [detailMeeting, setDetailMeeting] = useState<any | null>(null);
+
+  const formModalControls = useModalControls({
+    isOpen: showModal,
+    onClose: () => {
+      setShowModal(false);
+      setEditingId(null);
+    },
+  });
+
+  const detailModalControls = useModalControls({
+    isOpen: !!detailMeeting,
+    onClose: () => setDetailMeeting(null),
+  });
 
   const [filters, setFilters] = useState({
     search: '',
@@ -830,8 +845,14 @@ const HRMeetings: React.FC = () => {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl p-6 space-y-4">
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+          onClick={formModalControls.onBackdropClick}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-3xl p-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-800">
                 {editingId ? 'Editar reunião' : 'Adicionar reunião'}
@@ -971,20 +992,20 @@ const HRMeetings: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Assuntos / Pauta</label>
-                <textarea
+                <RichTextEditor
                   value={form.agenda}
-                  onChange={(e) => setForm((prev) => ({ ...prev, agenda: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg min-h-[90px]"
+                  onChange={(html) => setForm((prev) => ({ ...prev, agenda: html }))}
                   placeholder="Digite a pauta da reunião"
+                  minHeight={120}
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Próximos passos</label>
-                <textarea
+                <RichTextEditor
                   value={form.nextSteps}
-                  onChange={(e) => setForm((prev) => ({ ...prev, nextSteps: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg min-h-[90px]"
+                  onChange={(html) => setForm((prev) => ({ ...prev, nextSteps: html }))}
                   placeholder="Defina os próximos passos"
+                  minHeight={120}
                 />
               </div>
 
@@ -1022,8 +1043,14 @@ const HRMeetings: React.FC = () => {
       )}
 
       {detailMeeting && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl p-6 space-y-4">
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+          onClick={detailModalControls.onBackdropClick}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-3xl p-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs text-gray-500">Reunião interna</p>
@@ -1100,11 +1127,25 @@ const HRMeetings: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="rounded-xl border border-gray-100 p-3">
                 <p className="text-xs text-gray-500 mb-2">Assuntos / Pauta</p>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap">{detailMeeting.agenda || 'Sem pauta registrada.'}</p>
+                {detailMeeting.agenda ? (
+                  <div
+                    className="text-sm text-gray-700 rte-content"
+                    dangerouslySetInnerHTML={{ __html: detailMeeting.agenda }}
+                  />
+                ) : (
+                  <p className="text-sm text-gray-700">Sem pauta registrada.</p>
+                )}
               </div>
               <div className="rounded-xl border border-gray-100 p-3">
                 <p className="text-xs text-gray-500 mb-2">Próximos passos</p>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap">{detailMeeting.next_steps || 'Nenhum próximo passo registrado.'}</p>
+                {detailMeeting.next_steps ? (
+                  <div
+                    className="text-sm text-gray-700 rte-content"
+                    dangerouslySetInnerHTML={{ __html: detailMeeting.next_steps }}
+                  />
+                ) : (
+                  <p className="text-sm text-gray-700">Nenhum próximo passo registrado.</p>
+                )}
               </div>
             </div>
 

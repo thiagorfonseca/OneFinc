@@ -44,6 +44,10 @@ const HRFeedback = lazy(() => import('./pages/HRFeedback'));
 const HRMeetings = lazy(() => import('./pages/HRMeetings'));
 const HRArchetypes = lazy(() => import('./pages/HRArchetypes'));
 const HRValues = lazy(() => import('./pages/HRValues'));
+const PublicArchetypeFormPage = lazy(() => import('./src/features/archetype/pages/PublicArchetypeFormPage'));
+const PublicArchetypeResultPage = lazy(() => import('./src/features/archetype/pages/PublicArchetypeResultPage'));
+const AnalyticsArchetypePage = lazy(() => import('./src/features/archetype/pages/AnalyticsArchetypePage'));
+const PublicLinksManagementPage = lazy(() => import('./src/features/archetype/pages/PublicLinksManagementPage'));
 
 function App() {
   return (
@@ -56,6 +60,8 @@ function App() {
             <Route path="/auth/reset" element={<AuthReset />} />
             <Route path="/accept-invite" element={<AcceptInvite />} />
             <Route path="/access-denied" element={<AccessDenied />} />
+            <Route path="/public/perfil/:publicToken" element={<PublicArchetypeFormPage />} />
+            <Route path="/public/perfil/:publicToken/resultado" element={<PublicArchetypeResultPage />} />
 
             <Route path="/" element={
               <ProtectedRoute page="/">
@@ -90,6 +96,11 @@ function App() {
             <Route path="/settings" element={
               <ProtectedRoute>
                 <Settings />
+              </ProtectedRoute>
+            } />
+            <Route path="/settings/perfil-links" element={
+              <ProtectedRoute page="/settings/perfil-links">
+                <PublicLinksManagementPage />
               </ProtectedRoute>
             } />
 
@@ -190,6 +201,11 @@ function App() {
             <Route path="/hr/archetypes" element={
               <ProtectedRoute page="/hr/archetypes">
                 <HRArchetypes />
+              </ProtectedRoute>
+            } />
+            <Route path="/analytics/perfil" element={
+              <ProtectedRoute page="/analytics/perfil">
+                <AnalyticsArchetypePage />
               </ProtectedRoute>
             } />
             <Route path="/hr/values" element={

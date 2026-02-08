@@ -150,6 +150,7 @@ const Settings: React.FC = () => {
     { value: '/settings?section=profissionais', label: 'Configurações • Profissionais' },
     { value: '/settings?section=fornecedores', label: 'Configurações • Fornecedores' },
     { value: '/settings?section=usuarios', label: 'Configurações • Usuários' },
+    { value: '/settings/perfil-links', label: 'Configurações • Links de perfil' },
     { value: '/commercial/dashboard', label: 'Comercial • Dashboard' },
     { value: '/commercial/ranking', label: 'Comercial • Ranking dos clientes' },
     { value: '/commercial/recurrence', label: 'Comercial • Recorrência' },
@@ -164,6 +165,7 @@ const Settings: React.FC = () => {
     { value: '/hr/meetings', label: 'Recursos Humanos • Reuniões' },
     { value: '/hr/archetypes', label: 'Recursos Humanos • Arquétipos' },
     { value: '/hr/values', label: 'Recursos Humanos • Teoria de valores' },
+    { value: '/analytics/perfil', label: 'Analytics • Perfil comportamental' },
   ];
   const PAGE_LABEL_MAP = useMemo(() => Object.fromEntries(PAGE_OPTIONS.map((p) => [p.value, p.label])), []);
 
@@ -252,6 +254,56 @@ const Settings: React.FC = () => {
   const editPageMenuRef = useRef<HTMLDetailsElement | null>(null);
 
   const onlyDigits = (value: string) => value.replace(/\D/g, '');
+  const GEO_TIMEOUT_MS = 4500;
+
+  const geocodeCep = async (cep: string, timeoutMs = GEO_TIMEOUT_MS) => {
+    const cleaned = onlyDigits(cep);
+    if (cleaned.length !== 8) return null;
+    const url = `https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(cleaned)}&country=Brazil&format=json&limit=1`;
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      const res = await fetch(url, { headers: { 'Accept-Language': 'pt-BR' }, signal: controller.signal });
+      clearTimeout(timer);
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (!data || !data[0]) return null;
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    } catch {
+      return null;
+    }
+  };
+
+  const saveCustomerGeo = async (customerId: string, cep: string | null) => {
+    if (!customerId) return;
+    if (!cep) {
+      await supabase.from('customers').update({ lat: null, lng: null }).eq('id', customerId);
+      return;
+    }
+    const geo = await geocodeCep(cep);
+    if (!geo) return;
+    await supabase.from('customers').update({ lat: geo.lat, lng: geo.lng }).eq('id', customerId);
+  };
+
+  const geocodeCustomersInBackground = async (rows: Array<{ id: string; cep: string | null }>) => {
+    const queue = rows
+      .map((row) => ({ id: row.id, cep: row.cep ? onlyDigits(row.cep) : '' }))
+      .filter((row) => row.cep.length === 8);
+    if (!queue.length) return;
+    const concurrency = 4;
+    const pending = [...queue];
+    await Promise.all(
+      Array.from({ length: concurrency }).map(async () => {
+        while (pending.length) {
+          const row = pending.shift();
+          if (!row) return;
+          const geo = await geocodeCep(row.cep);
+          if (!geo) continue;
+          await supabase.from('customers').update({ lat: geo.lat, lng: geo.lng }).eq('id', row.id);
+        }
+      })
+    );
+  };
 
   const clinicPages = useMemo(() => {
     return (clinic?.paginas_liberadas || []).map((page) => page.trim()).filter(Boolean);
@@ -495,8 +547,11 @@ const Settings: React.FC = () => {
           cep: c.cep || null,
           clinic_id: clinicId,
         }));
-        const { error } = await supabase.from('customers').insert(payload);
+        const { data: inserted, error } = await supabase.from('customers').insert(payload).select('id, cep');
         if (error) throw error;
+        if (inserted && inserted.length) {
+          void geocodeCustomersInBackground(inserted as Array<{ id: string; cep: string | null }>);
+        }
       }
 
       setCustomerImportReport({ imported: toInsert.length, rejected });
@@ -952,13 +1007,21 @@ const Settings: React.FC = () => {
 
     setAddingCustomer(true);
     try {
-      const { error } = await supabase.from('customers').insert([{
+      const payload = {
         name: customerForm.name,
         cpf: cpfDigits || null,
         cep: cepDigits || null,
         clinic_id: clinicId
-      }]);
+      };
+      const { data: inserted, error } = await supabase
+        .from('customers')
+        .insert([payload])
+        .select('id, cep');
       if (error) throw error;
+      const row = inserted?.[0];
+      if (row?.id) {
+        void saveCustomerGeo(row.id, cepDigits || null);
+      }
       setCustomerForm({ name: '', cpf: '', cep: '' });
       fetchCustomers();
     } catch (err: any) {
@@ -1008,6 +1071,7 @@ const Settings: React.FC = () => {
         clinic_id: clinicId
       }).eq('id', editingCustomerId);
       if (error) throw error;
+      void saveCustomerGeo(editingCustomerId, cepDigits || null);
       setShowCustomerModal(false);
       setEditingCustomerId(null);
       setCustomerEditForm({ name: '', cpf: '', cep: '' });

@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, FileText, Settings, LogOut, Menu, ChevronsLeft, ChevronsRight, BarChart2, Briefcase, ChevronDown, ChevronRight, Tag, CreditCard, User, CheckSquare, BookOpen, Users, MessageCircle, Calculator, Target, Calendar } from 'lucide-react';
+import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, FileText, Settings, LogOut, Menu, ChevronsLeft, ChevronsRight, BarChart2, Briefcase, ChevronDown, ChevronRight, Tag, CreditCard, User, CheckSquare, BookOpen, Users, MessageCircle, Calculator, Target, Calendar, Link2 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import ClinicSwitcher from './admin/ClinicSwitcher';
@@ -98,6 +98,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         { name: 'Procedimentos', href: '/settings?section=procedimentos', icon: CheckSquare },
         { name: 'Profissionais', href: '/settings?section=profissionais', icon: User },
         { name: 'Fornecedores', href: '/settings?section=fornecedores', icon: FileText },
+        { name: 'Links de Perfil', href: '/settings/perfil-links', icon: Link2 },
         { name: 'Usuários', href: '/settings?section=usuarios', icon: Users, adminOnly: true },
       ],
     },
@@ -343,7 +344,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="w-8"></div> {/* Spacer for menu button */}
           <span className="font-semibold text-gray-700">OneFinc</span>
         </header>
-        <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-3">
+        <div className="py-4 md:py-8 px-4 md:px-6 max-w-screen-2xl mx-auto space-y-3">
           {isSystemAdmin && (
             <div className="flex justify-end">
               <ClinicSwitcher />

@@ -118,6 +118,151 @@ export type Database = {
           },
         ]
       }
+      archetype_answers: {
+        Row: {
+          clinic_id: string
+          created_at: string
+          id: string
+          question_id: number
+          respondent_id: string | null
+          scored_profile: string
+          selected_word: string
+        }
+        Insert: {
+          clinic_id: string
+          created_at?: string
+          id?: string
+          question_id: number
+          respondent_id?: string | null
+          scored_profile: string
+          selected_word: string
+        }
+        Update: {
+          clinic_id?: string
+          created_at?: string
+          id?: string
+          question_id?: number
+          respondent_id?: string | null
+          scored_profile?: string
+          selected_word?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "archetype_answers_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "archetype_answers_respondent_id_fkey"
+            columns: ["respondent_id"]
+            isOneToOne: false
+            referencedRelation: "archetype_respondents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      archetype_public_links: {
+        Row: {
+          audience_type: string
+          clinic_id: string
+          created_at: string
+          created_by_user_id: string | null
+          id: string
+          is_active: boolean
+          token: string
+        }
+        Insert: {
+          audience_type?: string
+          clinic_id: string
+          created_at?: string
+          created_by_user_id?: string | null
+          id?: string
+          is_active?: boolean
+          token: string
+        }
+        Update: {
+          audience_type?: string
+          clinic_id?: string
+          created_at?: string
+          created_by_user_id?: string | null
+          id?: string
+          is_active?: boolean
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "archetype_public_links_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      archetype_respondents: {
+        Row: {
+          audience_type: string
+          city: string | null
+          clinic_id: string
+          consent_lgpd: boolean
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          profession: string | null
+          public_token: string
+          scores: Json
+          submitted_by_user_id: string | null
+          top_profile: string
+          top_profiles: string[] | null
+        }
+        Insert: {
+          audience_type?: string
+          city?: string | null
+          clinic_id: string
+          consent_lgpd?: boolean
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          profession?: string | null
+          public_token: string
+          scores: Json
+          submitted_by_user_id?: string | null
+          top_profile: string
+          top_profiles?: string[] | null
+        }
+        Update: {
+          audience_type?: string
+          city?: string | null
+          clinic_id?: string
+          consent_lgpd?: boolean
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          profession?: string | null
+          public_token?: string
+          scores?: Json
+          submitted_by_user_id?: string | null
+          top_profile?: string
+          top_profiles?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "archetype_respondents_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bank_accounts: {
         Row: {
           ativo: boolean | null
@@ -597,6 +742,8 @@ export type Database = {
           cpf: string | null
           created_at: string | null
           id: string
+          lat: number | null
+          lng: number | null
           name: string
         }
         Insert: {
@@ -605,6 +752,8 @@ export type Database = {
           cpf?: string | null
           created_at?: string | null
           id?: string
+          lat?: number | null
+          lng?: number | null
           name: string
         }
         Update: {
@@ -613,6 +762,8 @@ export type Database = {
           cpf?: string | null
           created_at?: string | null
           id?: string
+          lat?: number | null
+          lng?: number | null
           name?: string
         }
         Relationships: [

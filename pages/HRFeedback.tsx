@@ -3,6 +3,8 @@ import { Calendar, Download, Plus, Search, Users } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { formatDate } from '../lib/utils';
 import { useAuth } from '../src/auth/AuthProvider';
+import RichTextEditor from '../components/RichTextEditor';
+import { useModalControls } from '../hooks/useModalControls';
 
 type FeedbackType = 'Positivo' | 'Construtivo' | 'Corretivo' | 'Outros';
 
@@ -107,6 +109,19 @@ const HRFeedback: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [detailFeedback, setDetailFeedback] = useState<any | null>(null);
+
+  const formModalControls = useModalControls({
+    isOpen: showModal,
+    onClose: () => {
+      setShowModal(false);
+      setEditingId(null);
+    },
+  });
+
+  const detailModalControls = useModalControls({
+    isOpen: !!detailFeedback,
+    onClose: () => setDetailFeedback(null),
+  });
 
   const [filters, setFilters] = useState({
     departmentId: '',
@@ -616,8 +631,14 @@ const HRFeedback: React.FC = () => {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 space-y-4">
+        <div
+          className="fixed inset-0 bg-black/40 z-50 flex items-start justify-center overflow-y-auto p-4 sm:p-6"
+          onClick={formModalControls.onBackdropClick}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 space-y-4 max-h-[calc(100vh-2rem)] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-800">
                 {editingId ? 'Editar feedback' : 'Novo feedback'}
@@ -742,10 +763,11 @@ const HRFeedback: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Descrição do feedback/Plano de ação</label>
-                <textarea
+                <RichTextEditor
                   value={form.description}
-                  onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg min-h-[120px]"
+                  onChange={(html) => setForm((prev) => ({ ...prev, description: html }))}
+                  placeholder="Descreva o feedback e o plano de ação"
+                  minHeight={140}
                 />
               </div>
               <div>
@@ -772,8 +794,14 @@ const HRFeedback: React.FC = () => {
       )}
 
       {detailFeedback && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl p-6 space-y-4">
+        <div
+          className="fixed inset-0 bg-black/40 z-50 flex items-start justify-center overflow-y-auto p-4 sm:p-6"
+          onClick={detailModalControls.onBackdropClick}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-3xl p-6 space-y-4 max-h-[calc(100vh-2rem)] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs text-gray-500">Feedback</p>
@@ -813,7 +841,14 @@ const HRFeedback: React.FC = () => {
             </div>
             <div className="rounded-xl border border-gray-100 p-3">
               <p className="text-xs text-gray-500 mb-2">Descrição / Plano de ação</p>
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">{detailFeedback.description || 'Sem descrição.'}</p>
+              {detailFeedback.description ? (
+                <div
+                  className="text-sm text-gray-700 rte-content"
+                  dangerouslySetInnerHTML={{ __html: detailFeedback.description }}
+                />
+              ) : (
+                <p className="text-sm text-gray-700">Sem descrição.</p>
+              )}
             </div>
             <div className="rounded-xl border border-gray-100 p-3">
               <p className="text-xs text-gray-500 mb-2">Participantes</p>

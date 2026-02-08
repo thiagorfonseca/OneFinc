@@ -40,6 +40,45 @@ export async function fetchCommercialData(params: { clinicId?: string | null; fr
   };
 }
 
+export interface CommercialGeoDataset {
+  revenues: Array<Pick<RevenueRow, 'paciente' | 'valor' | 'valor_liquido' | 'data_competencia'>>;
+  customers: Array<Pick<CustomerRow, 'id' | 'name' | 'cep' | 'lat' | 'lng'>>;
+}
+
+export async function fetchCommercialGeoData(params: { clinicId?: string | null; from?: string; to?: string }): Promise<CommercialGeoDataset> {
+  const { clinicId, from, to } = params;
+  if (!clinicId) {
+    return { revenues: [], customers: [] };
+  }
+
+  let revQuery = supabase
+    .from('revenues')
+    .select('paciente, valor, valor_liquido, data_competencia')
+    .order('data_competencia', { ascending: true });
+  revQuery = revQuery.eq('clinic_id', clinicId);
+  if (from) revQuery = revQuery.gte('data_competencia', from);
+  if (to) revQuery = revQuery.lte('data_competencia', to);
+  const { data: revenues } = await revQuery;
+
+  let custQuery = supabase
+    .from('customers')
+    .select('id, name, cep, lat, lng')
+    .order('name', { ascending: true });
+  custQuery = custQuery.eq('clinic_id', clinicId);
+  custQuery = custQuery.not('cep', 'is', null).neq('cep', '');
+  const { data: customers } = await custQuery;
+
+  return {
+    revenues: revenues || [],
+    customers: customers || [],
+  };
+}
+
+export async function updateCustomersGeo(ids: string[], geo: { lat: number; lng: number }) {
+  if (!ids.length) return;
+  await supabase.from('customers').update({ lat: geo.lat, lng: geo.lng }).in('id', ids);
+}
+
 export function buildRanking(dataset: CommercialDataset) {
   const byCustomer: Record<string, {
     faturamento: number;

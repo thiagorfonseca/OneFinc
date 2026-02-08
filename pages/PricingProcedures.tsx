@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CheckSquare, Download, Loader2, Plus, Upload } from 'lucide-react';
+import { CheckSquare, Download, Loader2, Pencil, Plus, Trash2, Upload } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../src/auth/AuthProvider';
 
@@ -265,32 +265,38 @@ const PricingProcedures: React.FC = () => {
                     <td className="px-4 py-2 text-gray-700">{p.tempo_minutos ?? '-'}</td>
                     <td className="px-4 py-2 text-gray-700">{p.valor_cobrado ?? '-'}</td>
                     <td className="px-4 py-2 text-right">
-                      <button
-                        onClick={() => {
-                          setEditingProcedureId(p.id);
-                          setProcedureForm({
-                            categoria: p.categoria || '',
-                            procedimento: p.procedimento || '',
-                            valor_cobrado: p.valor_cobrado || '',
-                            custo_insumo: p.custo_insumo || '',
-                            tempo_minutos: p.tempo_minutos || '',
-                          });
-                          setShowProcedureModal(true);
-                        }}
-                        className="text-brand-600 text-sm mr-3"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={async () => {
-                          if (!confirm('Excluir procedimento?')) return;
-                          const { error } = await supabase.from('procedures').delete().eq('id', p.id);
-                          if (!error) fetchProcedures();
-                        }}
-                        className="text-red-600 text-sm"
-                      >
-                        Apagar
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          title="Editar"
+                          onClick={() => {
+                            setEditingProcedureId(p.id);
+                            setProcedureForm({
+                              categoria: p.categoria || '',
+                              procedimento: p.procedimento || '',
+                              valor_cobrado: p.valor_cobrado || '',
+                              custo_insumo: p.custo_insumo || '',
+                              tempo_minutos: p.tempo_minutos || '',
+                            });
+                            setShowProcedureModal(true);
+                          }}
+                          className="w-8 h-8 rounded-full border border-brand-100 text-brand-600 inline-flex items-center justify-center hover:border-brand-200"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          title="Apagar"
+                          onClick={async () => {
+                            if (!confirm('Excluir procedimento?')) return;
+                            const { error } = await supabase.from('procedures').delete().eq('id', p.id);
+                            if (!error) fetchProcedures();
+                          }}
+                          className="w-8 h-8 rounded-full border border-rose-100 text-rose-600 inline-flex items-center justify-center hover:border-rose-200"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

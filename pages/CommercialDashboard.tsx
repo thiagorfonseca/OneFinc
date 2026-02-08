@@ -11,20 +11,40 @@ const CommercialDashboard: React.FC = () => {
   const [revenues, setRevenues] = useState<any[]>([]);
   const [ranking, setRanking] = useState<any[]>([]);
   const [recorrencia, setRecorrencia] = useState<{ percentual: number }>({ percentual: 0 });
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [draftFrom, setDraftFrom] = useState('');
+  const [draftTo, setDraftTo] = useState('');
 
   useEffect(() => {
     const load = async () => {
       if (!clinicId && !isAdmin) return;
       setLoading(true);
-      const data = await fetchCommercialData({ clinicId: isAdmin ? selectedClinicId || undefined : clinicId });
+      const data = await fetchCommercialData({
+        clinicId: isAdmin ? selectedClinicId || undefined : clinicId,
+        from: from || undefined,
+        to: to || undefined,
+      });
       setRevenues(data.revenues);
       setRanking(buildRanking(data));
-      const rec = buildRecurrence(data);
+      const rec = buildRecurrence(data, from || undefined, to || undefined);
       setRecorrencia({ percentual: rec.percentual });
       setLoading(false);
     };
     load();
-  }, [clinicId, isAdmin, selectedClinicId]);
+  }, [clinicId, isAdmin, selectedClinicId, from, to]);
+
+  const applyDateFilter = () => {
+    setFrom(draftFrom);
+    setTo(draftTo);
+  };
+
+  const clearDateFilter = () => {
+    setDraftFrom('');
+    setDraftTo('');
+    setFrom('');
+    setTo('');
+  };
 
   const vendasSeries = useMemo(() => {
     const map: Record<string, number> = {};
@@ -63,6 +83,48 @@ const CommercialDashboard: React.FC = () => {
     <div className="space-y-4">
       <h1 className="text-2xl font-bold text-gray-800">Comercial • Dashboard</h1>
       <p className="text-gray-500">Visão consolidada de vendas, ticket e recorrência.</p>
+
+      <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100 text-sm text-gray-600">
+          Filtro de data
+        </div>
+        <div className="px-4 py-3 flex flex-wrap items-center gap-3 text-sm">
+          <label className="flex items-center gap-2 text-gray-600">
+            <span>De</span>
+            <input
+              type="date"
+              value={draftFrom}
+              onChange={(e) => setDraftFrom(e.target.value)}
+              className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700"
+            />
+          </label>
+          <label className="flex items-center gap-2 text-gray-600">
+            <span>Até</span>
+            <input
+              type="date"
+              value={draftTo}
+              onChange={(e) => setDraftTo(e.target.value)}
+              className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={applyDateFilter}
+            className="px-3 py-2 text-sm border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50"
+          >
+            Aplicar
+          </button>
+          {(from || to || draftFrom || draftTo) && (
+            <button
+              type="button"
+              onClick={clearDateFilter}
+              className="px-3 py-2 text-sm border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50"
+            >
+              Limpar
+            </button>
+          )}
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white border border-gray-100 rounded-lg p-4">
