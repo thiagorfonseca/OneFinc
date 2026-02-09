@@ -1665,6 +1665,24 @@ export type Database = {
       }
       is_clinic_admin: { Args: { p_clinic_id: string }; Returns: boolean }
       is_clinic_member: { Args: { p_clinic_id: string }; Returns: boolean }
+      submit_archetype_response: {
+        Args: {
+          p_public_token: string
+          p_clinic_id: string
+          p_audience_type: string
+          p_name: string
+          p_email: string | null
+          p_phone: string | null
+          p_profession: string | null
+          p_city: string | null
+          p_consent_lgpd: boolean
+          p_scores: Json
+          p_top_profile: string
+          p_top_profiles: string[] | null
+          p_answers: Json
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

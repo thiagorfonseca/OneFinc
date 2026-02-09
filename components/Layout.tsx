@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, FileText, Settings, LogOut, Menu, ChevronsLeft, ChevronsRight, BarChart2, Briefcase, ChevronDown, ChevronRight, Tag, CreditCard, User, CheckSquare, BookOpen, Users, MessageCircle, Calculator, Target, Calendar, Link2 } from 'lucide-react';
+import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, FileText, Settings, LogOut, Menu, ChevronsLeft, ChevronsRight, BarChart2, Briefcase, ChevronDown, ChevronRight, Tag, CreditCard, User, CheckSquare, BookOpen, Users, MessageCircle, Calculator, Target, Calendar } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import ClinicSwitcher from './admin/ClinicSwitcher';
