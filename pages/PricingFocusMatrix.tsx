@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowDownRight, ArrowUpRight, Percent, Target, Wallet } from 'lucide-react';
+import { Target } from 'lucide-react';
 import { ResponsiveContainer, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Legend } from 'recharts';
 import { supabase } from '../lib/supabase';
 import { formatCurrency } from '../lib/utils';
@@ -112,10 +112,6 @@ const PricingFocusMatrix: React.FC = () => {
     });
   }, [procedures, costPerHour, totalRates]);
 
-  const [showEstrela, setShowEstrela] = useState(true);
-  const [showVaca, setShowVaca] = useState(true);
-  const [showAbacaxi, setShowAbacaxi] = useState(true);
-
   const chartModalControls = useModalControls({
     isOpen: isChartExpanded,
     onClose: () => setIsChartExpanded(false),
@@ -166,25 +162,11 @@ const PricingFocusMatrix: React.FC = () => {
         <p className="text-gray-500">Precificação • Matriz de Foco</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-gray-100 p-4">
-          <div className="flex items-center gap-2 text-gray-500 text-sm">
-            <Wallet size={16} /> Custos totais
-          </div>
-          <p className="mt-2 text-xl font-semibold text-gray-800">{formatCurrency(totalCosts || 0)}</p>
+      <div className="bg-blue-50 rounded-xl border border-blue-100 p-4">
+        <div className="flex items-center gap-2 text-blue-700 text-sm">
+          <Target size={16} /> custo hora clinica
         </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-4">
-          <div className="flex items-center gap-2 text-gray-500 text-sm">
-            <Target size={16} /> Custo por hora
-          </div>
-          <p className="mt-2 text-xl font-semibold text-blue-700">{formatCurrency(costPerHour || 0)}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-4">
-          <div className="flex items-center gap-2 text-gray-500 text-sm">
-            <Percent size={16} /> Taxas totais
-          </div>
-          <p className="mt-2 text-xl font-semibold text-gray-800">{(totalRates * 100).toFixed(1)}%</p>
-        </div>
+        <p className="mt-2 text-xl font-semibold text-blue-700">{formatCurrency(costPerHour || 0)}</p>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-100 p-4">
@@ -240,30 +222,6 @@ const PricingFocusMatrix: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-gray-100 p-4">
-          <div className="flex items-center gap-2 text-green-600 text-sm font-semibold">
-            <ArrowUpRight size={16} /> ⭐ Estrelas
-          </div>
-          <p className="mt-2 text-2xl font-semibold text-gray-800">{buckets.estrela.length}</p>
-          <p className="text-xs text-gray-500">51% a 1000% do custo hora</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-4">
-          <div className="flex items-center gap-2 text-blue-600 text-sm font-semibold">
-            <Target size={16} /> 🐄 Vaca leiteira
-          </div>
-          <p className="mt-2 text-2xl font-semibold text-gray-800">{buckets.vaca.length}</p>
-          <p className="text-xs text-gray-500">0% a 50% do custo hora</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-4">
-          <div className="flex items-center gap-2 text-red-600 text-sm font-semibold">
-            <ArrowDownRight size={16} /> 🍍 Abacaxi
-          </div>
-          <p className="mt-2 text-2xl font-semibold text-gray-800">{buckets.abacaxi.length}</p>
-          <p className="text-xs text-gray-500">Abaixo de 0% do custo hora</p>
-        </div>
-      </div>
-
       {!isChartExpanded && (
         <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
@@ -281,29 +239,6 @@ const PricingFocusMatrix: React.FC = () => {
                 Tela cheia
               </button>
             </div>
-          </div>
-          <div className="flex flex-wrap gap-3 text-xs text-gray-600 mb-4">
-            <button
-              type="button"
-              onClick={() => setShowEstrela((prev) => !prev)}
-              className={`px-3 py-1 rounded-full border ${showEstrela ? 'border-green-200 bg-green-50 text-green-700' : 'border-gray-200 text-gray-500'}`}
-            >
-              ⭐ Estrelas
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowVaca((prev) => !prev)}
-              className={`px-3 py-1 rounded-full border ${showVaca ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-500'}`}
-            >
-              🐄 Vaca leiteira
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowAbacaxi((prev) => !prev)}
-              className={`px-3 py-1 rounded-full border ${showAbacaxi ? 'border-red-200 bg-red-50 text-red-700' : 'border-gray-200 text-gray-500'}`}
-            >
-              🍍 Abacaxi
-            </button>
           </div>
           <div className="h-[420px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -326,9 +261,9 @@ const PricingFocusMatrix: React.FC = () => {
                 <Tooltip content={<TooltipContent />} />
                 <Legend />
                 <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="4 4" />
-                {showEstrela && <Scatter name="Estrela" data={buckets.estrela} fill="#22c55e" />}
-                {showVaca && <Scatter name="Vaca leiteira" data={buckets.vaca} fill="#3b82f6" />}
-                {showAbacaxi && <Scatter name="Abacaxi" data={buckets.abacaxi} fill="#ef4444" />}
+                <Scatter name="Estrela" data={buckets.estrela} fill="#22c55e" />
+                <Scatter name="Vaca leiteira" data={buckets.vaca} fill="#3b82f6" />
+                <Scatter name="Abacaxi" data={buckets.abacaxi} fill="#ef4444" />
               </ScatterChart>
             </ResponsiveContainer>
           </div>
@@ -361,30 +296,6 @@ const PricingFocusMatrix: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-3 text-xs text-gray-600 mb-4">
-              <button
-                type="button"
-                onClick={() => setShowEstrela((prev) => !prev)}
-                className={`px-3 py-1 rounded-full border ${showEstrela ? 'border-green-200 bg-green-50 text-green-700' : 'border-gray-200 text-gray-500'}`}
-              >
-                ⭐ Estrelas
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowVaca((prev) => !prev)}
-                className={`px-3 py-1 rounded-full border ${showVaca ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-500'}`}
-              >
-                🐄 Vaca leiteira
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowAbacaxi((prev) => !prev)}
-                className={`px-3 py-1 rounded-full border ${showAbacaxi ? 'border-red-200 bg-red-50 text-red-700' : 'border-gray-200 text-gray-500'}`}
-              >
-                🍍 Abacaxi
-              </button>
-            </div>
-
             <div className="relative flex-1 min-h-[360px]">
               <ResponsiveContainer width="100%" height="100%">
                 <ScatterChart margin={{ top: 20, right: 30, left: 10, bottom: 10 }}>
@@ -406,9 +317,9 @@ const PricingFocusMatrix: React.FC = () => {
                   <Tooltip content={<TooltipContent />} />
                   <Legend />
                   <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="4 4" />
-                  {showEstrela && <Scatter name="Estrela" data={buckets.estrela} fill="#22c55e" />}
-                  {showVaca && <Scatter name="Vaca leiteira" data={buckets.vaca} fill="#3b82f6" />}
-                  {showAbacaxi && <Scatter name="Abacaxi" data={buckets.abacaxi} fill="#ef4444" />}
+                  <Scatter name="Estrela" data={buckets.estrela} fill="#22c55e" />
+                  <Scatter name="Vaca leiteira" data={buckets.vaca} fill="#3b82f6" />
+                  <Scatter name="Abacaxi" data={buckets.abacaxi} fill="#ef4444" />
                 </ScatterChart>
               </ResponsiveContainer>
             </div>

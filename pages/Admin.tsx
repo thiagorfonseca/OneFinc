@@ -69,25 +69,26 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
   const navigate = useNavigate();
   const { isSystemAdmin, selectedClinicId, setSelectedClinicId } = useAuth();
   const PAGE_OPTIONS = [
-    { value: '/', label: 'Dashboard' },
+    { value: '/', label: 'Dash Financeiro' },
     { value: '/incomes', label: 'Receitas' },
     { value: '/expenses', label: 'Despesas' },
     { value: '/card-analysis', label: 'Análise de cartão' },
     { value: '/reconciliation', label: 'Conciliação bancária' },
     { value: '/profile', label: 'Meu perfil' },
-    { value: '/assistant', label: 'Assistente IA' },
+    { value: '/assistant', label: 'Assistente AI' },
     { value: '/contents/courses', label: 'Conteúdos • Cursos' },
     { value: '/contents/trainings', label: 'Conteúdos • Treinamentos' },
     { value: '/accounts', label: 'Contas bancárias' },
-    { value: '/settings', label: 'Configurações' },
-    { value: '/settings?section=categorias', label: 'Configurações • Categorias' },
-    { value: '/settings?section=taxas', label: 'Configurações • Taxas' },
-    { value: '/settings?section=clientes', label: 'Configurações • Clientes' },
-    { value: '/settings?section=procedimentos', label: 'Configurações • Procedimentos' },
-    { value: '/settings?section=profissionais', label: 'Configurações • Profissionais' },
-    { value: '/settings?section=fornecedores', label: 'Configurações • Fornecedores' },
-    { value: '/settings?section=usuarios', label: 'Configurações • Usuários' },
-    { value: '/commercial/dashboard', label: 'Comercial • Dashboard' },
+    { value: '/settings', label: 'Minha Clínica' },
+    { value: '/settings?section=geral', label: 'Minha Clínica • Informações gerais' },
+    { value: '/settings?section=categorias', label: 'Minha Clínica • Categorias' },
+    { value: '/settings?section=taxas', label: 'Minha Clínica • Taxas' },
+    { value: '/settings?section=clientes', label: 'Minha Clínica • Clientes' },
+    { value: '/settings?section=procedimentos', label: 'Minha Clínica • Procedimentos' },
+    { value: '/settings?section=profissionais', label: 'Minha Clínica • Profissionais' },
+    { value: '/settings?section=fornecedores', label: 'Minha Clínica • Fornecedores' },
+    { value: '/settings?section=usuarios', label: 'Minha Clínica • Usuários' },
+    { value: '/commercial/dashboard', label: 'Comercial • Dash comercial' },
     { value: '/commercial/ranking', label: 'Comercial • Ranking dos clientes' },
     { value: '/commercial/recurrence', label: 'Comercial • Recorrência' },
     { value: '/commercial/geo', label: 'Comercial • Geolocalização' },
@@ -95,8 +96,8 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     { value: '/pricing/procedures', label: 'Precificação • Procedimentos' },
     { value: '/pricing/expenses', label: 'Precificação • Gastos' },
     { value: '/pricing/focus-matrix', label: 'Precificação • Matriz de Foco' },
-    { value: '/hr/departments', label: 'Recursos Humanos • Departamentos' },
-    { value: '/hr/collaborators', label: 'Recursos Humanos • Colaboradores' },
+    { value: '/hr/departments', label: 'Minha Clínica • Departamentos' },
+    { value: '/hr/collaborators', label: 'Minha Clínica • Colaboradores' },
     { value: '/hr/feedback', label: 'Recursos Humanos • Feedback' },
     { value: '/hr/meetings', label: 'Recursos Humanos • Reuniões' },
     { value: '/hr/archetypes', label: 'Recursos Humanos • Arquétipos' },
@@ -155,6 +156,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
   const [bulkUserPages, setBulkUserPages] = useState<string[]>([]);
   const [savingClinic, setSavingClinic] = useState(false);
   const [savingUser, setSavingUser] = useState(false);
+  const [resendingAccessId, setResendingAccessId] = useState<string | null>(null);
   const [invites, setInvites] = useState<any[]>([]);
   const [invitesEnabled, setInvitesEnabled] = useState(true);
   const [inviteForm, setInviteForm] = useState({ clinic_id: '', email: '', role: 'user' });
@@ -464,6 +466,54 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
       }
     } catch (err: any) {
       alert('Erro ao excluir clínica: ' + err.message);
+    }
+  };
+
+  const resolveClinicAccessEmail = async (clinic: any) => {
+    const contactEmail = clinic.email_contato?.trim().toLowerCase() || '';
+    const { data, error } = await supabase
+      .from('clinic_users')
+      .select('email, role, ativo, created_at')
+      .eq('clinic_id', clinic.id)
+      .eq('ativo', true)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    const activeUsers = (data || []).filter((u: any) => !!u.email);
+    if (!activeUsers.length) return contactEmail;
+    const matchesContact = contactEmail
+      ? activeUsers.find((u: any) => u.email?.trim().toLowerCase() === contactEmail)
+      : null;
+    if (matchesContact) return contactEmail;
+    const owner = activeUsers.find((u: any) => u.role === 'owner');
+    if (owner?.email) return owner.email.trim().toLowerCase();
+    const admin = activeUsers.find((u: any) => u.role === 'admin');
+    if (admin?.email) return admin.email.trim().toLowerCase();
+    return activeUsers[0]?.email?.trim().toLowerCase() || contactEmail;
+  };
+
+  const handleResendClinicAccess = async (clinic: any) => {
+    if (!clinic?.id) return;
+    setResendingAccessId(clinic.id);
+    try {
+      const targetEmail = await resolveClinicAccessEmail(clinic);
+      if (!targetEmail) {
+        alert('Sem e-mail de acesso disponível. Cadastre um usuário ativo ou o e-mail de contato da clínica.');
+        return;
+      }
+      if (!confirm(`Reenviar acesso para ${targetEmail}?`)) return;
+      const redirectTo = callbackUrl ? `${callbackUrl}?redirectTo=${encodeURIComponent('/')}` : undefined;
+      const otpOptions: { emailRedirectTo?: string; shouldCreateUser: boolean } = { shouldCreateUser: true };
+      if (redirectTo) otpOptions.emailRedirectTo = redirectTo;
+      const { error } = await supabase.auth.signInWithOtp({
+        email: targetEmail,
+        options: otpOptions,
+      });
+      if (error) throw error;
+      alert(`Acesso reenviado para ${targetEmail}.`);
+    } catch (err: any) {
+      alert('Não foi possível reenviar o acesso: ' + err.message);
+    } finally {
+      setResendingAccessId(null);
     }
   };
 
@@ -1002,6 +1052,13 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
                         Acessar
                       </button>
                     )}
+                    <button
+                      onClick={() => handleResendClinicAccess(clinic)}
+                      disabled={resendingAccessId === clinic.id}
+                      className="text-sm text-sky-600 disabled:opacity-50"
+                    >
+                      {resendingAccessId === clinic.id ? 'Enviando...' : 'Reenviar acesso'}
+                    </button>
                     <button
                       onClick={() => openEditClinicModal(clinic)}
                       className="text-sm text-brand-600"

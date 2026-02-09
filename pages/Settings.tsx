@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Trash2, Tag, Loader2, CreditCard, User, CheckSquare, Upload, Download, Users } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { buildPublicUrl } from '../lib/utils';
+import { buildPublicUrl, formatDate } from '../lib/utils';
 import { Category } from '../types';
 import { useAuth } from '../src/auth/AuthProvider';
 import { useSearchParams } from 'react-router-dom';
 
-type Section = 'categorias' | 'taxas' | 'clientes' | 'procedimentos' | 'profissionais' | 'fornecedores' | 'usuarios';
+type Section = 'geral' | 'categorias' | 'taxas' | 'clientes' | 'procedimentos' | 'profissionais' | 'fornecedores' | 'usuarios';
 
 const detectCsvSeparator = (line: string) => {
   const commaCount = (line.match(/,/g) || []).length;
@@ -123,7 +123,7 @@ const getUserInitials = (name: string, email: string) => {
 };
 
 const Settings: React.FC = () => {
-  const [section, setSection] = useState<Section>('categorias');
+  const [section, setSection] = useState<Section>('geral');
   const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -132,25 +132,26 @@ const Settings: React.FC = () => {
   const { effectiveClinicId: clinicId, isAdmin, clinic, role } = useAuth();
 
   const PAGE_OPTIONS = [
-    { value: '/', label: 'Dashboard' },
+    { value: '/', label: 'Dash Financeiro' },
     { value: '/incomes', label: 'Receitas' },
     { value: '/expenses', label: 'Despesas' },
     { value: '/card-analysis', label: 'Análise de cartão' },
     { value: '/reconciliation', label: 'Conciliação bancária' },
-    { value: '/assistant', label: 'Assistente IA' },
+    { value: '/assistant', label: 'Assistente AI' },
     { value: '/profile', label: 'Meu perfil' },
     { value: '/contents/courses', label: 'Conteúdos • Cursos' },
     { value: '/contents/trainings', label: 'Conteúdos • Treinamentos' },
     { value: '/accounts', label: 'Contas bancárias' },
-    { value: '/settings', label: 'Configurações' },
-    { value: '/settings?section=categorias', label: 'Configurações • Categorias' },
-    { value: '/settings?section=taxas', label: 'Configurações • Taxas' },
-    { value: '/settings?section=clientes', label: 'Configurações • Clientes' },
-    { value: '/settings?section=procedimentos', label: 'Configurações • Procedimentos' },
-    { value: '/settings?section=profissionais', label: 'Configurações • Profissionais' },
-    { value: '/settings?section=fornecedores', label: 'Configurações • Fornecedores' },
-    { value: '/settings?section=usuarios', label: 'Configurações • Usuários' },
-    { value: '/commercial/dashboard', label: 'Comercial • Dashboard' },
+    { value: '/settings', label: 'Minha Clínica' },
+    { value: '/settings?section=geral', label: 'Minha Clínica • Informações gerais' },
+    { value: '/settings?section=categorias', label: 'Minha Clínica • Categorias' },
+    { value: '/settings?section=taxas', label: 'Minha Clínica • Taxas' },
+    { value: '/settings?section=clientes', label: 'Minha Clínica • Clientes' },
+    { value: '/settings?section=procedimentos', label: 'Minha Clínica • Procedimentos' },
+    { value: '/settings?section=profissionais', label: 'Minha Clínica • Profissionais' },
+    { value: '/settings?section=fornecedores', label: 'Minha Clínica • Fornecedores' },
+    { value: '/settings?section=usuarios', label: 'Minha Clínica • Usuários' },
+    { value: '/commercial/dashboard', label: 'Comercial • Dash comercial' },
     { value: '/commercial/ranking', label: 'Comercial • Ranking dos clientes' },
     { value: '/commercial/recurrence', label: 'Comercial • Recorrência' },
     { value: '/commercial/geo', label: 'Comercial • Geolocalização' },
@@ -158,8 +159,8 @@ const Settings: React.FC = () => {
     { value: '/pricing/procedures', label: 'Precificação • Procedimentos' },
     { value: '/pricing/expenses', label: 'Precificação • Gastos' },
     { value: '/pricing/focus-matrix', label: 'Precificação • Matriz de Foco' },
-    { value: '/hr/departments', label: 'Recursos Humanos • Departamentos' },
-    { value: '/hr/collaborators', label: 'Recursos Humanos • Colaboradores' },
+    { value: '/hr/departments', label: 'Minha Clínica • Departamentos' },
+    { value: '/hr/collaborators', label: 'Minha Clínica • Colaboradores' },
     { value: '/hr/feedback', label: 'Recursos Humanos • Feedback' },
     { value: '/hr/meetings', label: 'Recursos Humanos • Reuniões' },
     { value: '/hr/archetypes', label: 'Recursos Humanos • Arquétipos' },
@@ -420,7 +421,7 @@ const Settings: React.FC = () => {
   // Sincronizar seção com querystring
   useEffect(() => {
     const s = searchParams.get('section') as Section | null;
-    if (s && ['categorias','taxas','clientes','procedimentos','profissionais','fornecedores','usuarios'].includes(s)) {
+    if (s && ['geral','categorias','taxas','clientes','procedimentos','profissionais','fornecedores','usuarios'].includes(s)) {
       setSection(s);
     }
   }, [searchParams]);
@@ -1467,11 +1468,17 @@ const Settings: React.FC = () => {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="mb-2">
-        <h1 className="text-2xl font-bold text-gray-800">Configurações</h1>
-        <p className="text-gray-500">Cadastre categorias, taxas, clientes e usuários</p>
+        <h1 className="text-2xl font-bold text-gray-800">Minha Clínica</h1>
+        <p className="text-gray-500">Gerencie informações e cadastros da clínica</p>
       </div>
 
       <div className="flex gap-2 flex-wrap">
+        <button
+          onClick={() => setSectionAndUrl('geral')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium border ${section === 'geral' ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-700 border-gray-200'}`}
+        >
+          Informações gerais
+        </button>
         <button
           onClick={() => setSectionAndUrl('categorias')}
           className={`px-4 py-2 rounded-lg text-sm font-medium border ${section === 'categorias' ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-700 border-gray-200'}`}
@@ -1517,6 +1524,83 @@ const Settings: React.FC = () => {
           </button>
         )}
       </div>
+
+      {section === 'geral' && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center gap-4">
+            <div className="h-20 w-20 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden text-xs font-semibold text-gray-500">
+              {clinic?.logo_url ? (
+                <img src={clinic.logo_url} alt="Logo da clínica" className="h-full w-full object-cover object-center" />
+              ) : (
+                <span>{(clinic?.name || 'CL').slice(0, 2).toUpperCase()}</span>
+              )}
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-800">Informações gerais</h2>
+              <p className="text-sm text-gray-500">Dados cadastrados da clínica.</p>
+            </div>
+          </div>
+
+          {!clinic ? (
+            <div className="text-sm text-gray-500">Nenhuma clínica ativa encontrada.</div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-gray-500">ID da clínica</p>
+                  <p className="text-sm font-medium text-gray-800 break-all">{clinic.id}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Nome da clínica</p>
+                  <p className="text-sm font-medium text-gray-800">{clinic.name || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Responsável</p>
+                  <p className="text-sm font-medium text-gray-800">{clinic.responsavel_nome || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Documento</p>
+                  <p className="text-sm font-medium text-gray-800">{clinic.documento || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">E-mail de contato</p>
+                  <p className="text-sm font-medium text-gray-800 break-all">{clinic.email_contato || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Telefone de contato</p>
+                  <p className="text-sm font-medium text-gray-800">{clinic.telefone_contato || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Plano</p>
+                  <p className="text-sm font-medium text-gray-800">{clinic.plano || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Status</p>
+                  <p className="text-sm font-medium text-gray-800">{clinic.ativo === false ? 'Inativa' : 'Ativa'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Criado em</p>
+                  <p className="text-sm font-medium text-gray-800">{clinic.created_at ? formatDate(clinic.created_at) : '-'}</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-700">Páginas liberadas</p>
+                {clinic.paginas_liberadas && clinic.paginas_liberadas.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {clinic.paginas_liberadas.map((page) => (
+                      <span key={page} className="px-2 py-1 text-xs rounded-full border border-gray-200 text-gray-600">
+                        {PAGE_LABEL_MAP[page] || page}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">Nenhuma página definida.</p>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Categorias */}
       {section === 'categorias' && (

@@ -4,6 +4,7 @@ import { Category, BankAccount } from '../types';
 import { formatCurrency, formatDate } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../src/auth/AuthProvider';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 interface TransactionsPageProps {
   type: string;
@@ -91,6 +92,8 @@ type ManualParcela = {
 const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
   const isIncome = type === 'income';
   const table = isIncome ? 'revenues' : 'expenses';
+  const location = useLocation();
+  const navigate = useNavigate();
 
   // --- States ---
   const { effectiveClinicId: clinicId } = useAuth();
@@ -1325,6 +1328,23 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
     setManualParcelasDirty(false);
   };
 
+  const openNewModal = React.useCallback(() => {
+    setEditingId(null);
+    setEditingItem(null);
+    resetForm();
+    setIsModalOpen(true);
+  }, [resetForm]);
+
+  useEffect(() => {
+    if (!isIncome) return;
+    const params = new URLSearchParams(location.search);
+    if (params.get('new') !== '1') return;
+    openNewModal();
+    params.delete('new');
+    const nextSearch = params.toString();
+    navigate(`${location.pathname}${nextSearch ? `?${nextSearch}` : ''}`, { replace: true });
+  }, [isIncome, location.pathname, location.search, navigate, openNewModal]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1337,7 +1357,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
           </p>
         </div>
         <button
-          onClick={() => { setEditingId(null); setEditingItem(null); resetForm(); setIsModalOpen(true); }}
+          onClick={openNewModal}
           className={`
             flex items-center gap-2 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm
             ${isIncome ? 'bg-brand-600 hover:bg-brand-700' : 'bg-red-600 hover:bg-red-700'}

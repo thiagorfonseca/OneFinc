@@ -273,96 +273,96 @@ const PricingCalculator: React.FC = () => {
 
       {!loading && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-xl border border-gray-100 p-4">
-              <div className="flex items-center gap-2 text-gray-500 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-3 gap-y-3">
+            <div className="bg-white rounded-xl border border-gray-100 p-3">
+              <div className="flex items-center gap-2 text-gray-500 text-xs">
                 <Wallet size={16} /> Custos
               </div>
               <input
                 value={totalCostsInput}
                 onChange={(e) => {
-                  const val = parseNumber(e.target.value);
-                  setTotalCostsInput(formatCurrency(val));
+                  setTotalCostsInput(e.target.value);
                   setManualCosts(true);
                 }}
-                className="mt-2 w-full text-xl font-semibold text-gray-800 bg-transparent outline-none"
+                onBlur={() => {
+                  const val = parseNumber(totalCostsInput);
+                  setTotalCostsInput(formatCurrency(val));
+                }}
+                className="mt-1 w-full text-lg font-semibold text-gray-800 bg-transparent outline-none"
               />
               <button
                 type="button"
                 onClick={() => setManualCosts(false)}
-                className="mt-2 text-xs text-brand-600"
+                className="mt-1 text-[11px] text-brand-600"
               >
                 Usar custos calculados ({formatCurrency(totalCostsFromDb)})
               </button>
             </div>
-            <div className="bg-white rounded-xl border border-gray-100 p-4">
-              <div className="flex items-center gap-2 text-gray-500 text-sm">
+            <div className="bg-white rounded-xl border border-gray-100 p-3">
+              <div className="flex items-center gap-2 text-gray-500 text-xs">
                 <Clock size={16} /> Horas disponíveis
               </div>
               <input
                 value={hoursAvailableInput}
                 onChange={(e) => setHoursAvailableInput(e.target.value)}
-                className="mt-2 w-full text-xl font-semibold text-gray-800 bg-transparent outline-none"
+                className="mt-1 w-full text-lg font-semibold text-gray-800 bg-transparent outline-none"
               />
             </div>
-            <div className="bg-white rounded-xl border border-gray-100 p-4">
-              <div className="flex items-center gap-2 text-gray-500 text-sm">
+            <div className="bg-white rounded-xl border border-gray-100 p-3">
+              <div className="flex items-center gap-2 text-gray-500 text-xs">
                 <Percent size={16} /> Taxa de ocupação
               </div>
               <input
                 value={occupancyInput}
                 onChange={(e) => setOccupancyInput(e.target.value)}
-                className="mt-2 w-full text-xl font-semibold text-gray-800 bg-transparent outline-none"
+                className="mt-1 w-full text-lg font-semibold text-gray-800 bg-transparent outline-none"
               />
             </div>
-            <div className="bg-blue-50 rounded-xl border border-blue-100 p-4">
-              <div className="flex items-center gap-2 text-blue-700 text-sm">
-                <Calculator size={16} /> Custo por hora
-              </div>
-              <p className="mt-2 text-xl font-semibold text-blue-700">{formatCurrency(costPerHour || 0)}</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-xl border border-gray-100 p-4">
-              <div className="flex items-center gap-2 text-gray-500 text-sm">
+            <div className="bg-white rounded-xl border border-gray-100 p-3">
+              <div className="flex items-center gap-2 text-gray-500 text-xs">
                 <Percent size={16} /> Impostos
               </div>
               <input
                 value={taxInput}
                 onChange={(e) => setTaxInput(e.target.value)}
-                className="mt-2 w-full text-xl font-semibold text-gray-800 bg-transparent outline-none"
+                className="mt-1 w-full text-lg font-semibold text-gray-800 bg-transparent outline-none"
               />
             </div>
-            <div className="bg-white rounded-xl border border-gray-100 p-4">
-              <div className="flex items-center gap-2 text-gray-500 text-sm">
+            <div className="bg-white rounded-xl border border-gray-100 p-3">
+              <div className="flex items-center gap-2 text-gray-500 text-xs">
                 <Percent size={16} /> Margem desejada
               </div>
               <input
                 value={marginInput}
                 onChange={(e) => setMarginInput(e.target.value)}
-                className="mt-2 w-full text-xl font-semibold text-gray-800 bg-transparent outline-none"
+                className="mt-1 w-full text-lg font-semibold text-gray-800 bg-transparent outline-none"
               />
             </div>
-            <div className="bg-white rounded-xl border border-gray-100 p-4">
-              <div className="flex items-center gap-2 text-gray-500 text-sm">
+            <div className="bg-white rounded-xl border border-gray-100 p-3">
+              <div className="flex items-center gap-2 text-gray-500 text-xs">
                 <CreditCard size={16} /> Taxa de cartão
               </div>
               <input
                 value={cardFeeInput}
                 onChange={(e) => setCardFeeInput(e.target.value)}
-                className="mt-2 w-full text-xl font-semibold text-gray-800 bg-transparent outline-none"
+                className="mt-1 w-full text-lg font-semibold text-gray-800 bg-transparent outline-none"
               />
             </div>
-            <div className="bg-white rounded-xl border border-gray-100 p-4">
-              <div className="flex items-center gap-2 text-gray-500 text-sm">
+            <div className="bg-white rounded-xl border border-gray-100 p-3">
+              <div className="flex items-center gap-2 text-gray-500 text-xs">
                 <Users size={16} /> Comissão/Parceiros
               </div>
               <input
                 value={commissionInput}
                 onChange={(e) => setCommissionInput(e.target.value)}
-                className="mt-2 w-full text-xl font-semibold text-gray-800 bg-transparent outline-none"
+                className="mt-1 w-full text-lg font-semibold text-gray-800 bg-transparent outline-none"
               />
+            </div>
+            <div className="bg-blue-50 rounded-xl border border-blue-100 p-3">
+              <div className="flex items-center gap-2 text-blue-700 text-xs">
+                <Calculator size={16} /> custo hora clinica
+              </div>
+              <p className="mt-1 text-lg font-semibold text-blue-700">{formatCurrency(costPerHour || 0)}</p>
             </div>
           </div>
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, FileText, Settings, LogOut, Menu, ChevronsLeft, ChevronsRight, BarChart2, Briefcase, ChevronDown, ChevronRight, Tag, CreditCard, User, CheckSquare, BookOpen, Users, MessageCircle, Calculator, Target, Calendar } from 'lucide-react';
+import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, FileText, Settings, LogOut, Menu, ChevronsLeft, ChevronsRight, BarChart2, Briefcase, ChevronDown, ChevronRight, Tag, User, CheckSquare, BookOpen, Users, MessageCircle, Calculator, Target, Calendar } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import ClinicSwitcher from './admin/ClinicSwitcher';
@@ -31,17 +31,22 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const navigation = [
     {
+      name: 'VENDAS',
+      href: '/incomes?new=1',
+      icon: TrendingUp,
+      variant: 'highlight',
+    },
+    {
       name: 'Financeiro',
       href: '/',
       icon: Wallet,
       children: [
-        { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-        { name: 'Contas Bancárias', href: '/accounts', icon: Wallet },
+        { name: 'Dash Financeiro', href: '/', icon: LayoutDashboard },
         { name: 'Receitas', href: '/incomes', icon: TrendingUp },
         { name: 'Despesas', href: '/expenses', icon: TrendingDown },
-        { name: 'Analise de cartão', href: '/card-analysis', icon: BarChart2 },
+        { name: 'Análise de cartão', href: '/card-analysis', icon: BarChart2 },
         { name: 'Conciliação bancária', href: '/reconciliation', icon: FileText },
-        { name: 'Assistente IA', href: '/assistant', icon: MessageCircle },
+        { name: 'Contas bancárias', href: '/accounts', icon: Wallet },
       ],
     },
     {
@@ -49,10 +54,21 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       href: '/commercial/dashboard',
       icon: Briefcase,
       children: [
-        { name: 'Dashboard', href: '/commercial/dashboard', icon: BarChart2 },
-        { name: 'Ranking dos Clientes', href: '/commercial/ranking', icon: FileText },
+        { name: 'Dash comercial', href: '/commercial/dashboard', icon: BarChart2 },
+        { name: 'Ranking dos clientes', href: '/commercial/ranking', icon: FileText },
         { name: 'Recorrência', href: '/commercial/recurrence', icon: TrendingUp },
         { name: 'Geolocalização', href: '/commercial/geo', icon: FileText },
+      ],
+    },
+    {
+      name: 'Recursos Humanos',
+      href: '/hr/feedback',
+      icon: Users,
+      children: [
+        { name: 'Feedback', href: '/hr/feedback', icon: MessageCircle },
+        { name: 'Reuniões', href: '/hr/meetings', icon: Calendar },
+        { name: 'Arquétipos', href: '/hr/archetypes', icon: Target },
+        { name: 'Teoria de valores', href: '/hr/values', icon: BookOpen },
       ],
     },
     {
@@ -67,19 +83,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       ],
     },
     {
-      name: 'Recursos Humanos',
-      href: '/hr/departments',
-      icon: Users,
-      children: [
-        { name: 'Departamentos', href: '/hr/departments', icon: Tag },
-        { name: 'Colaboradores', href: '/hr/collaborators', icon: Users },
-        { name: 'Feedback', href: '/hr/feedback', icon: MessageCircle },
-        { name: 'Reuniões', href: '/hr/meetings', icon: Calendar },
-        { name: 'Arquétipos', href: '/hr/archetypes', icon: Target },
-        { name: 'Teoria de valores', href: '/hr/values', icon: BookOpen },
-      ],
-    },
-    {
       name: 'Conteúdos',
       href: '/contents/courses',
       icon: BookOpen,
@@ -89,17 +92,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       ],
     },
     {
-      name: 'Configurações',
+      name: 'ASSISTENTE AI',
+      href: '/assistant',
+      icon: MessageCircle,
+      variant: 'highlight',
+    },
+    {
+      name: 'Minha Clínica',
       href: '/settings',
       icon: Settings,
       children: [
-        { name: 'Categorias', href: '/settings?section=categorias', icon: Tag },
-        { name: 'Taxas', href: '/settings?section=taxas', icon: CreditCard },
-        { name: 'Clientes', href: '/settings?section=clientes', icon: User },
-        { name: 'Procedimentos', href: '/settings?section=procedimentos', icon: CheckSquare },
-        { name: 'Profissionais', href: '/settings?section=profissionais', icon: User },
-        { name: 'Fornecedores', href: '/settings?section=fornecedores', icon: FileText },
-        { name: 'Usuários', href: '/settings?section=usuarios', icon: Users, adminOnly: true },
+        { name: 'Informações gerais', href: '/settings?section=geral', icon: FileText },
+        { name: 'Colaboradores', href: '/hr/collaborators', icon: Users },
+        { name: 'Departamentos', href: '/hr/departments', icon: Tag },
+        { name: 'Serviços e Produtos', href: '/pricing/procedures', icon: CheckSquare },
       ],
     },
     { name: 'Meu perfil', href: '/profile', icon: User },
@@ -223,8 +229,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               const isParentActive = openParentForActive[item.name];
               const isExpanded = hasManualExpand ? !!expanded[item.name] : (expanded[item.name] ?? isParentActive);
               const hasChildren = !!(item.children && item.children.length);
-              const isConfig = item.name === 'Configurações';
+              const isConfig = item.name === 'Minha Clínica';
               const isFinanceiro = item.name === 'Financeiro';
+              const isHighlight = item.variant === 'highlight';
               const parentHref = hasPageAccess(item.href) ? item.href : (item.children?.[0]?.href || item.href);
               return (
                 <div key={item.name}>
@@ -271,9 +278,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       to={item.href}
                       className={`
                         flex items-center gap-3 ${isCollapsed ? 'justify-center px-2' : 'px-4'} py-3 text-sm font-medium rounded-lg transition-colors
-                        ${isActive(item.href) 
-                          ? 'bg-brand-50 text-brand-700' 
-                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}
+                        ${isHighlight
+                          ? (isActive(item.href)
+                            ? 'bg-brand-700 text-white'
+                            : 'bg-brand-600 text-white hover:bg-brand-700')
+                          : (isActive(item.href)
+                            ? 'bg-brand-50 text-brand-700'
+                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900')}
+                        ${isHighlight ? 'shadow-sm' : ''}
                       `}
                     >
                       <item.icon size={20} />
