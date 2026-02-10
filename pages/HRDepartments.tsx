@@ -3,6 +3,7 @@ import { Plus, Search, Users } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { formatDate } from '../lib/utils';
 import { useAuth } from '../src/auth/AuthProvider';
+import { useModalControls } from '../hooks/useModalControls';
 
 const MultiSelect: React.FC<{
   options: { value: string; label: string }[];
@@ -74,6 +75,17 @@ const HRDepartments: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', affiliates: [] as string[] });
+
+  const closeModal = () => {
+    setShowModal(false);
+    setEditingId(null);
+    setFormError(null);
+  };
+
+  const modalControls = useModalControls({
+    isOpen: showModal,
+    onClose: closeModal,
+  });
 
   const normalizeDepartmentName = (value: string) =>
     value
@@ -306,18 +318,21 @@ const HRDepartments: React.FC = () => {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4">
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+          onClick={modalControls.onBackdropClick}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-800">
                 {editingId ? 'Editar departamento' : 'Novo departamento'}
               </h3>
               <button
                 type="button"
-                onClick={() => {
-                  setShowModal(false);
-                  setEditingId(null);
-                }}
+                onClick={closeModal}
                 className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500"
               >
                 ✕

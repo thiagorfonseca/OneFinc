@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Download } from 'lucide-react';
+import { Download, Maximize2, X } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { useAuth } from '../../../auth/AuthProvider';
 import { fetchRespondentDetail, fetchRespondents, listPublicLinks } from '../archetypeService';
@@ -7,8 +7,22 @@ import type { ArchetypeAnswerRow, ArchetypeRespondentRow, PublicLinkRow } from '
 import FiltersBar, { ArchetypeFilters } from '../components/FiltersBar';
 import RespondentsTable from '../components/RespondentsTable';
 import DetailsDrawer from '../components/DetailsDrawer';
+import { useModalControls } from '../../../../hooks/useModalControls';
 
 const toCsvCell = (value: string | number) => `"${String(value).replace(/"/g, '""')}"`;
+
+const PieTooltip: React.FC<any> = ({ active, payload }) => {
+  if (!active || !payload?.length) return null;
+  const item = payload[0];
+  const name = item?.name || item?.payload?.name;
+  const value = item?.value ?? 0;
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg p-2 shadow-sm text-xs">
+      <div className="font-semibold text-gray-700">{name}</div>
+      <div className="text-gray-500">{value} respostas</div>
+    </div>
+  );
+};
 
 const AnalyticsArchetypePage: React.FC = () => {
   const { effectiveClinicId: clinicId, isSystemAdmin } = useAuth();
@@ -28,6 +42,24 @@ const AnalyticsArchetypePage: React.FC = () => {
   const [detailRespondent, setDetailRespondent] = useState<ArchetypeRespondentRow | null>(null);
   const [detailAnswers, setDetailAnswers] = useState<ArchetypeAnswerRow[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isPieExpanded, setIsPieExpanded] = useState(false);
+  const [isBarExpanded, setIsBarExpanded] = useState(false);
+  const [isReportOpen, setIsReportOpen] = useState(false);
+
+  const pieModalControls = useModalControls({
+    isOpen: isPieExpanded,
+    onClose: () => setIsPieExpanded(false),
+  });
+
+  const barModalControls = useModalControls({
+    isOpen: isBarExpanded,
+    onClose: () => setIsBarExpanded(false),
+  });
+
+  const reportModalControls = useModalControls({
+    isOpen: isReportOpen,
+    onClose: () => setIsReportOpen(false),
+  });
 
   useEffect(() => {
     if (!clinicId) return;
@@ -240,7 +272,27 @@ const AnalyticsArchetypePage: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white border border-gray-100 rounded-2xl p-4">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">Distribuição do perfil vencedor</h3>
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700">Perfil predominante na clinica</h3>
+              <button
+                type="button"
+                onClick={() => setIsReportOpen(true)}
+                className="mt-3 px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700"
+              >
+                Ler relatório
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsPieExpanded(true)}
+              className="w-9 h-9 rounded-full border border-gray-200 text-gray-500 hover:text-gray-700 hover:border-gray-300 flex items-center justify-center"
+              aria-label="Expandir gráfico de perfil predominante"
+              title="Expandir"
+            >
+              <Maximize2 size={16} />
+            </button>
+          </div>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -249,13 +301,24 @@ const AnalyticsArchetypePage: React.FC = () => {
                     <Cell key={entry.name} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value: number) => [`${value} respostas`, '']} />
+                <Tooltip content={<PieTooltip />} />
               </PieChart>
             </ResponsiveContainer>
           </div>
         </div>
         <div className="bg-white border border-gray-100 rounded-2xl p-4">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">Média de pontuação por perfil</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-700">Média de pontuação por perfil</h3>
+            <button
+              type="button"
+              onClick={() => setIsBarExpanded(true)}
+              className="w-9 h-9 rounded-full border border-gray-200 text-gray-500 hover:text-gray-700 hover:border-gray-300 flex items-center justify-center"
+              aria-label="Expandir gráfico de média por perfil"
+              title="Expandir"
+            >
+              <Maximize2 size={16} />
+            </button>
+          </div>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={averageScores}>
@@ -273,6 +336,230 @@ const AnalyticsArchetypePage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {isPieExpanded && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 p-4 sm:p-6"
+          onClick={pieModalControls.onBackdropClick}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 h-full flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Perfil predominante na clinica</h3>
+              <button
+                type="button"
+                onClick={() => setIsPieExpanded(false)}
+                className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500"
+                aria-label="Fechar gráfico"
+                title="Fechar"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="flex-1 min-h-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={90} outerRadius={140} paddingAngle={3}>
+                    {pieData.map((entry) => (
+                      <Cell key={entry.name} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<PieTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isBarExpanded && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 p-4 sm:p-6"
+          onClick={barModalControls.onBackdropClick}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 h-full flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Média de pontuação por perfil</h3>
+              <button
+                type="button"
+                onClick={() => setIsBarExpanded(false)}
+                className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500"
+                aria-label="Fechar gráfico"
+                title="Fechar"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="flex-1 min-h-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={averageScores}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                  <YAxis allowDecimals={false} />
+                  <Tooltip formatter={(value: number) => [`${value.toFixed(1)} pontos`, 'Média']} />
+                  <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                    {averageScores.map((entry) => (
+                      <Cell key={entry.name} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isReportOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 p-4 sm:p-6 flex items-center justify-center"
+          onClick={reportModalControls.onBackdropClick}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6 space-y-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800">Ler relatório</h3>
+                <p className="text-sm text-gray-500">Entenda os padrões comportamentais e seus impactos.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsReportOpen(false)}
+                className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500"
+                aria-label="Fechar relatório"
+                title="Fechar"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-6 text-sm text-gray-700">
+              <p>
+                Abaixo estão os 4 cruzamentos e como costumam aparecer no dia a dia — e como isso bate direto no
+                resultado.
+              </p>
+
+              <div>
+                <h4 className="text-base font-semibold text-gray-800">1) Clínica mais <strong>Realizadora + Visionária</strong></h4>
+                <p className="mt-2"><strong>Como ela funciona:</strong> energia alta, foco em crescimento, metas agressivas, decide rápido e coloca pra rodar. É aquela clínica que fala “bora” antes de terminar a frase.</p>
+                <p className="mt-3 font-semibold text-gray-800">Traços comportamentais na prática</p>
+                <ul className="list-disc pl-5 mt-2 space-y-1">
+                  <li>Lança serviços, campanhas e parcerias com facilidade</li>
+                  <li>Cobra performance da equipe e acelera a agenda</li>
+                  <li>Tem sede de expansão (unidade, sala nova, novos procedimentos, novos canais)</li>
+                </ul>
+                <p className="mt-3 font-semibold text-gray-800">Impacto nos resultados (o lado bom)</p>
+                <ul className="list-disc pl-5 mt-2 space-y-1">
+                  <li>Cresce rápido, fatura forte, cria movimento e posicionamento</li>
+                  <li>Tem mais facilidade em vender, negociar, elevar ticket e fazer a clínica “aparecer”</li>
+                </ul>
+                <p className="mt-3 font-semibold text-gray-800">Riscos que sabotam o lucro</p>
+                <ul className="list-disc pl-5 mt-2 space-y-1">
+                  <li>Cresce “pra fora” antes de arrumar “pra dentro” (processo, qualidade, padrão)</li>
+                  <li>Pode gerar <strong>retrabalho</strong>, <strong>equipe estressada</strong>, e <strong>experiência inconsistente</strong></li>
+                  <li>Alta chance de virar clínica “dependente do dono”: tudo passa na cabeça do líder</li>
+                </ul>
+                <p className="mt-3"><strong>Sinal clássico:</strong> faturamento sobe… mas o caos sobe junto.</p>
+              </div>
+
+              <hr className="border-gray-200" />
+
+              <div>
+                <h4 className="text-base font-semibold text-gray-800">2) Clínica mais <strong>Realizadora + Analista</strong></h4>
+                <p className="mt-2"><strong>Como ela funciona:</strong> execução forte com régua alta. É a clínica que quer resultado, mas não “no chute”: quer número, controle e previsibilidade.</p>
+                <p className="mt-3 font-semibold text-gray-800">Traços comportamentais na prática</p>
+                <ul className="list-disc pl-5 mt-2 space-y-1">
+                  <li>Metas e indicadores (conversão, taxa de retorno, ocupação, margem)</li>
+                  <li>Processos mais claros e cobrança por padrão</li>
+                  <li>A clínica tende a ser mais organizada em agenda, estoque, financeiro e gestão</li>
+                </ul>
+                <p className="mt-3 font-semibold text-gray-800">Impacto nos resultados (o lado bom)</p>
+                <ul className="list-disc pl-5 mt-2 space-y-1">
+                  <li>Aumenta eficiência e margem, reduz desperdício e melhora previsibilidade</li>
+                  <li>Crescimento mais sustentável (menos “pico” e “vale”)</li>
+                </ul>
+                <p className="mt-3 font-semibold text-gray-800">Riscos que travam crescimento</p>
+                <ul className="list-disc pl-5 mt-2 space-y-1">
+                  <li>Pode ficar “perfeccionista demais” e demorar pra decidir</li>
+                  <li>Pode virar uma clínica ótima… porém lenta pra inovar e testar novas oportunidades</li>
+                  <li>A equipe pode sentir clima de cobrança/frieza se faltar lado humano</li>
+                </ul>
+                <p className="mt-3"><strong>Sinal clássico:</strong> a clínica roda bem, mas às vezes perde timing por excesso de cautela.</p>
+              </div>
+
+              <hr className="border-gray-200" />
+
+              <div>
+                <h4 className="text-base font-semibold text-gray-800">3) Clínica mais <strong>Analista + Facilitadora</strong></h4>
+                <p className="mt-2"><strong>Como ela funciona:</strong> cuidadosa, consistente, boa de processo e muito forte em experiência do paciente. É a clínica que quer “fazer direito” e com qualidade humana.</p>
+                <p className="mt-3 font-semibold text-gray-800">Traços comportamentais na prática</p>
+                <ul className="list-disc pl-5 mt-2 space-y-1">
+                  <li>Atendimento e jornada bem estruturados</li>
+                  <li>Treinamento, padronização e comunicação interna mais suaves</li>
+                  <li>Decisões com mais prudência e menos impulso</li>
+                </ul>
+                <p className="mt-3 font-semibold text-gray-800">Impacto nos resultados (o lado bom)</p>
+                <ul className="list-disc pl-5 mt-2 space-y-1">
+                  <li>Excelente retenção, reputação e indicação</li>
+                  <li>Menos reclamação, mais fidelização, mais “clínica redonda”</li>
+                  <li>Equipe tende a ter menos rotatividade, porque o clima é bom</li>
+                </ul>
+                <p className="mt-3 font-semibold text-gray-800">Riscos que seguram faturamento</p>
+                <ul className="list-disc pl-5 mt-2 space-y-1">
+                  <li>Pode ter medo de “pegar pesado” em cobrança, preço e negociação</li>
+                  <li>Pode evitar conflitos e manter gente fraca na equipe por tempo demais</li>
+                  <li>Às vezes vira clínica “queridinha”… mas com lucro abaixo do potencial</li>
+                </ul>
+                <p className="mt-3"><strong>Sinal clássico:</strong> todo mundo ama a clínica, mas o caixa não acompanha o carinho.</p>
+              </div>
+
+              <hr className="border-gray-200" />
+
+              <div>
+                <h4 className="text-base font-semibold text-gray-800">4) Clínica mais <strong>Facilitadora + Visionária</strong></h4>
+                <p className="mt-2"><strong>Como ela funciona:</strong> carismática, criativa, muito forte em relacionamento e comunidade. É a clínica que cria conexão e engaja — equipe e pacientes compram a ideia.</p>
+                <p className="mt-3 font-semibold text-gray-800">Traços comportamentais na prática</p>
+                <ul className="list-disc pl-5 mt-2 space-y-1">
+                  <li>Humanização forte, comunicação boa, clima leve</li>
+                  <li>Inovação em experiência: novos formatos, eventos, conteúdo, comunidade</li>
+                  <li>Boa para gerar demanda orgânica (indicação, redes sociais, relacionamento)</li>
+                </ul>
+                <p className="mt-3 font-semibold text-gray-800">Impacto nos resultados (o lado bom)</p>
+                <ul className="list-disc pl-5 mt-2 space-y-1">
+                  <li>Marca forte, pacientes fiéis, time engajado</li>
+                  <li>Cria diferenciação real e posicionamento com propósito</li>
+                  <li>Excelente pra programas de recorrência quando bem estruturado</li>
+                </ul>
+                <p className="mt-3 font-semibold text-gray-800">Riscos que viram “bonito por fora”</p>
+                <ul className="list-disc pl-5 mt-2 space-y-1">
+                  <li>Pode faltar disciplina de execução e controle (financeiro, agenda, DRE, processos)</li>
+                  <li>Pode começar muita coisa e terminar pouca (síndrome do “projeto lindo”)</li>
+                  <li>Se não tiver alguém puxando para métrica, vira clínica “movimentada” e pouco lucrativa</li>
+                </ul>
+                <p className="mt-3"><strong>Sinal clássico:</strong> tem amor, tem visão, tem paciente… mas falta motor e painel de controle.</p>
+              </div>
+
+              <hr className="border-gray-200" />
+
+              <div>
+                <h4 className="text-base font-semibold text-gray-800">Fechando a conta (bem direto)</h4>
+                <ul className="list-disc pl-5 mt-2 space-y-1">
+                  <li><strong>Realizadora + Visionária</strong> = crescimento rápido, risco de caos.</li>
+                  <li><strong>Realizadora + Analista</strong> = performance com controle, risco de rigidez/lentidão.</li>
+                  <li><strong>Analista + Facilitadora</strong> = excelência e retenção, risco de subprecificar e evitar confronto.</li>
+                  <li><strong>Facilitadora + Visionária</strong> = marca e comunidade, risco de falta de processo e números.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <FiltersBar
         filters={filters}

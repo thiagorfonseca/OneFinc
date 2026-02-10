@@ -4,6 +4,7 @@ import { Category, BankAccount } from '../types';
 import { formatCurrency, formatDate } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../src/auth/AuthProvider';
+import { useModalControls } from '../hooks/useModalControls';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 interface TransactionsPageProps {
@@ -121,6 +122,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
     pessoaTipo: '',
     status: '',
   });
+
   const [sortKey, setSortKey] = useState<string>('data_competencia');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [pageSize, setPageSize] = useState<number>(50);
@@ -158,6 +160,57 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
   const [paymentItem, setPaymentItem] = useState<any | null>(null);
   const [paymentDate, setPaymentDate] = useState('');
   const [dueDateDirty, setDueDateDirty] = useState(false);
+
+  const getReturnTarget = React.useCallback(() => {
+    if (!isIncome) return null;
+    const params = new URLSearchParams(location.search);
+    const raw = params.get('return_to');
+    if (!raw) return null;
+    try {
+      const decoded = decodeURIComponent(raw);
+      if (!decoded.startsWith('/')) return null;
+      return decoded;
+    } catch {
+      return null;
+    }
+  }, [isIncome, location.search]);
+
+  const closeEntryModal = (options?: { returnTarget?: string | null }) => {
+    setIsModalOpen(false);
+    setEditingId(null);
+    setEditingItem(null);
+    resetForm();
+    const target = options?.returnTarget ?? getReturnTarget();
+    if (target) {
+      navigate(target);
+    }
+  };
+
+  const closePaymentModal = () => {
+    setPaymentModalOpen(false);
+    setPaymentItem(null);
+    setPaymentDate('');
+  };
+
+  const entryModalControls = useModalControls({
+    isOpen: isModalOpen,
+    onClose: closeEntryModal,
+  });
+
+  const paymentModalControls = useModalControls({
+    isOpen: paymentModalOpen,
+    onClose: closePaymentModal,
+  });
+
+  const deleteModalControls = useModalControls({
+    isOpen: !!deleteTarget,
+    onClose: () => setDeleteTarget(null),
+  });
+
+  const bulkDeleteModalControls = useModalControls({
+    isOpen: bulkDeleteModalOpen,
+    onClose: () => setBulkDeleteModalOpen(false),
+  });
 
   // Form States
   const INITIAL_FORM_DATA = {
@@ -917,11 +970,11 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
         }
       }
 
-      setIsModalOpen(false);
-      setEditingId(null);
-      setEditingItem(null);
-      resetForm();
-      fetchData();
+      const returnTarget = getReturnTarget();
+      if (!returnTarget) {
+        fetchData();
+      }
+      closeEntryModal({ returnTarget });
 
     } catch (error: any) {
       alert('Erro ao salvar: ' + error.message);
@@ -1356,16 +1409,18 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
             Gerencie {isIncome ? 'os recebimentos' : 'os pagamentos'} da clínica
           </p>
         </div>
-        <button
-          onClick={openNewModal}
-          className={`
-            flex items-center gap-2 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm
-            ${isIncome ? 'bg-brand-600 hover:bg-brand-700' : 'bg-red-600 hover:bg-red-700'}
-          `}
-        >
-          <Plus size={20} />
-          Nova {isIncome ? 'Receita' : 'Despesa'}
-        </button>
+        {!isIncome && (
+          <button
+            onClick={openNewModal}
+            className={`
+              flex items-center gap-2 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm
+              ${isIncome ? 'bg-brand-600 hover:bg-brand-700' : 'bg-red-600 hover:bg-red-700'}
+            `}
+          >
+            <Plus size={20} />
+            Nova {isIncome ? 'Receita' : 'Despesa'}
+          </button>
+        )}
       </div>
 
       {/* Filters Bar */}
@@ -1779,8 +1834,14 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
       </div>
 
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-red-900/20 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full border border-red-200">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-red-900/20 p-4"
+          onClick={deleteModalControls.onBackdropClick}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl max-w-md w-full border border-red-200"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-start gap-3 p-5 border-b border-red-100">
               <div className="h-10 w-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center">
                 <AlertTriangle size={20} />
@@ -1821,8 +1882,14 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
       )}
 
       {bulkDeleteModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-red-900/20 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full border border-red-200">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-red-900/20 p-4"
+          onClick={bulkDeleteModalControls.onBackdropClick}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl max-w-md w-full border border-red-200"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-start gap-3 p-5 border-b border-red-100">
               <div className="h-10 w-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center">
                 <AlertTriangle size={20} />
@@ -1864,8 +1931,14 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
 
       {/* NEW: Modal with Full Fields */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={entryModalControls.onBackdropClick}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl max-w-4xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2 className="text-xl font-bold text-gray-800">{editingId ? 'Editar' : 'Nova'} {isIncome ? 'Receita' : 'Despesa'}</h2>
 
             {((!isIncome && categories.length === 0) || accounts.length === 0) && (
@@ -2579,7 +2652,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 mt-4">
                 <button
                   type="button"
-                  onClick={() => { setIsModalOpen(false); setEditingId(null); setEditingItem(null); resetForm(); }}
+                  onClick={closeEntryModal}
                   className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
                 >
                   Cancelar
@@ -2599,8 +2672,14 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
       )}
 
       {paymentModalOpen && paymentItem && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={paymentModalControls.onBackdropClick}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="text-lg font-semibold text-gray-800">Registrar data de pagamento</h3>
             <div className="text-sm text-gray-600">
               <div><span className="font-medium">Despesa:</span> {paymentItem.description || 'Despesa'}</div>
@@ -2618,11 +2697,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
             <div className="flex justify-end gap-2 pt-2">
               <button
                 type="button"
-                onClick={() => {
-                  setPaymentModalOpen(false);
-                  setPaymentItem(null);
-                  setPaymentDate('');
-                }}
+                onClick={closePaymentModal}
                 className="px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50"
               >
                 Cancelar
@@ -2646,9 +2721,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
                     const amount = Number(paymentItem.valor || 0);
                     await updateAccountBalance(paymentItem.bank_account_id, -amount);
                   }
-                  setPaymentModalOpen(false);
-                  setPaymentItem(null);
-                  setPaymentDate('');
+                  closePaymentModal();
                   fetchData();
                 }}
                 className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"

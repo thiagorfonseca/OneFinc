@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { CheckSquare, Download, Loader2, Pencil, Plus, Trash2, Upload } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../src/auth/AuthProvider';
+import { useModalControls } from '../hooks/useModalControls';
 
 const detectCsvSeparator = (line: string) => {
   const commaCount = (line.match(/,/g) || []).length;
@@ -46,6 +47,16 @@ const PricingProcedures: React.FC = () => {
   const [showProcedureModal, setShowProcedureModal] = useState(false);
   const [selectedProcedures, setSelectedProcedures] = useState<string[]>([]);
   const [procedureSearch, setProcedureSearch] = useState('');
+
+  const closeProcedureModal = () => {
+    setShowProcedureModal(false);
+    setEditingProcedureId(null);
+  };
+
+  const procedureModalControls = useModalControls({
+    isOpen: showProcedureModal,
+    onClose: closeProcedureModal,
+  });
 
   const fetchProcedures = async () => {
     let query = supabase.from('procedures').select('*').order('created_at', { ascending: false });
@@ -313,17 +324,20 @@ const PricingProcedures: React.FC = () => {
         </div>
 
         {showProcedureModal && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-2xl space-y-4">
+          <div
+            className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+            onClick={procedureModalControls.onBackdropClick}
+          >
+            <div
+              className="bg-white rounded-xl shadow-xl p-6 w-full max-w-2xl space-y-4"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="flex items-center justify-between">
                 <h4 className="text-lg font-semibold text-gray-800">
                   {editingProcedureId ? 'Editar procedimento' : 'Novo procedimento'}
                 </h4>
                 <button
-                  onClick={() => {
-                    setShowProcedureModal(false);
-                    setEditingProcedureId(null);
-                  }}
+                  onClick={closeProcedureModal}
                   className="text-gray-500 hover:text-gray-700"
                 >
                   ✕

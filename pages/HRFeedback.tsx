@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Calendar, Download, Plus, Search, Users } from 'lucide-react';
+import { Calendar, Download, Plus, Search, Users, Eye, Pencil, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { formatDate } from '../lib/utils';
 import { useAuth } from '../src/auth/AuthProvider';
@@ -127,7 +127,8 @@ const HRFeedback: React.FC = () => {
     departmentId: '',
     leaderId: '',
     type: '',
-    date: '',
+    dateStart: '',
+    dateEnd: '',
     search: '',
   });
 
@@ -233,7 +234,8 @@ const HRFeedback: React.FC = () => {
       if (filters.departmentId && fb.department_id !== filters.departmentId) return false;
       if (filters.leaderId && fb.leader_id !== filters.leaderId) return false;
       if (filters.type && fb.feedback_type !== filters.type) return false;
-      if (filters.date && fb.feedback_date !== filters.date) return false;
+      if (filters.dateStart && (!fb.feedback_date || fb.feedback_date < filters.dateStart)) return false;
+      if (filters.dateEnd && (!fb.feedback_date || fb.feedback_date > filters.dateEnd)) return false;
       if (filters.search) {
         const needle = filters.search.toLowerCase();
         const haystack = [
@@ -518,12 +520,21 @@ const HRFeedback: React.FC = () => {
           </select>
           <div className="flex items-center gap-2">
             <Calendar size={16} className="text-gray-400" />
-            <input
-              type="date"
-              value={filters.date}
-              onChange={(e) => setFilters((prev) => ({ ...prev, date: e.target.value }))}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm"
-            />
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={filters.dateStart}
+                onChange={(e) => setFilters((prev) => ({ ...prev, dateStart: e.target.value }))}
+                className="px-2 py-1 border border-gray-200 rounded-lg text-sm"
+              />
+              <span className="text-xs text-gray-400">até</span>
+              <input
+                type="date"
+                value={filters.dateEnd}
+                onChange={(e) => setFilters((prev) => ({ ...prev, dateEnd: e.target.value }))}
+                className="px-2 py-1 border border-gray-200 rounded-lg text-sm"
+              />
+            </div>
           </div>
           <div className="relative flex-1 min-w-[240px]">
             <Search size={16} className="absolute left-3 top-3 text-gray-400" />
@@ -566,6 +577,17 @@ const HRFeedback: React.FC = () => {
           <div className="px-6 py-12 text-center text-sm text-gray-500">Carregando feedbacks...</div>
         ) : (
           <div className="divide-y divide-gray-100">
+            <div className="px-6 py-3 border-b border-gray-100 bg-gray-50 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="w-10">#</div>
+                <div className="min-w-[200px]">Colaborador</div>
+                <div className="min-w-[160px]">Data</div>
+                <div className="min-w-[160px]">Tipo</div>
+                <div className="min-w-[160px]">Resultado</div>
+                <div className="min-w-[80px] text-center">Nota</div>
+                <div className="ml-auto">Ações</div>
+              </div>
+            </div>
             {filteredFeedbacks.map((fb: any, idx: number) => (
               <div key={fb.id} className="px-6 py-4 flex flex-wrap items-center gap-4 hover:bg-gray-50">
                 <div className="w-10 text-sm text-gray-400">#{String(idx + 1).padStart(2, '0')}</div>
@@ -594,18 +616,22 @@ const HRFeedback: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setDetailFeedback(fb)}
-                    className="px-3 py-1 text-xs rounded-full border border-gray-200 text-gray-600"
+                    className="w-9 h-9 rounded-full border border-gray-200 text-gray-500 hover:text-gray-700 hover:border-gray-300 flex items-center justify-center"
+                    aria-label="Ver"
+                    title="Ver"
                   >
-                    Ver
+                    <Eye size={16} />
                   </button>
                   {canManage(fb) && (
                     <>
                       <button
                         type="button"
                         onClick={() => openEditModal(fb)}
-                        className="px-3 py-1 text-xs rounded-full border border-brand-100 text-brand-600"
+                        className="w-9 h-9 rounded-full border border-brand-100 text-brand-600 hover:border-brand-200 flex items-center justify-center"
+                        aria-label="Editar"
+                        title="Editar"
                       >
-                        Editar
+                        <Pencil size={16} />
                       </button>
                       <button
                         type="button"
@@ -614,9 +640,11 @@ const HRFeedback: React.FC = () => {
                           const { error } = await supabase.from('hr_feedbacks').delete().eq('id', fb.id);
                           if (!error) loadFeedbacks();
                         }}
-                        className="px-3 py-1 text-xs rounded-full border border-rose-100 text-rose-600"
+                        className="w-9 h-9 rounded-full border border-rose-100 text-rose-600 hover:border-rose-200 flex items-center justify-center"
+                        aria-label="Apagar"
+                        title="Apagar"
                       >
-                        Apagar
+                        <Trash2 size={16} />
                       </button>
                     </>
                   )}

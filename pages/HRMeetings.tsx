@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Calendar, CheckCircle2, Clock, Download, Link2, Plus, Search, Users } from 'lucide-react';
+import { Calendar, CheckCircle2, Clock, Download, Eye, Link2, Pencil, Plus, Search, Trash2, Users } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { formatDate } from '../lib/utils';
 import { useAuth } from '../src/auth/AuthProvider';
@@ -146,7 +146,8 @@ const HRMeetings: React.FC = () => {
     department: '',
     leaderId: '',
     meetingType: '',
-    date: '',
+    dateStart: '',
+    dateEnd: '',
     status: '',
     participantId: '',
   });
@@ -212,7 +213,8 @@ const HRMeetings: React.FC = () => {
       if (filters.leaderId && meeting.conductor_id !== filters.leaderId) return false;
       if (filters.meetingType && meeting.meeting_type !== filters.meetingType) return false;
       if (filters.status && meeting.status !== filters.status) return false;
-      if (filters.date && meeting.meeting_date !== filters.date) return false;
+      if (filters.dateStart && (!meeting.meeting_date || meeting.meeting_date < filters.dateStart)) return false;
+      if (filters.dateEnd && (!meeting.meeting_date || meeting.meeting_date > filters.dateEnd)) return false;
       if (filters.participantId) {
         const hasParticipant = (meeting.participants || []).some(
           (p: any) => p.clinic_user_id === filters.participantId
@@ -614,12 +616,21 @@ const HRMeetings: React.FC = () => {
                 className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-brand-500 outline-none"
               />
             </div>
-            <input
-              type="date"
-              value={filters.date}
-              onChange={(e) => setFilters((prev) => ({ ...prev, date: e.target.value }))}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm"
-            />
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={filters.dateStart}
+                onChange={(e) => setFilters((prev) => ({ ...prev, dateStart: e.target.value }))}
+                className="px-3 py-2 border border-gray-200 rounded-lg text-sm"
+              />
+              <span className="text-xs text-gray-400">até</span>
+              <input
+                type="date"
+                value={filters.dateEnd}
+                onChange={(e) => setFilters((prev) => ({ ...prev, dateEnd: e.target.value }))}
+                className="px-3 py-2 border border-gray-200 rounded-lg text-sm"
+              />
+            </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <select
@@ -758,7 +769,16 @@ const HRMeetings: React.FC = () => {
         {loading ? (
           <div className="px-6 py-12 text-center text-sm text-gray-500">Carregando reuniões...</div>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-gray-100 max-h-[60vh] overflow-y-auto">
+            <div className="sticky top-0 z-10 px-6 py-3 border-b border-gray-100 bg-gray-50 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="min-w-[160px]">Data</div>
+                <div className="flex-1 min-w-[200px]">Reunião</div>
+                <div className="min-w-[200px]">Líder</div>
+                <div className="min-w-[120px] text-center">Status</div>
+                <div className="ml-auto min-w-[120px] text-right">Ações</div>
+              </div>
+            </div>
             {filteredMeetings.map((meeting) => (
               <div
                 key={meeting.id}
@@ -799,25 +819,31 @@ const HRMeetings: React.FC = () => {
                     <p className="text-xs text-gray-400">Conduzida por</p>
                   </div>
                 </div>
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusBadge(meeting.status || 'Agendada')}`}>
-                  {statusLabel(meeting.status)}
-                </span>
-                <div className="ml-auto flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                <div className="min-w-[120px] flex justify-center">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusBadge(meeting.status || 'Agendada')}`}>
+                    {statusLabel(meeting.status)}
+                  </span>
+                </div>
+                <div className="ml-auto min-w-[120px] flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                   <button
                     type="button"
                     onClick={() => setDetailMeeting(meeting)}
-                    className="px-3 py-1 text-xs rounded-full border border-gray-200 text-gray-600 hover:border-gray-300"
+                    className="w-9 h-9 rounded-full border border-gray-200 text-gray-500 hover:text-gray-700 hover:border-gray-300 flex items-center justify-center"
+                    aria-label="Ver pauta"
+                    title="Ver pauta"
                   >
-                    Ver pauta
+                    <Eye size={16} />
                   </button>
                   {canManageMeeting(meeting) && (
                     <>
                       <button
                         type="button"
                         onClick={() => openEditModal(meeting)}
-                        className="px-3 py-1 text-xs rounded-full border border-brand-100 text-brand-600 hover:border-brand-200"
+                        className="w-9 h-9 rounded-full border border-brand-100 text-brand-600 hover:border-brand-200 flex items-center justify-center"
+                        aria-label="Editar"
+                        title="Editar"
                       >
-                        Editar
+                        <Pencil size={16} />
                       </button>
                       <button
                         type="button"
@@ -826,9 +852,11 @@ const HRMeetings: React.FC = () => {
                           const { error } = await supabase.from('hr_meetings').delete().eq('id', meeting.id);
                           if (!error) loadMeetings();
                         }}
-                        className="px-3 py-1 text-xs rounded-full border border-rose-100 text-rose-600 hover:border-rose-200"
+                        className="w-9 h-9 rounded-full border border-rose-100 text-rose-600 hover:border-rose-200 flex items-center justify-center"
+                        aria-label="Apagar"
+                        title="Apagar"
                       >
-                        Apagar
+                        <Trash2 size={16} />
                       </button>
                     </>
                   )}
@@ -846,11 +874,11 @@ const HRMeetings: React.FC = () => {
 
       {showModal && (
         <div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 overflow-y-auto p-4 sm:p-6"
           onClick={formModalControls.onBackdropClick}
         >
           <div
-            className="bg-white rounded-2xl shadow-xl w-full max-w-3xl p-6 space-y-4"
+            className="bg-white rounded-2xl shadow-xl w-full max-w-3xl p-6 space-y-4 max-h-[calc(100vh-2rem)] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">

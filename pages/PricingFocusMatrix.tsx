@@ -162,64 +162,11 @@ const PricingFocusMatrix: React.FC = () => {
         <p className="text-gray-500">Precificação • Matriz de Foco</p>
       </div>
 
-      <div className="bg-blue-50 rounded-xl border border-blue-100 p-4">
-        <div className="flex items-center gap-2 text-blue-700 text-sm">
+      <div className="bg-blue-50 rounded-xl border border-blue-100 p-4 max-w-xl mx-auto text-center">
+        <div className="flex items-center justify-center gap-2 text-blue-700 text-sm">
           <Target size={16} /> custo hora clinica
         </div>
         <p className="mt-2 text-xl font-semibold text-blue-700">{formatCurrency(costPerHour || 0)}</p>
-      </div>
-
-      <div className="bg-white rounded-xl border border-gray-100 p-4">
-        <div className="flex flex-wrap items-center gap-3 text-sm">
-          <label className="flex items-center gap-2 text-gray-600">
-            <span>Horas disponíveis</span>
-            <input
-              value={hoursAvailableInput}
-              onChange={(e) => setHoursAvailableInput(e.target.value)}
-              className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700"
-            />
-          </label>
-          <label className="flex items-center gap-2 text-gray-600">
-            <span>Taxa de ocupação</span>
-            <input
-              value={occupancyInput}
-              onChange={(e) => setOccupancyInput(e.target.value)}
-              className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700"
-            />
-          </label>
-          <label className="flex items-center gap-2 text-gray-600">
-            <span>Impostos</span>
-            <input
-              value={taxInput}
-              onChange={(e) => setTaxInput(e.target.value)}
-              className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700"
-            />
-          </label>
-          <label className="flex items-center gap-2 text-gray-600">
-            <span>Margem</span>
-            <input
-              value={marginInput}
-              onChange={(e) => setMarginInput(e.target.value)}
-              className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700"
-            />
-          </label>
-          <label className="flex items-center gap-2 text-gray-600">
-            <span>Taxa cartão</span>
-            <input
-              value={cardFeeInput}
-              onChange={(e) => setCardFeeInput(e.target.value)}
-              className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700"
-            />
-          </label>
-          <label className="flex items-center gap-2 text-gray-600">
-            <span>Comissão</span>
-            <input
-              value={commissionInput}
-              onChange={(e) => setCommissionInput(e.target.value)}
-              className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700"
-            />
-          </label>
-        </div>
       </div>
 
       {!isChartExpanded && (

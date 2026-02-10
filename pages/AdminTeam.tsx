@@ -3,6 +3,7 @@ import { Plus, Loader2, Users, Mail, Shield } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { buildPublicUrl } from '../lib/utils';
 import { useAuth } from '../src/auth/AuthProvider';
+import { useModalControls } from '../hooks/useModalControls';
 
 const USER_AVATAR_BUCKET = 'user-avatars';
 const MAX_AVATAR_DIMENSION = 350;
@@ -97,6 +98,16 @@ const AdminTeam: React.FC = () => {
   const [editAvatarFile, setEditAvatarFile] = useState<File | null>(null);
   const [editAvatarPreview, setEditAvatarPreview] = useState<string | null>(null);
   const [editAvatarError, setEditAvatarError] = useState<string | null>(null);
+
+  const closeEditModal = () => {
+    setShowEditModal(false);
+    resetEditForm();
+  };
+
+  const editModalControls = useModalControls({
+    isOpen: showEditModal,
+    onClose: closeEditModal,
+  });
   const [savingMember, setSavingMember] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -431,16 +442,19 @@ const AdminTeam: React.FC = () => {
       </div>
 
       {showEditModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-xl space-y-4">
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+          onClick={editModalControls.onBackdropClick}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl p-6 w-full max-w-xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between">
               <h4 className="text-lg font-semibold text-gray-800">Editar administrador</h4>
               <button
                 type="button"
-                onClick={() => {
-                  setShowEditModal(false);
-                  resetEditForm();
-                }}
+                onClick={closeEditModal}
                 className="text-gray-500 hover:text-gray-700"
               >
                 ✕

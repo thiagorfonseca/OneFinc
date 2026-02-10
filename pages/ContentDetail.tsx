@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../src/auth/AuthProvider';
+import { useModalControls } from '../hooks/useModalControls';
 
 interface ContentItem {
   id: string;
@@ -646,6 +647,11 @@ const ContentDetail: React.FC = () => {
     setLightsOff(false);
   }, [saveCurrentProgress]);
 
+  const lightsModalControls = useModalControls({
+    isOpen: lightsOff,
+    onClose: closeLights,
+  });
+
   useEffect(() => {
     const allLessons = modules.flatMap((m) => m.lessons);
     if (lessonParam) {
@@ -975,7 +981,10 @@ const ContentDetail: React.FC = () => {
       </div>
 
       {lightsOff && (
-        <div className="fixed inset-0 bg-black/80 z-50 overflow-y-auto" onClick={closeLights}>
+        <div
+          className="fixed inset-0 bg-black/80 z-50 overflow-y-auto"
+          onClick={lightsModalControls.onBackdropClick}
+        >
           <div className="min-h-full flex items-center justify-center p-6">
             <div className="w-full max-w-6xl" onClick={(e) => e.stopPropagation()}>
               <div className="flex justify-end pb-3">

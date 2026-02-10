@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { BankAccount } from '../types';
 import { formatCurrency } from '../lib/utils';
 import { useAuth } from '../src/auth/AuthProvider';
+import { useModalControls } from '../hooks/useModalControls';
 
 const BankAccounts: React.FC = () => {
   const { effectiveClinicId: clinicId } = useAuth();
@@ -13,6 +14,16 @@ const BankAccounts: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditingId(null);
+  };
+
+  const modalControls = useModalControls({
+    isOpen: isModalOpen,
+    onClose: closeModal,
+  });
 
   // Form State
   const [formData, setFormData] = useState({
@@ -362,8 +373,14 @@ const BankAccounts: React.FC = () => {
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={modalControls.onBackdropClick}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl max-w-md w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2 className="text-xl font-bold text-gray-800 mb-4">{editingId ? 'Editar Conta Bancária' : 'Nova Conta Bancária'}</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -414,9 +431,9 @@ const BankAccounts: React.FC = () => {
                 )}
               </div>
               <div className="flex justify-end gap-3 pt-4">
-                <button 
-                  type="button" 
-                  onClick={() => setIsModalOpen(false)}
+                <button
+                  type="button"
+                  onClick={closeModal}
                   className="px-4 py-2 border rounded-lg text-gray-600 hover:bg-gray-50"
                 >
                   Cancelar

@@ -4,6 +4,7 @@ import { formatCurrency, formatDate, formatMonthYear } from '../lib/utils';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Filter, Calendar, RefreshCw, BarChart2, TrendingUp as TrendingUpIcon, ArrowUpDown, Download, Trash2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../src/auth/AuthProvider';
+import { useModalControls } from '../hooks/useModalControls';
 
 type Period = 'dia' | 'semana' | 'quinzenal' | 'mes' | 'ano';
 
@@ -214,6 +215,11 @@ const CardAnalysis: React.FC = () => {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<null | { id: string; paciente?: string | null; data?: string }>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const deleteModalControls = useModalControls({
+    isOpen: !!deleteTarget,
+    onClose: () => setDeleteTarget(null),
+  });
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
 
   const fetchData = useCallback(async () => {
@@ -808,8 +814,14 @@ const CardAnalysis: React.FC = () => {
       </div>
 
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-red-900/20 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full border border-red-200">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-red-900/20 p-4"
+          onClick={deleteModalControls.onBackdropClick}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl max-w-md w-full border border-red-200"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-start gap-3 p-5 border-b border-red-100">
               <div className="h-10 w-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center">
                 <AlertTriangle size={20} />

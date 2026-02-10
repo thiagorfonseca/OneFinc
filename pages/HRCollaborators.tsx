@@ -3,6 +3,8 @@ import { Eye, Pencil, Plus, Search, Trash2, Users } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { buildPublicUrl, formatDate } from '../lib/utils';
 import { useAuth } from '../src/auth/AuthProvider';
+import { useModalControls } from '../hooks/useModalControls';
+import RichTextEditor from '../components/RichTextEditor';
 
 const USER_AVATAR_BUCKET = 'user-avatars';
 const MAX_AVATAR_DIMENSION = 350;
@@ -114,6 +116,27 @@ const HRCollaborators: React.FC = () => {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [detailCollaborator, setDetailCollaborator] = useState<any | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [archetypeByEmail, setArchetypeByEmail] = useState<Record<string, string>>({});
+
+  const closeFormModal = () => {
+    setShowModal(false);
+    setEditingId(null);
+  };
+
+  const closeDetailModal = () => {
+    setDetailCollaborator(null);
+  };
+
+  const formModalControls = useModalControls({
+    isOpen: showModal,
+    onClose: closeFormModal,
+  });
+
+  const detailModalControls = useModalControls({
+    isOpen: !!detailCollaborator,
+    onClose: closeDetailModal,
+  });
   const pageMenuRef = useRef<HTMLDetailsElement | null>(null);
 
   const [form, setForm] = useState({
@@ -160,6 +183,65 @@ const HRCollaborators: React.FC = () => {
     );
   }, [collaborators, search]);
 
+  const resolvedDetail = useMemo(() => {
+    if (!detailCollaborator) return null;
+    const stored = detailCollaborator.hr_collaborators?.[0] || {};
+    const emailKey = (detailCollaborator.email || '').trim().toLowerCase();
+    const respondentProfile = archetypeByEmail[emailKey];
+    return {
+      ...detailCollaborator,
+      ...stored,
+      archetype: respondentProfile || detailCollaborator.archetype || stored.archetype || '',
+    };
+  }, [detailCollaborator, archetypeByEmail]);
+
+  const openDetailModal = async (collab: any) => {
+    setDetailCollaborator(collab);
+    if (!clinicId) return;
+    setDetailLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('clinic_users')
+        .select(
+          `
+          id,
+          clinic_id,
+          name,
+          email,
+          role,
+          paginas_liberadas,
+          avatar_url,
+          user_id,
+          created_at,
+          hr_collaborators (
+            birth_date,
+            admission_date,
+            job_title,
+            function_title,
+            contract_type,
+            salary,
+            description,
+            archetype
+          )
+        `
+        )
+        .eq('clinic_id', clinicId)
+        .eq('id', collab.id)
+        .maybeSingle();
+      if (error || !data) return;
+      const stored = data.hr_collaborators?.[0] || {};
+      const emailKey = (data.email || '').trim().toLowerCase();
+      const respondentProfile = archetypeByEmail[emailKey];
+      setDetailCollaborator({
+        ...data,
+        ...stored,
+        archetype: respondentProfile || stored.archetype || '',
+      });
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
   const loadCollaborators = async () => {
     if (!clinicId) {
       setCollaborators([]);
@@ -167,38 +249,69 @@ const HRCollaborators: React.FC = () => {
       return;
     }
     setLoading(true);
-    const { data, error } = await supabase
-      .from('clinic_users')
-      .select(
+    const [collabRes, respondentRes] = await Promise.all([
+      supabase
+        .from('clinic_users')
+        .select(
+          `
+          id,
+          clinic_id,
+          name,
+          email,
+          role,
+          paginas_liberadas,
+          avatar_url,
+          user_id,
+          created_at,
+          hr_collaborators (
+            birth_date,
+            admission_date,
+            job_title,
+            function_title,
+            contract_type,
+            salary,
+            description,
+            archetype
+          )
         `
-        id,
-        clinic_id,
-        name,
-        email,
-        role,
-        paginas_liberadas,
-        avatar_url,
-        user_id,
-        created_at,
-        hr_collaborators (
-          birth_date,
-          admission_date,
-          job_title,
-          function_title,
-          contract_type,
-          salary,
-          description,
-          archetype
         )
-      `
-      )
-      .eq('clinic_id', clinicId)
-      .order('created_at', { ascending: false });
-    if (!error && data) {
-      const merged = (data as any[]).map((row) => ({
-        ...row,
-        ...(row.hr_collaborators?.[0] || {}),
-      }));
+        .eq('clinic_id', clinicId)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('archetype_respondents')
+        .select('email, top_profile, created_at')
+        .eq('clinic_id', clinicId)
+        .not('email', 'is', null),
+    ]);
+
+    let resolvedArchetypeMap: Record<string, string> = {};
+    if (!respondentRes.error) {
+      const map: Record<string, { profile: string; createdAt: string }> = {};
+      (respondentRes.data || []).forEach((row: any) => {
+        const email = (row.email || '').trim().toLowerCase();
+        if (!email) return;
+        const existing = map[email];
+        if (!existing || new Date(row.created_at) > new Date(existing.createdAt)) {
+          map[email] = { profile: row.top_profile, createdAt: row.created_at };
+        }
+      });
+      resolvedArchetypeMap = Object.fromEntries(
+        Object.entries(map).map(([email, value]) => [email, value.profile])
+      );
+      setArchetypeByEmail(resolvedArchetypeMap);
+    }
+
+    if (!collabRes.error && collabRes.data) {
+      const merged = (collabRes.data as any[]).map((row) => {
+        const emailKey = (row.email || '').trim().toLowerCase();
+        const respondentProfile = resolvedArchetypeMap[emailKey];
+        const stored = row.hr_collaborators?.[0] || {};
+        return {
+          ...row,
+          ...stored,
+          archetype: respondentProfile || stored.archetype || '',
+        };
+      });
       setCollaborators(merged);
     }
     setLoading(false);
@@ -207,6 +320,13 @@ const HRCollaborators: React.FC = () => {
   useEffect(() => {
     loadCollaborators();
   }, [clinicId]);
+
+  useEffect(() => {
+    if (!showModal) return;
+    const emailKey = form.email.trim().toLowerCase();
+    const nextArchetype = emailKey ? (archetypeByEmail[emailKey] || '') : '';
+    setForm((prev) => (prev.archetype === nextArchetype ? prev : { ...prev, archetype: nextArchetype }));
+  }, [showModal, form.email, archetypeByEmail]);
 
   const openCreateModal = () => {
     setEditingId(null);
@@ -442,7 +562,7 @@ const HRCollaborators: React.FC = () => {
                   <div className="flex items-center gap-2 justify-end">
                     <button
                       type="button"
-                      onClick={() => setDetailCollaborator(collab)}
+                      onClick={() => openDetailModal(collab)}
                       className={`w-8 h-8 rounded-full flex items-center justify-center border ${isSelf ? 'border-slate-600 text-white' : 'border-gray-200 text-gray-500'}`}
                       title="Visualizar"
                     >
@@ -480,25 +600,28 @@ const HRCollaborators: React.FC = () => {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 overflow-y-auto py-8">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl p-6 space-y-4 max-h-[calc(100vh-4rem)] overflow-y-auto">
+        <div
+          className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 overflow-y-auto py-8"
+          onClick={formModalControls.onBackdropClick}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-4xl p-6 space-y-4 max-h-[calc(100vh-4rem)] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-800">
                 {editingId ? 'Editar colaborador' : 'Adicionar colaborador'}
               </h3>
               <button
                 type="button"
-                onClick={() => {
-                  setShowModal(false);
-                  setEditingId(null);
-                }}
+                onClick={closeFormModal}
                 className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500"
               >
                 ✕
               </button>
             </div>
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-6">
-              <div className="space-y-4">
+              <div className="space-y-4 flex flex-col">
                 <div className="w-full rounded-2xl border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center h-40">
                   {avatarPreview || form.avatarUrl ? (
                     <img src={avatarPreview || form.avatarUrl || ''} alt="Avatar" className="w-20 h-20 rounded-full object-cover" />
@@ -553,6 +676,25 @@ const HRCollaborators: React.FC = () => {
                             Selecione
                           </summary>
                           <div className="absolute z-20 mt-2 w-full max-h-56 overflow-auto border border-gray-200 rounded-lg bg-white shadow-lg">
+                            <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 text-xs text-gray-500">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setForm((prev) => ({ ...prev, pages: availablePageOptions.map((page) => page.value) }));
+                                  if (pageMenuRef.current) pageMenuRef.current.removeAttribute('open');
+                                }}
+                                className="text-brand-600 hover:text-brand-700"
+                              >
+                                Selecionar todos
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setForm((prev) => ({ ...prev, pages: [] }))}
+                                className="text-gray-500 hover:text-gray-700"
+                              >
+                                Limpar
+                              </button>
+                            </div>
                             {availablePageOptions.map((page) => (
                               <button
                                 key={page.value}
@@ -668,125 +810,142 @@ const HRCollaborators: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Arquétipo</label>
                     <input
                       value={form.archetype}
-                      onChange={(e) => setForm((prev) => ({ ...prev, archetype: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                      placeholder="Digite aqui"
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
+                      placeholder="Aguardando resposta"
                     />
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Descrição de função</label>
-                  <textarea
+                  <RichTextEditor
                     value={form.jobDescription}
-                    onChange={(e) => setForm((prev) => ({ ...prev, jobDescription: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg min-h-[90px]"
+                    onChange={(value) => setForm((prev) => ({ ...prev, jobDescription: value }))}
                     placeholder="Descreva"
+                    minHeight={180}
                   />
                 </div>
                 {formError && <div className="p-3 bg-rose-50 text-rose-600 text-sm rounded-lg">{formError}</div>}
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="w-full px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50"
-                >
-                  {saving ? 'Salvando...' : editingId ? 'Salvar' : 'Criar'}
-                </button>
+                <div className="sticky bottom-0 bg-white pt-2">
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="w-full px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50"
+                  >
+                    {saving ? 'Salvando...' : editingId ? 'Salvar' : 'Criar'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {detailCollaborator && (
-        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 overflow-y-auto py-8">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl p-6 space-y-4 max-h-[calc(100vh-4rem)] overflow-y-auto">
+      {resolvedDetail && (
+        <div
+          className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 overflow-y-auto py-8"
+          onClick={detailModalControls.onBackdropClick}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-3xl p-6 space-y-4 max-h-[calc(100vh-4rem)] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-800">Visualizar colaborador</h3>
               <button
                 type="button"
-                onClick={() => setDetailCollaborator(null)}
+                onClick={closeDetailModal}
                 className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500"
               >
                 ✕
               </button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-[120px_1fr] gap-4">
+            {detailLoading ? (
+              <div className="text-sm text-gray-500 py-8 text-center">Carregando dados do colaborador...</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-[120px_1fr] gap-4">
               <div className="flex flex-col items-center gap-2">
-                {detailCollaborator.avatar_url ? (
+                {resolvedDetail.avatar_url ? (
                   <img
-                    src={detailCollaborator.avatar_url}
-                    alt={detailCollaborator.name}
+                    src={resolvedDetail.avatar_url}
+                    alt={resolvedDetail.name}
                     className="w-20 h-20 rounded-full object-cover"
                   />
                 ) : (
                   <div className="w-20 h-20 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center text-lg font-semibold">
-                    {getInitials(detailCollaborator.name || '', detailCollaborator.email || '')}
+                    {getInitials(resolvedDetail.name || '', resolvedDetail.email || '')}
                   </div>
                 )}
-                <span className={`text-xs font-semibold px-3 py-1 rounded-full ${detailCollaborator.user_id ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                  {firstAccessLabel(detailCollaborator)}
+                <span className={`text-xs font-semibold px-3 py-1 rounded-full ${resolvedDetail.user_id ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                  {firstAccessLabel(resolvedDetail)}
                 </span>
               </div>
               <div className="space-y-3">
                 <div>
                   <p className="text-xs text-gray-400">Nome</p>
-                  <p className="text-sm font-semibold text-gray-900">{detailCollaborator.name}</p>
+                  <p className="text-sm font-semibold text-gray-900">{resolvedDetail.name}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-400">E-mail</p>
-                  <p className="text-sm text-gray-700 break-all">{detailCollaborator.email}</p>
+                  <p className="text-sm text-gray-700 break-all">{resolvedDetail.email}</p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
                     <p className="text-xs text-gray-400">Admissão</p>
                     <p className="text-sm text-gray-700">
-                      {detailCollaborator.admission_date ? formatDate(detailCollaborator.admission_date) : '-'}
+                      {resolvedDetail.admission_date ? formatDate(resolvedDetail.admission_date) : '-'}
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400">Nascimento</p>
                     <p className="text-sm text-gray-700">
-                      {detailCollaborator.birth_date ? formatDate(detailCollaborator.birth_date) : '-'}
+                      {resolvedDetail.birth_date ? formatDate(resolvedDetail.birth_date) : '-'}
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400">Contrato</p>
-                    <p className="text-sm text-gray-700">{detailCollaborator.contract_type || 'Não informado'}</p>
+                    <p className="text-sm text-gray-700">{resolvedDetail.contract_type || 'Não informado'}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
                     <p className="text-xs text-gray-400">Cargo</p>
-                    <p className="text-sm text-gray-700">{detailCollaborator.job_title || 'Não informado'}</p>
+                    <p className="text-sm text-gray-700">{resolvedDetail.job_title || 'Não informado'}</p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400">Função</p>
-                    <p className="text-sm text-gray-700">{detailCollaborator.function_title || 'Não informado'}</p>
+                    <p className="text-sm text-gray-700">{resolvedDetail.function_title || 'Não informado'}</p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400">Salário</p>
                     <p className="text-sm text-gray-700">
-                      {detailCollaborator.salary ? `R$ ${Number(detailCollaborator.salary).toFixed(2)}` : 'Não informado'}
+                      {resolvedDetail.salary ? `R$ ${Number(resolvedDetail.salary).toFixed(2)}` : 'Não informado'}
                     </p>
                   </div>
                 </div>
                 <div>
                   <p className="text-xs text-gray-400">Arquétipo</p>
-                  <p className="text-sm text-gray-700">{detailCollaborator.archetype || 'Não respondido'}</p>
+                  <p className="text-sm text-gray-700">{resolvedDetail.archetype || 'Não respondido'}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-400">Descrição</p>
-                  <p className="text-sm text-gray-700 whitespace-pre-line">
-                    {detailCollaborator.description || 'Sem descrição'}
-                  </p>
+                  {resolvedDetail.description ? (
+                    <div
+                      className="text-sm text-gray-700 prose prose-sm max-w-none"
+                      dangerouslySetInnerHTML={{ __html: resolvedDetail.description }}
+                    />
+                  ) : (
+                    <p className="text-sm text-gray-700">Sem descrição</p>
+                  )}
                 </div>
               </div>
             </div>
+            )}
             <div className="flex justify-end">
               <button
                 type="button"
                 onClick={() => {
-                  const collab = detailCollaborator;
+                  const collab = resolvedDetail;
                   setDetailCollaborator(null);
                   openEditModal(collab);
                 }}

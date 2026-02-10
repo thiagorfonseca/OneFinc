@@ -4,6 +4,7 @@ import { Shield, Users, Building2, Wallet, RefreshCw, Plus, Loader2, CheckSquare
 import { supabase } from '../lib/supabase';
 import { buildPublicUrl, formatDate } from '../lib/utils';
 import { useAuth } from '../src/auth/AuthProvider';
+import { useModalControls } from '../hooks/useModalControls';
 
 interface AdminProps {
   initialTab?: 'overview' | 'clinics' | 'users';
@@ -70,6 +71,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
   const { isSystemAdmin, selectedClinicId, setSelectedClinicId } = useAuth();
   const PAGE_OPTIONS = [
     { value: '/', label: 'Dash Financeiro' },
+    { value: '/reports/attendance', label: 'Relatório de Atendimento' },
     { value: '/incomes', label: 'Receitas' },
     { value: '/expenses', label: 'Despesas' },
     { value: '/card-analysis', label: 'Análise de cartão' },
@@ -269,6 +271,27 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     setEditClinicLogoPreview(null);
     setEditClinicLogoError(null);
   };
+
+  const closeClinicModal = () => {
+    setShowClinicModal(false);
+    resetEditClinicForm();
+  };
+
+  const closeUserModal = () => {
+    setShowUserModal(false);
+    setEditingUserId(null);
+    setEditUserForm({ clinic_id: '', name: '', email: '', role: 'user', ativo: true, paginas_liberadas: [] });
+  };
+
+  const clinicModalControls = useModalControls({
+    isOpen: showClinicModal,
+    onClose: closeClinicModal,
+  });
+
+  const userModalControls = useModalControls({
+    isOpen: showUserModal,
+    onClose: closeUserModal,
+  });
 
   const handleClinicLogoChange = async (file: File) => {
     const error = await validateSquareImage(file);
@@ -1089,16 +1112,19 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
           </div>
 
           {showClinicModal && (
-            <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-              <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-3xl max-h-[90vh] overflow-auto space-y-4">
+            <div
+              className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+              onClick={clinicModalControls.onBackdropClick}
+            >
+              <div
+                className="bg-white rounded-xl shadow-xl p-6 w-full max-w-3xl max-h-[90vh] overflow-auto space-y-4"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <div className="flex items-center justify-between">
                   <h4 className="text-lg font-semibold text-gray-800">Editar clínica</h4>
                   <button
                     type="button"
-                    onClick={() => {
-                      setShowClinicModal(false);
-                      resetEditClinicForm();
-                    }}
+                    onClick={closeClinicModal}
                     className="text-gray-500 hover:text-gray-700"
                   >
                     ✕
@@ -1651,9 +1677,6 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
                       <div>
                         <p className="font-semibold text-gray-800">{u.name} <span className="text-xs text-gray-500">({u.role || 'user'})</span></p>
                         <p className="text-xs text-gray-500">{u.email} • Clínica: {u.clinic_id}</p>
-                        {u.paginas_liberadas && u.paginas_liberadas.length > 0 && (
-                          <p className="text-xs text-gray-500">Páginas: {u.paginas_liberadas.map((p: string) => PAGE_LABEL_MAP[p] || p).join(', ')}</p>
-                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1682,17 +1705,19 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
           </div>
 
           {showUserModal && (
-            <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-              <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-2xl space-y-4">
+            <div
+              className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+              onClick={userModalControls.onBackdropClick}
+            >
+              <div
+                className="bg-white rounded-xl shadow-xl p-6 w-full max-w-2xl space-y-4"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <div className="flex items-center justify-between">
                   <h4 className="text-lg font-semibold text-gray-800">Editar usuário</h4>
                   <button
                     type="button"
-                    onClick={() => {
-                      setShowUserModal(false);
-                      setEditingUserId(null);
-                      setEditUserForm({ clinic_id: '', name: '', email: '', role: 'user', ativo: true, paginas_liberadas: [] });
-                    }}
+                    onClick={closeUserModal}
                     className="text-gray-500 hover:text-gray-700"
                   >
                     ✕

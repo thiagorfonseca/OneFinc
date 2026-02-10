@@ -5,6 +5,7 @@ import { buildPublicUrl, formatDate } from '../lib/utils';
 import { Category } from '../types';
 import { useAuth } from '../src/auth/AuthProvider';
 import { useSearchParams } from 'react-router-dom';
+import { useModalControls } from '../hooks/useModalControls';
 
 type Section = 'geral' | 'categorias' | 'taxas' | 'clientes' | 'procedimentos' | 'profissionais' | 'fornecedores' | 'usuarios';
 
@@ -133,6 +134,7 @@ const Settings: React.FC = () => {
 
   const PAGE_OPTIONS = [
     { value: '/', label: 'Dash Financeiro' },
+    { value: '/reports/attendance', label: 'Relatório de Atendimento' },
     { value: '/incomes', label: 'Receitas' },
     { value: '/expenses', label: 'Despesas' },
     { value: '/card-analysis', label: 'Análise de cartão' },
@@ -238,6 +240,37 @@ const Settings: React.FC = () => {
   const [userAvatarPreview, setUserAvatarPreview] = useState<string | null>(null);
   const [userAvatarError, setUserAvatarError] = useState<string | null>(null);
   const [showUserModal, setShowUserModal] = useState(false);
+
+  const closeCustomerModal = () => {
+    setShowCustomerModal(false);
+    setEditingCustomerId(null);
+    setCustomerError(null);
+  };
+
+  const closeProcedureModal = () => {
+    setShowProcedureModal(false);
+    setEditingProcedureId(null);
+  };
+
+  const closeUserModal = () => {
+    setShowUserModal(false);
+    resetEditUserForm();
+  };
+
+  const customerModalControls = useModalControls({
+    isOpen: showCustomerModal,
+    onClose: closeCustomerModal,
+  });
+
+  const procedureModalControls = useModalControls({
+    isOpen: showProcedureModal,
+    onClose: closeProcedureModal,
+  });
+
+  const userModalControls = useModalControls({
+    isOpen: showUserModal,
+    onClose: closeUserModal,
+  });
   const [editUserForm, setEditUserForm] = useState({
     name: '',
     email: '',
@@ -2015,16 +2048,18 @@ const Settings: React.FC = () => {
           </div>
 
           {showCustomerModal && (
-            <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-              <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg space-y-4">
+            <div
+              className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+              onClick={customerModalControls.onBackdropClick}
+            >
+              <div
+                className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg space-y-4"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <div className="flex items-center justify-between">
                   <h4 className="text-lg font-semibold text-gray-800">Editar cliente</h4>
                   <button
-                    onClick={() => {
-                      setShowCustomerModal(false);
-                      setEditingCustomerId(null);
-                      setCustomerError(null);
-                    }}
+                    onClick={closeCustomerModal}
                     className="text-gray-500 hover:text-gray-700"
                   >
                     ✕
@@ -2332,12 +2367,18 @@ const Settings: React.FC = () => {
           </div>
 
           {showProcedureModal && (
-            <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-              <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-2xl space-y-4">
+            <div
+              className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+              onClick={procedureModalControls.onBackdropClick}
+            >
+              <div
+                className="bg-white rounded-xl shadow-xl p-6 w-full max-w-2xl space-y-4"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <div className="flex items-center justify-between">
                   <h4 className="text-lg font-semibold text-gray-800">{editingProcedureId ? 'Editar procedimento' : 'Novo procedimento'}</h4>
                   <button
-                    onClick={() => { setShowProcedureModal(false); setEditingProcedureId(null); }}
+                    onClick={closeProcedureModal}
                     className="text-gray-500 hover:text-gray-700"
                   >
                     ✕
@@ -2953,16 +2994,19 @@ const Settings: React.FC = () => {
                   </div>
 
                   {showUserModal && (
-                    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-                      <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-auto space-y-4">
+                    <div
+                      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+                      onClick={userModalControls.onBackdropClick}
+                    >
+                      <div
+                        className="bg-white rounded-xl shadow-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-auto space-y-4"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <div className="flex items-center justify-between">
                           <h4 className="text-lg font-semibold text-gray-800">Editar usuário</h4>
                           <button
                             type="button"
-                            onClick={() => {
-                              setShowUserModal(false);
-                              resetEditUserForm();
-                            }}
+                            onClick={closeUserModal}
                             className="text-gray-500 hover:text-gray-700"
                           >
                             ✕

@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, FileText, Settings, LogOut, Menu, ChevronsLeft, ChevronsRight, BarChart2, Briefcase, ChevronDown, ChevronRight, Tag, User, CheckSquare, BookOpen, Users, MessageCircle, Calculator, Target, Calendar } from 'lucide-react';
+import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, FileText, Settings, LogOut, Menu, ChevronsLeft, ChevronsRight, BarChart2, Briefcase, ChevronDown, ChevronRight, Tag, User, CheckSquare, BookOpen, Users, MessageCircle, Calculator, Target, Calendar, ClipboardList } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import ClinicSwitcher from './admin/ClinicSwitcher';
@@ -42,6 +42,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       icon: Wallet,
       children: [
         { name: 'Dash Financeiro', href: '/', icon: LayoutDashboard },
+        { name: 'Relatório de Atendimento', href: '/reports/attendance', icon: ClipboardList },
         { name: 'Receitas', href: '/incomes', icon: TrendingUp },
         { name: 'Despesas', href: '/expenses', icon: TrendingDown },
         { name: 'Análise de cartão', href: '/card-analysis', icon: BarChart2 },
@@ -141,6 +142,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const displayName = formatDisplayName(rawDisplayName) || (user?.email ? user.email.split('@')[0] : '');
   const displayEmail = user?.email || clinicUser?.email || '';
   const displayClinic = clinic?.name?.trim() || '';
+  const vendasReturnTo = `${location.pathname}${location.search}`;
+  const vendasHref = `/incomes?new=1&return_to=${encodeURIComponent(vendasReturnTo)}`;
 
   const toggleExpand = (name: string) => {
     setExpanded((prev) => {
@@ -232,6 +235,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               const isConfig = item.name === 'Minha Clínica';
               const isFinanceiro = item.name === 'Financeiro';
               const isHighlight = item.variant === 'highlight';
+              const itemHref = item.name === 'VENDAS' ? vendasHref : item.href;
               const parentHref = hasPageAccess(item.href) ? item.href : (item.children?.[0]?.href || item.href);
               return (
                 <div key={item.name}>
@@ -275,7 +279,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     </div>
                   ) : (
                     <Link
-                      to={item.href}
+                      to={itemHref}
                       className={`
                         flex items-center gap-3 ${isCollapsed ? 'justify-center px-2' : 'px-4'} py-3 text-sm font-medium rounded-lg transition-colors
                         ${isHighlight

@@ -4,6 +4,7 @@ import { parseOFX, formatCurrency, formatDate } from '../lib/utils';
 import { BankAccount, Category } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../src/auth/AuthProvider';
+import { useModalControls } from '../hooks/useModalControls';
 
 const Reconciliation: React.FC = () => {
   const { effectiveClinicId: clinicId } = useAuth();
@@ -30,6 +31,33 @@ const Reconciliation: React.FC = () => {
   const [showOnlyConciliated, setShowOnlyConciliated] = useState(false);
   const [archivedHidden, setArchivedHidden] = useState(true);
   const [reopenTarget, setReopenTarget] = useState<any>(null);
+
+  const closeCreateModal = () => {
+    setIsCreateModalOpen(false);
+  };
+
+  const closeLinkModal = () => {
+    setIsLinkModalOpen(false);
+  };
+
+  const closeReopenModal = () => {
+    setReopenTarget(null);
+  };
+
+  const createModalControls = useModalControls({
+    isOpen: isCreateModalOpen,
+    onClose: closeCreateModal,
+  });
+
+  const linkModalControls = useModalControls({
+    isOpen: isLinkModalOpen,
+    onClose: closeLinkModal,
+  });
+
+  const reopenModalControls = useModalControls({
+    isOpen: !!reopenTarget,
+    onClose: closeReopenModal,
+  });
   const [reopenLoading, setReopenLoading] = useState(false);
 
   // Create Form State
@@ -621,8 +649,14 @@ const Reconciliation: React.FC = () => {
 
       {/* Modal Criar Lançamento da Conciliação */}
       {isCreateModalOpen && selectedTx && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6">
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={createModalControls.onBackdropClick}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2 className="text-xl font-bold text-gray-800 mb-1">
               Nova {selectedTx.tipo === 'CREDIT' ? 'Receita' : 'Despesa'} (Conciliação)
             </h2>
@@ -674,7 +708,7 @@ const Reconciliation: React.FC = () => {
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 mt-2">
                 <button
                   type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
+                  onClick={closeCreateModal}
                   className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
                 >
                   Cancelar
@@ -695,8 +729,14 @@ const Reconciliation: React.FC = () => {
 
       {/* Modal Vincular Lançamento Existente */}
       {isLinkModalOpen && selectedTx && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6">
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={linkModalControls.onBackdropClick}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-start justify-between gap-4 mb-4">
               <div>
                 <h2 className="text-xl font-bold text-gray-800">Vincular lançamento existente</h2>
@@ -778,7 +818,7 @@ const Reconciliation: React.FC = () => {
             <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 mt-4">
               <button
                 type="button"
-                onClick={() => setIsLinkModalOpen(false)}
+                onClick={closeLinkModal}
                 className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
               >
                 Fechar
@@ -790,8 +830,14 @@ const Reconciliation: React.FC = () => {
 
       {/* Modal Reabrir Conciliação */}
       {reopenTarget && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={reopenModalControls.onBackdropClick}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl max-w-md w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2 className="text-lg font-bold text-gray-800 mb-2">Reabrir conciliação?</h2>
             <p className="text-sm text-gray-600">
               Isso remove o vínculo com o lançamento e marca o item como pendente.
@@ -804,7 +850,7 @@ const Reconciliation: React.FC = () => {
             <div className="flex justify-end gap-2 pt-4 mt-4 border-t border-gray-100">
               <button
                 type="button"
-                onClick={() => setReopenTarget(null)}
+                onClick={closeReopenModal}
                 className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
                 disabled={reopenLoading}
               >

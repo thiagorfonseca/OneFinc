@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Copy, Plus } from 'lucide-react';
+import { Copy, Plus, ToggleLeft, ToggleRight } from 'lucide-react';
 import { useAuth } from '../../../auth/AuthProvider';
+import { supabase } from '../../../../lib/supabase';
 import { createPublicLink, listPublicLinks, togglePublicLink } from '../archetypeService';
 import type { AudienceType, PublicLinkRow } from '../types';
 
@@ -14,6 +15,7 @@ const generateToken = () => {
 const PublicLinksManagementPage: React.FC = () => {
   const { effectiveClinicId: clinicId, user } = useAuth();
   const [links, setLinks] = useState<PublicLinkRow[]>([]);
+  const [respondedTokens, setRespondedTokens] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [token, setToken] = useState(generateToken());
@@ -30,8 +32,20 @@ const PublicLinksManagementPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await listPublicLinks(clinicId);
+      const [data, respondents] = await Promise.all([
+        listPublicLinks(clinicId),
+        supabase
+          .from('archetype_respondents')
+          .select('public_token')
+          .eq('clinic_id', clinicId),
+      ]);
       setLinks(data);
+      const tokens = new Set(
+        (respondents.data || [])
+          .map((row: any) => row.public_token)
+          .filter((tokenValue: string) => !!tokenValue)
+      );
+      setRespondedTokens(tokens);
     } catch (err) {
       console.error(err);
       setError('Não foi possível carregar os links.');
@@ -157,29 +171,44 @@ const PublicLinksManagementPage: React.FC = () => {
                   <td className="px-4 py-3 font-medium text-gray-800">{link.token}</td>
                   <td className="px-4 py-3">{link.audience_type === 'INTERNAL' ? 'Interna' : 'Externa'}</td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs ${link.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
-                      {link.is_active ? 'Ativo' : 'Inativo'}
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      respondedTokens.has(link.token)
+                        ? 'bg-amber-100 text-amber-700'
+                        : link.is_active
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-gray-100 text-gray-500'
+                    }`}>
+                      {respondedTokens.has(link.token) ? 'Respondido' : (link.is_active ? 'Ativo' : 'Inativo')}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-xs text-gray-500">
+                  <td className={`px-4 py-3 text-xs ${respondedTokens.has(link.token) ? 'text-gray-300 line-through' : 'text-gray-500'}`}>
                     {baseUrl ? `${baseUrl}/public/perfil/${link.token}` : 'Link indisponível'}
                   </td>
                   <td className="px-4 py-3 flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(link.token)}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-600"
-                    >
-                      <Copy size={14} />
-                      Copiar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleToggle(link)}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-600"
-                    >
-                      {link.is_active ? 'Desativar' : 'Ativar'}
-                    </button>
+                    {respondedTokens.has(link.token) ? (
+                      <span className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-500">Respondido</span>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(link.token)}
+                          className="w-9 h-9 rounded-full border border-gray-200 text-gray-500 hover:text-gray-700 hover:border-gray-300 inline-flex items-center justify-center"
+                          aria-label="Copiar link"
+                          title="Copiar link"
+                        >
+                          <Copy size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleToggle(link)}
+                          className="w-9 h-9 rounded-full border border-gray-200 text-gray-500 hover:text-gray-700 hover:border-gray-300 inline-flex items-center justify-center"
+                          aria-label={link.is_active ? 'Desativar link' : 'Ativar link'}
+                          title={link.is_active ? 'Desativar link' : 'Ativar link'}
+                        >
+                          {link.is_active ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}

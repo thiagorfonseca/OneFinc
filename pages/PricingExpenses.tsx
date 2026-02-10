@@ -3,6 +3,7 @@ import { Download, Loader2, Plus, Upload } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { formatCurrency } from '../lib/utils';
 import { useAuth } from '../src/auth/AuthProvider';
+import { useModalControls } from '../hooks/useModalControls';
 
 type ExpenseCategory = 'Recursos Humanos C.L.T' | 'Recursos Humanos P.J.' | 'Tecnologia' | 'Custo';
 
@@ -97,6 +98,16 @@ const PricingExpenses: React.FC = () => {
     categoria: 'Recursos Humanos C.L.T' as ExpenseCategory,
     nome: '',
     valor_base: '',
+  });
+
+  const closeExpenseModal = () => {
+    setShowModal(false);
+    setEditingId(null);
+  };
+
+  const expenseModalControls = useModalControls({
+    isOpen: showModal,
+    onClose: closeExpenseModal,
   });
 
   const formatCsvNumber = (value: number) => {
@@ -443,17 +454,20 @@ const PricingExpenses: React.FC = () => {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg space-y-4">
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+          onClick={expenseModalControls.onBackdropClick}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between">
               <h4 className="text-lg font-semibold text-gray-800">
                 {editingId ? 'Editar despesa' : 'Nova despesa'}
               </h4>
               <button
-                onClick={() => {
-                  setShowModal(false);
-                  setEditingId(null);
-                }}
+                onClick={closeExpenseModal}
                 className="text-gray-500 hover:text-gray-700"
               >
                 ✕

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Plus, Loader2, X, Package as PackageIcon } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useModalControls } from '../hooks/useModalControls';
 
 type PackageForm = {
   name: string;
@@ -67,6 +68,16 @@ const AdminPackages: React.FC = () => {
   const [editingPackageId, setEditingPackageId] = useState<string | null>(null);
   const [form, setForm] = useState<PackageForm>(emptyForm);
   const [error, setError] = useState<string | null>(null);
+
+  const closeModal = () => {
+    setShowModal(false);
+    setEditingPackageId(null);
+  };
+
+  const modalControls = useModalControls({
+    isOpen: showModal,
+    onClose: closeModal,
+  });
 
   const [selectedClinicId, setSelectedClinicId] = useState('');
   const [clinicPackageId, setClinicPackageId] = useState('');
@@ -405,13 +416,19 @@ const AdminPackages: React.FC = () => {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-2xl space-y-4">
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+          onClick={modalControls.onBackdropClick}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl p-6 w-full max-w-2xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between">
               <h4 className="text-lg font-semibold text-gray-800">
                 {editingPackageId ? 'Editar pacote' : 'Novo pacote'}
               </h4>
-              <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-gray-700">
+              <button onClick={closeModal} className="text-gray-500 hover:text-gray-700">
                 <X size={18} />
               </button>
             </div>

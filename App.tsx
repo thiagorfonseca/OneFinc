@@ -9,6 +9,7 @@ import AdminLayout from './components/admin/AdminLayout';
 import ProtectedContentRoute from './components/auth/ProtectedContentRoute';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
+const AttendanceReport = lazy(() => import('./pages/AttendanceReport'));
 const TransactionsPage = lazy(() => import('./pages/Transactions'));
 const Reconciliation = lazy(() => import('./pages/Reconciliation'));
 const Login = lazy(() => import('./pages/Login'));
@@ -66,6 +67,12 @@ function App() {
             <Route path="/" element={
               <ProtectedRoute page="/">
                 <Dashboard />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/reports/attendance" element={
+              <ProtectedRoute page="/reports/attendance">
+                <AttendanceReport />
               </ProtectedRoute>
             } />
 
