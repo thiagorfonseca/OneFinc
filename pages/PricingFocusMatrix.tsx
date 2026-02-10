@@ -12,12 +12,12 @@ const PricingFocusMatrix: React.FC = () => {
   const [procedures, setProcedures] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [hoursAvailableInput, setHoursAvailableInput] = useState('120');
-  const [occupancyInput, setOccupancyInput] = useState('50');
-  const [taxInput, setTaxInput] = useState('15');
-  const [marginInput, setMarginInput] = useState('20');
-  const [cardFeeInput, setCardFeeInput] = useState('2,5');
-  const [commissionInput, setCommissionInput] = useState('20');
+  const [hoursAvailableInput] = useState('120');
+  const [occupancyInput] = useState('50');
+  const [taxInput] = useState('15');
+  const [marginInput] = useState('20');
+  const [cardFeeInput] = useState('2,5');
+  const [commissionInput] = useState('20');
   const [isChartExpanded, setIsChartExpanded] = useState(false);
 
   const parseNumber = (value: string) => {
