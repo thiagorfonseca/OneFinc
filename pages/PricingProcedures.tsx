@@ -31,6 +31,17 @@ const parseCsvLine = (line: string, separator: string) => {
   return out.map((value) => value.trim());
 };
 
+const decodeCsvFile = async (file: File) => {
+  const buffer = await file.arrayBuffer();
+  const utf8 = new TextDecoder('utf-8', { fatal: false }).decode(buffer);
+  const cleanedUtf8 = utf8.replace(/^\uFEFF/, '');
+  if (cleanedUtf8.includes('\uFFFD')) {
+    const latin = new TextDecoder('windows-1252', { fatal: false }).decode(buffer);
+    return latin.replace(/^\uFEFF/, '');
+  }
+  return cleanedUtf8;
+};
+
 const PricingProcedures: React.FC = () => {
   const { effectiveClinicId: clinicId } = useAuth();
   const [procedures, setProcedures] = useState<any[]>([]);
@@ -115,7 +126,7 @@ const PricingProcedures: React.FC = () => {
                   const file = e.target.files[0];
                   setUploadingCsv(true);
                   try {
-                    const text = (await file.text()).replace(/^\uFEFF/, '');
+                    const text = await decodeCsvFile(file);
                     const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
                     if (!lines.length) throw new Error('Arquivo vazio');
 

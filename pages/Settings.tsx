@@ -36,6 +36,17 @@ const parseCsvLine = (line: string, separator: string) => {
   return out.map((value) => value.trim());
 };
 
+const decodeCsvFile = async (file: File) => {
+  const buffer = await file.arrayBuffer();
+  const utf8 = new TextDecoder('utf-8', { fatal: false }).decode(buffer);
+  const cleanedUtf8 = utf8.replace(/^\uFEFF/, '');
+  if (cleanedUtf8.includes('\uFFFD')) {
+    const latin = new TextDecoder('windows-1252', { fatal: false }).decode(buffer);
+    return latin.replace(/^\uFEFF/, '');
+  }
+  return cleanedUtf8;
+};
+
 const parseCsvText = (text: string) => {
   const normalized = text.replace(/^\uFEFF/, '');
   const lines = normalized.split(/\r?\n/).filter((line) => line.trim().length > 0);
@@ -480,7 +491,7 @@ const Settings: React.FC = () => {
     setCustomerImporting(true);
     setCustomerImportReport(null);
     try {
-      const text = (await file.text()).replace(/^\uFEFF/, '');
+      const text = await decodeCsvFile(file);
       const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
       if (!lines.length) throw new Error('Arquivo vazio.');
 
@@ -665,7 +676,7 @@ const Settings: React.FC = () => {
     }
     setCategoryImporting(true);
     try {
-      const text = await file.text();
+      const text = await decodeCsvFile(file);
       const { lines, header, parseLine } = parseCsvText(text);
       const hasHeader = header.some((h) =>
         ['acao', 'ação', 'action', 'nome', 'categoria', 'tipo', 'id'].some((needle) => h.includes(needle))
@@ -809,7 +820,7 @@ const Settings: React.FC = () => {
     }
     setSupplierImporting(true);
     try {
-      const text = await file.text();
+      const text = await decodeCsvFile(file);
       const { lines, header, parseLine } = parseCsvText(text);
       const hasHeader = header.some((h) =>
         ['acao', 'ação', 'action', 'nome', 'cnpj', 'documento', 'telefone', 'id'].some((needle) => h.includes(needle))
@@ -2151,7 +2162,7 @@ const Settings: React.FC = () => {
                     const file = e.target.files[0];
                     setUploadingCsv(true);
                     try {
-                      const text = (await file.text()).replace(/^\uFEFF/, ''); // remove BOM
+                      const text = await decodeCsvFile(file);
                       const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
                       if (!lines.length) throw new Error('Arquivo vazio');
 
