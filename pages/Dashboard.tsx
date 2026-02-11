@@ -786,9 +786,13 @@ const Dashboard: React.FC = () => {
     setSearchParams(searchParams);
   };
 
-  const canClearData = isAdmin || isSystemAdmin;
+  const canClearData = isSystemAdmin;
 
   const handleClearAllData = async () => {
+    if (!isSystemAdmin) {
+      setClearError('Apenas o administrador geral pode realizar esta ação.');
+      return;
+    }
     if (!effectiveClinicId) {
       setClearError('Selecione uma clínica antes de apagar.');
       return;
