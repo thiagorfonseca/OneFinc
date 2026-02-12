@@ -45,11 +45,26 @@ const ensureClinic = async (payload: any) => {
   return clinic;
 };
 
+const findUserByEmail = async (email: string) => {
+  const normalized = email.trim().toLowerCase();
+  let page = 1;
+  const perPage = 200;
+
+  while (true) {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+    if (error) return null;
+    const found = data.users.find((user) => user.email?.toLowerCase() === normalized);
+    if (found) return found;
+    if (data.users.length < perPage) return null;
+    page += 1;
+  }
+};
+
 const ensureAuthUser = async (email?: string | null, fullName?: string | null) => {
   if (!email) return null;
 
-  const { data: existing, error: existingError } = await supabaseAdmin.auth.admin.getUserByEmail(email);
-  if (!existingError && existing?.user?.id) return existing.user;
+  const existing = await findUserByEmail(email);
+  if (existing?.id) return existing;
 
   const { data, error } = await supabaseAdmin.auth.admin.createUser({
     email,
