@@ -17,14 +17,24 @@ const PublicSignatureReturn: React.FC = () => {
         setLoading(false);
         return;
       }
-      const res = await fetch(`/api/public/proposals/${token}/status`);
-      const data = await res.json().catch(() => ({}));
-      if (data?.signature?.status === 'signed') {
-        navigate(`/pagamento/${token}`, { replace: true });
-        return;
+      try {
+        const res = await fetch(`/api/public/proposals/${token}/status`);
+        const contentType = res.headers.get('content-type') || '';
+        if (!res.ok || !contentType.includes('application/json')) {
+          setMessage('Não foi possível consultar o status da assinatura.');
+          setLoading(false);
+          return;
+        }
+        const data = await res.json().catch(() => ({}));
+        if (data?.signature?.status === 'signed') {
+          navigate(`/pagamento/${token}`, { replace: true });
+          return;
+        }
+        setSignUrl(data?.signature?.signUrl || '');
+        setMessage('Assinatura ainda não confirmada.');
+      } catch {
+        setMessage('Erro ao consultar assinatura.');
       }
-      setSignUrl(data?.signature?.signUrl || '');
-      setMessage('Assinatura ainda não confirmada.');
       setLoading(false);
     };
     check();

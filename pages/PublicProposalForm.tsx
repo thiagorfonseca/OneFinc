@@ -43,15 +43,25 @@ const PublicProposalForm: React.FC = () => {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const res = await fetch(`/api/public/proposals/${token}`);
-      if (!res.ok) {
-        setError('Proposta não encontrada.');
+      setError('');
+      try {
+        const res = await fetch(`/api/public/proposals/${token}`);
+        const contentType = res.headers.get('content-type') || '';
+        if (!res.ok) {
+          setError('Proposta não encontrada.');
+          return;
+        }
+        if (!contentType.includes('application/json')) {
+          setError('API indisponível no momento. Tente novamente em alguns minutos.');
+          return;
+        }
+        const data = await res.json();
+        setProposal(data.proposal);
+      } catch {
+        setError('Erro ao carregar proposta.');
+      } finally {
         setLoading(false);
-        return;
       }
-      const data = await res.json();
-      setProposal(data.proposal);
-      setLoading(false);
     };
     if (token) load();
   }, [token]);
