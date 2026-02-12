@@ -1412,10 +1412,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
         {!isIncome && (
           <button
             onClick={openNewModal}
-            className={`
-              flex items-center gap-2 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm
-              ${isIncome ? 'bg-brand-600 hover:bg-brand-700' : 'bg-red-600 hover:bg-red-700'}
-            `}
+            className={`w-full sm:w-auto justify-center flex items-center gap-2 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm ${isIncome ? 'bg-brand-600 hover:bg-brand-700' : 'bg-red-600 hover:bg-red-700'}`}
           >
             <Plus size={20} />
             Nova {isIncome ? 'Receita' : 'Despesa'}
@@ -1426,19 +1423,19 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
       {/* Filters Bar */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col gap-3">
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
-          <div className="relative flex-1 min-w-[220px]">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-          <input
-            type="text"
-            placeholder={isIncome ? "Buscar por descrição ou paciente..." : "Buscar por descrição ou fornecedor..."}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+          <div className="relative flex-1 min-w-[180px]">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <input
+              type="text"
+              placeholder={isIncome ? "Buscar por descrição ou paciente..." : "Buscar por descrição ou fornecedor..."}
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="relative min-w-[160px]">
+            <div className="relative min-w-[160px] flex-1 sm:flex-none">
               <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"><Calendar size={16} /></span>
               <input
                 type="date"
@@ -1448,7 +1445,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
               />
             </div>
             <span className="text-gray-400">até</span>
-            <div className="relative min-w-[160px]">
+            <div className="relative min-w-[160px] flex-1 sm:flex-none">
               <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"><Calendar size={16} /></span>
               <input
                 type="date"
@@ -1461,14 +1458,14 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
               <select
                 value={expenseDateField}
                 onChange={(e) => setExpenseDateField(e.target.value as 'competencia' | 'vencimento')}
-                className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white min-w-[180px]"
+                className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white min-w-[180px] w-full sm:w-auto"
               >
                 <option value="competencia">Data de competência</option>
                 <option value="vencimento">Data de vencimento</option>
               </select>
             )}
             {isIncome && (
-              <button onClick={fetchData} className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors">
+              <button onClick={fetchData} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors">
                 <Filter size={20} />
                 Filtrar
               </button>
@@ -1481,7 +1478,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
             <select
               value={expenseFilters.tipoDespesa}
               onChange={e => setExpenseFilters(prev => ({ ...prev, tipoDespesa: e.target.value }))}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white min-w-[180px]"
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white min-w-[180px] w-full sm:w-auto"
             >
               <option value="">Tipo (fixo/variável)</option>
               <option value="fixo">Fixo</option>
@@ -1490,7 +1487,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
             <select
               value={expenseFilters.pessoaTipo}
               onChange={e => setExpenseFilters(prev => ({ ...prev, pessoaTipo: e.target.value }))}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white min-w-[180px]"
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white min-w-[180px] w-full sm:w-auto"
             >
               <option value="">Pessoa (F/J)</option>
               <option value="fisica">Pessoa Física</option>
@@ -1499,13 +1496,13 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
             <select
               value={expenseFilters.status}
               onChange={e => setExpenseFilters(prev => ({ ...prev, status: e.target.value }))}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white min-w-[140px]"
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white min-w-[140px] w-full sm:w-auto"
             >
               <option value="">Status</option>
               <option value="paid">Pago</option>
               <option value="pending">À pagar</option>
             </select>
-            <button onClick={fetchData} className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors">
+            <button onClick={fetchData} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors">
               <Filter size={20} />
               Filtrar
             </button>
@@ -1514,7 +1511,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
       </div>
 
       {isIncome && metrics && (
-        <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
           <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
             <p className="text-xs uppercase text-gray-500">Total Receita Faturada</p>
             <p className="text-xl font-bold text-gray-800">{formatCurrency(metrics.totalReceita)}</p>
@@ -1590,7 +1587,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
           </select>
           <span className="text-xs text-gray-500">Total: {sortedData.length}</span>
         </div>
-        <div className="flex items-center gap-1 text-sm">
+        <div className="flex items-center gap-1 text-sm justify-end">
           <button
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
             disabled={currentPage === 1}
@@ -1617,21 +1614,21 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
             <p>Carregando dados...</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="table-scroll">
             <div className="flex flex-col gap-2 px-4 py-3 border-b border-gray-100">
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2">
                 <span className="text-sm text-gray-700">Selecionados: {selectedIds.length}</span>
                 <button
                   onClick={toggleSelectAllFiltered}
                   disabled={allFilteredIds.length === 0}
-                  className="px-3 py-1 text-xs rounded border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  className="w-full sm:w-auto px-3 py-1 text-xs rounded border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                 >
                   {allFilteredSelected ? 'Desmarcar todos os registros' : `Selecionar todos os registros (${allFilteredIds.length})`}
                 </button>
                 <select
                   value={bulkUpdate.bank_account_id}
                   onChange={e => setBulkUpdate(prev => ({ ...prev, bank_account_id: e.target.value }))}
-                  className="px-2 py-1 border rounded text-sm bg-white"
+                  className="w-full sm:w-auto px-2 py-1 border rounded text-sm bg-white"
                 >
                   <option value="">Banco (manter)</option>
                   {accounts.map(acc => (
@@ -1641,7 +1638,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
                 <select
                   value={bulkUpdate.category_id}
                   onChange={e => setBulkUpdate(prev => ({ ...prev, category_id: e.target.value }))}
-                  className="px-2 py-1 border rounded text-sm bg-white"
+                  className="w-full sm:w-auto px-2 py-1 border rounded text-sm bg-white"
                 >
                   <option value="">Categoria (manter)</option>
                   {categories.map(cat => (
@@ -1651,7 +1648,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
                 <select
                   value={bulkUpdate.forma_pagamento}
                   onChange={e => setBulkUpdate(prev => ({ ...prev, forma_pagamento: e.target.value }))}
-                  className="px-2 py-1 border rounded text-sm bg-white"
+                  className="w-full sm:w-auto px-2 py-1 border rounded text-sm bg-white"
                 >
                   <option value="">Forma pgto (manter)</option>
                   {isIncome
@@ -1666,34 +1663,34 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
                   type="date"
                   value={bulkUpdate.data_competencia}
                   onChange={e => setBulkUpdate(prev => ({ ...prev, data_competencia: e.target.value }))}
-                  className="px-2 py-1 border rounded text-sm"
+                  className="w-full sm:w-auto px-2 py-1 border rounded text-sm"
                   placeholder="Data"
                 />
                 <button
                   onClick={handleBulkUpdate}
-                  className="px-3 py-1 text-xs rounded bg-brand-600 text-white hover:bg-brand-700"
+                  className="w-full sm:w-auto px-3 py-1 text-xs rounded bg-brand-600 text-white hover:bg-brand-700"
                   disabled={selectedIds.length === 0}
                 >
                   Aplicar edição em massa
                 </button>
                 <button
                   onClick={handleBulkDelete}
-                  className="px-3 py-1 text-xs rounded border border-red-200 text-red-600 hover:bg-red-50"
+                  className="w-full sm:w-auto px-3 py-1 text-xs rounded border border-red-200 text-red-600 hover:bg-red-50"
                   disabled={selectedIds.length === 0}
                 >
                   Excluir selecionados
                 </button>
               </div>
-              <div className="flex justify-end gap-2">
+              <div className="flex flex-col sm:flex-row justify-end gap-2">
                 <button
                   onClick={() => exportTable('csv')}
-                  className="flex items-center gap-1 px-3 py-2 text-xs border rounded-lg text-gray-700 hover:bg-gray-50"
+                  className="w-full sm:w-auto flex items-center justify-center gap-1 px-3 py-2 text-xs border rounded-lg text-gray-700 hover:bg-gray-50"
                 >
                   <Download size={14}/> CSV
                 </button>
                 <button
                   onClick={() => exportTable('pdf')}
-                  className="flex items-center gap-1 px-3 py-2 text-xs border rounded-lg text-gray-700 hover:bg-gray-50"
+                  className="w-full sm:w-auto flex items-center justify-center gap-1 px-3 py-2 text-xs border rounded-lg text-gray-700 hover:bg-gray-50"
                 >
                   <Download size={14}/> PDF
                 </button>
@@ -1936,7 +1933,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
           onClick={entryModalControls.onBackdropClick}
         >
           <div
-            className="bg-white rounded-xl shadow-xl max-w-4xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-xl shadow-xl max-w-4xl w-full p-4 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-xl font-bold text-gray-800">{editingId ? 'Editar' : 'Nova'} {isIncome ? 'Receita' : 'Despesa'}</h2>
@@ -2005,7 +2002,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
                           ))}
                         </select>
                       </div>
-                      <div>
+                      <div className="w-full md:w-auto">
                         <label className="block text-sm font-medium text-gray-700 mb-1">Qtd.</label>
                         <input
                           type="number"
@@ -2018,13 +2015,13 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
                       <button
                         type="button"
                         onClick={handleAddProcedure}
-                        className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 flex items-center gap-2"
+                        className="w-full md:w-auto px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 flex items-center justify-center gap-2"
                       >
                         <Plus size={16}/> Adicionar
                       </button>
                     </div>
                     {selectedProcedures.length > 0 && (
-                      <div className="mt-3 border border-gray-100 rounded-lg overflow-hidden">
+                      <div className="mt-3 border border-gray-100 rounded-lg table-scroll">
                         <table className="min-w-full text-sm">
                           <thead className="bg-gray-50 text-gray-600">
                             <tr>

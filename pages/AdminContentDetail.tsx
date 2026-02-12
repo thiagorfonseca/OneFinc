@@ -273,7 +273,7 @@ const ModuleCard: React.FC<{ moduleId: string }> = ({ moduleId }) => {
 
   return (
     <div className="space-y-3">
-      <div className="overflow-x-auto border border-gray-100 rounded-lg">
+      <div className="table-scroll border border-gray-100 rounded-lg">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-gray-600">
             <tr>

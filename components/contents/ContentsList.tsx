@@ -298,7 +298,7 @@ const ContentsList: React.FC<Props> = ({ type, title, subtitle, basePath }) => {
             <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Colecao</p>
             <span className="text-xs text-gray-400">Arraste para ver mais</span>
           </div>
-          <div className="flex gap-6 overflow-x-auto pb-6 scroll-smooth snap-x snap-mandatory">
+          <div className="flex gap-4 sm:gap-6 overflow-x-auto pb-6 scroll-smooth snap-x snap-mandatory">
             {items.map((item) => (
               <div
                 key={item.id}
@@ -311,7 +311,7 @@ const ContentsList: React.FC<Props> = ({ type, title, subtitle, basePath }) => {
                     handleOpenModal(item);
                   }
                 }}
-                className="group relative flex-shrink-0 w-[280px] sm:w-[360px] lg:w-[420px] xl:w-[480px] snap-start focus:outline-none cursor-pointer"
+                className="group relative flex-shrink-0 w-[240px] xs:w-[280px] sm:w-[360px] lg:w-[420px] xl:w-[480px] snap-start focus:outline-none cursor-pointer"
               >
                 <div className="absolute left-4 top-4 z-10 flex flex-col gap-2">
                   {progressIds.has(item.id) && (

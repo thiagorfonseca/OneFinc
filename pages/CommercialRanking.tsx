@@ -173,8 +173,8 @@ const CommercialRanking: React.FC = () => {
         <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2 text-sm text-gray-600">
           Clinic: {clinicId || '—'}
         </div>
-        <div className="px-4 py-3 border-b border-gray-100 flex flex-wrap items-center gap-3 text-sm">
-          <div className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white">
+        <div className="px-4 py-3 border-b border-gray-100 flex flex-col lg:flex-row lg:items-center gap-3 text-sm">
+          <div className="flex flex-wrap items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white">
             <Calendar size={16} /> Período:
             <select value={period} onChange={e => handlePeriodChange(e.target.value as Period)} className="text-sm bg-transparent focus:outline-none">
               <option value="quinzenal">Últimos 15 dias</option>
@@ -185,30 +185,30 @@ const CommercialRanking: React.FC = () => {
               <option value="personalizado">Personalizado</option>
             </select>
           </div>
-          <label className="flex items-center gap-2 text-gray-600">
-            <span>De</span>
+          <label className="flex items-center gap-2 text-gray-600 flex-1 sm:flex-none">
+            <span className="min-w-[24px]">De</span>
             <input
               type="date"
               value={from}
               onChange={(e) => handleRangeChange(e.target.value, to)}
-              className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700"
             />
           </label>
-          <label className="flex items-center gap-2 text-gray-600">
-            <span>Até</span>
+          <label className="flex items-center gap-2 text-gray-600 flex-1 sm:flex-none">
+            <span className="min-w-[24px]">Até</span>
             <input
               type="date"
               value={to}
               onChange={(e) => handleRangeChange(from, e.target.value)}
-              className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700"
             />
           </label>
-          <label className="flex items-center gap-2 text-gray-600">
+          <label className="flex items-center gap-2 text-gray-600 flex-1 sm:flex-none">
             <span>Categorias:</span>
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700"
             >
               <option value="">Todas</option>
               {categoryOptions.map((category) => (
@@ -216,12 +216,12 @@ const CommercialRanking: React.FC = () => {
               ))}
             </select>
           </label>
-          <label className="flex items-center gap-2 text-gray-600">
+          <label className="flex items-center gap-2 text-gray-600 flex-1 sm:flex-none">
             <span>Procedimentos:</span>
             <select
               value={selectedProcedure}
               onChange={(e) => setSelectedProcedure(e.target.value)}
-              className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700"
             >
               <option value="">Todos</option>
               {procedureOptions.map((procedure) => (
@@ -231,13 +231,13 @@ const CommercialRanking: React.FC = () => {
           </label>
           <button
             onClick={exportPdf}
-            className="flex items-center gap-2 px-3 py-2 text-sm border rounded-lg text-gray-700 hover:bg-gray-50"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-3 py-2 text-sm border rounded-lg text-gray-700 hover:bg-gray-50"
           >
             <Download size={14} /> PDF
           </button>
           <button
             onClick={exportCsv}
-            className="flex items-center gap-2 px-3 py-2 text-sm border rounded-lg text-gray-700 hover:bg-gray-50"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-3 py-2 text-sm border rounded-lg text-gray-700 hover:bg-gray-50"
           >
             <Download size={14} /> CSV
           </button>
@@ -247,7 +247,7 @@ const CommercialRanking: React.FC = () => {
             <Loader2 className="animate-spin mr-2" size={20}/> Carregando...
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="table-scroll">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-100 text-gray-600">
                 <tr>

@@ -385,25 +385,25 @@ const PricingExpenses: React.FC = () => {
               />
             </label>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <button
               type="button"
               onClick={() => exportTable('pdf')}
-              className="px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg"
+              className="w-full sm:w-auto px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg"
             >
               Baixar PDF
             </button>
             <button
               type="button"
               onClick={() => exportTable('csv')}
-              className="px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg"
+              className="w-full sm:w-auto px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg"
             >
               Baixar CSV
             </button>
           </div>
         </div>
 
-        <div className="border border-gray-100 rounded-lg overflow-hidden">
+        <div className="border border-gray-100 rounded-lg table-scroll">
           <table className="min-w-full text-sm">
             <thead className="bg-gray-50 text-gray-600 border-b">
               <tr>
@@ -462,7 +462,7 @@ const PricingExpenses: React.FC = () => {
             className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <h4 className="text-lg font-semibold text-gray-800">
                 {editingId ? 'Editar despesa' : 'Nova despesa'}
               </h4>

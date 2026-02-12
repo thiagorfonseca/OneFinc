@@ -770,7 +770,7 @@ const HRMeetings: React.FC = () => {
           <div className="px-6 py-12 text-center text-sm text-gray-500">Carregando reuniões...</div>
         ) : (
           <div className="divide-y divide-gray-100 max-h-[60vh] overflow-y-auto">
-            <div className="sticky top-0 z-10 px-6 py-3 border-b border-gray-100 bg-gray-50 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+            <div className="sticky top-0 z-10 px-6 py-3 border-b border-gray-100 bg-gray-50 text-[11px] font-semibold text-gray-500 uppercase tracking-wide hidden md:block">
               <div className="flex flex-wrap items-center gap-4">
                 <div className="min-w-[160px]">Data</div>
                 <div className="flex-1 min-w-[200px]">Reunião</div>
@@ -782,10 +782,10 @@ const HRMeetings: React.FC = () => {
             {filteredMeetings.map((meeting) => (
               <div
                 key={meeting.id}
-                className="px-6 py-4 flex flex-wrap items-center gap-4 hover:bg-gray-50 cursor-pointer"
+                className="px-4 sm:px-6 py-4 flex flex-col md:flex-row md:flex-wrap md:items-center gap-4 hover:bg-gray-50 cursor-pointer"
                 onClick={() => setDetailMeeting(meeting)}
               >
-                <div className="flex items-center gap-3 min-w-[160px]">
+                <div className="flex items-center gap-3 md:min-w-[160px]">
                   <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600">
                     <Calendar size={18} />
                   </div>
@@ -796,13 +796,13 @@ const HRMeetings: React.FC = () => {
                     </p>
                   </div>
                 </div>
-                <div className="flex-1 min-w-[200px]">
+                <div className="flex-1 md:min-w-[200px]">
                   <p className="text-sm font-semibold text-gray-900">{meeting.title}</p>
                   <p className="text-xs text-gray-500">
                     {meeting.department || 'Sem departamento'} • {meeting.meeting_type || 'Tipo não informado'}
                   </p>
                 </div>
-                <div className="flex items-center gap-3 min-w-[200px]">
+                <div className="flex items-center gap-3 md:min-w-[200px]">
                   {meeting.conductor?.avatar_url ? (
                     <img
                       src={meeting.conductor.avatar_url}
@@ -819,12 +819,12 @@ const HRMeetings: React.FC = () => {
                     <p className="text-xs text-gray-400">Conduzida por</p>
                   </div>
                 </div>
-                <div className="min-w-[120px] flex justify-center">
+                <div className="md:min-w-[120px] flex justify-center md:justify-center">
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusBadge(meeting.status || 'Agendada')}`}>
                     {statusLabel(meeting.status)}
                   </span>
                 </div>
-                <div className="ml-auto min-w-[120px] flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                <div className="md:ml-auto md:min-w-[120px] flex items-center justify-start md:justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                   <button
                     type="button"
                     onClick={() => setDetailMeeting(meeting)}

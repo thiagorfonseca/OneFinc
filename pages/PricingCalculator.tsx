@@ -422,20 +422,20 @@ const PricingCalculator: React.FC = () => {
           </div>
 
           <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <h2 className="text-lg font-semibold text-gray-800">Lista de procedimentos</h2>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <button
                   type="button"
                   onClick={exportPdf}
-                  className="px-3 py-2 text-sm border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50"
+                  className="w-full sm:w-auto px-3 py-2 text-sm border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50"
                 >
                   Baixar PDF
                 </button>
                 <select
                   value={procedureFilter}
                   onChange={(e) => setProcedureFilter(e.target.value)}
-                  className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white"
+                  className="w-full sm:w-auto px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white"
                 >
                   <option value="">Todos</option>
                   {procedureOptions.map((p) => (
@@ -445,7 +445,7 @@ const PricingCalculator: React.FC = () => {
               </div>
             </div>
 
-            <div className="overflow-x-auto max-h-[420px] overflow-y-auto">
+            <div className="table-scroll max-h-[420px] overflow-y-auto">
               <table className="w-full text-left text-sm">
                 <thead className="text-gray-500 border-b border-gray-100">
                   <tr>

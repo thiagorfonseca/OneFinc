@@ -204,7 +204,7 @@ const PublicLinksManagementPage: React.FC = () => {
       </div>
 
       <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
-        <div className="overflow-auto">
+        <div className="table-scroll">
           <table className="min-w-full text-sm">
             <thead className="bg-gray-50 text-gray-500">
               <tr>

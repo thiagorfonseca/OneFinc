@@ -553,7 +553,7 @@ const Reconciliation: React.FC = () => {
                 </button>
               </div>
             </div>
-            <div className="overflow-x-auto">
+            <div className="table-scroll">
               <table className="w-full text-left text-sm">
                 <thead className="bg-white text-gray-500 font-medium border-b border-gray-100">
                   <tr>
@@ -762,7 +762,7 @@ const Reconciliation: React.FC = () => {
               />
             </div>
 
-            <div className="max-h-80 overflow-auto border border-gray-100 rounded-lg">
+            <div className="max-h-80 overflow-auto border border-gray-100 rounded-lg table-scroll">
               {loadingMatches ? (
                 <div className="p-6 text-center text-gray-400">
                   <Loader2 size={20} className="animate-spin inline-block mr-2" />

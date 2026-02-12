@@ -214,20 +214,27 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Mobile Menu Button */}
-      <button 
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-md shadow"
+      <button
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-md shadow focus:outline-none focus:ring-2 focus:ring-brand-500"
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        aria-label={isMobileMenuOpen ? 'Fechar menu' : 'Abrir menu'}
+        aria-expanded={isMobileMenuOpen}
+        aria-controls="main-sidebar"
       >
         <Menu size={24} />
       </button>
 
       {/* Sidebar */}
-      <aside className={`
+      <aside
+        id="main-sidebar"
+        className={`
         fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 transform transition-transform duration-200 ease-in-out
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
         lg:translate-x-0 lg:block
         ${isCollapsed ? 'lg:w-20' : 'lg:w-64'}
-      `}>
+      `}
+        aria-hidden={!isMobileMenuOpen && typeof window !== 'undefined' && window.innerWidth < 1024}
+      >
         <div className="h-full flex flex-col">
           <div className="sticky top-0 z-10 relative h-20 flex items-center px-6 border-b border-gray-100 bg-white">
             <Link
@@ -385,11 +392,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
       {/* Main Content */}
       <main className={`flex-1 overflow-auto ${isCollapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 lg:hidden">
+        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6 lg:hidden">
           <div className="w-8"></div> {/* Spacer for menu button */}
           <span className="font-semibold text-gray-700">OneFinc</span>
         </header>
-        <div className="py-4 md:py-8 px-4 md:px-6 max-w-screen-2xl mx-auto space-y-3">
+        <div className="pt-20 lg:pt-6 pb-4 md:pb-8 px-4 md:px-6 max-w-screen-2xl mx-auto space-y-3">
           {isSystemAdmin && (
             <div className="flex flex-col gap-3">
               <div className="flex justify-end">
@@ -418,9 +425,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
       {/* Overlay for mobile */}
       {isMobileMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/20 z-30 lg:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
+          aria-hidden="true"
         />
       )}
     </div>

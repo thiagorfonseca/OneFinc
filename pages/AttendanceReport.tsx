@@ -556,27 +556,27 @@ const AttendanceReport: React.FC = () => {
         </button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col lg:flex-row lg:items-center gap-3 text-sm text-gray-600">
+        <div className="flex flex-wrap items-center gap-2">
           <Calendar size={16} className="text-gray-400" />
           <input
             type="date"
             value={dateStart}
             onChange={(e) => setDateStart(e.target.value)}
-            className="px-3 py-2 border border-gray-200 rounded-lg text-sm"
+            className="w-full sm:w-auto px-3 py-2 border border-gray-200 rounded-lg text-sm"
           />
           <span className="text-xs text-gray-400">até</span>
           <input
             type="date"
             value={dateEnd}
             onChange={(e) => setDateEnd(e.target.value)}
-            className="px-3 py-2 border border-gray-200 rounded-lg text-sm"
+            className="w-full sm:w-auto px-3 py-2 border border-gray-200 rounded-lg text-sm"
           />
         </div>
         <select
           value={saleProfessionalId}
           onChange={(e) => setSaleProfessionalId(e.target.value)}
-          className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
+          className="w-full sm:w-auto px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
         >
           <option value="">Profissional de venda</option>
           {professionals.map((prof: any) => (
@@ -588,7 +588,7 @@ const AttendanceReport: React.FC = () => {
         <select
           value={execProfessionalId}
           onChange={(e) => setExecProfessionalId(e.target.value)}
-          className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
+          className="w-full sm:w-auto px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
         >
           <option value="">Profissional de execução</option>
           {professionals.map((prof: any) => (
@@ -603,12 +603,12 @@ const AttendanceReport: React.FC = () => {
             value={commissionInput}
             onChange={(e) => setCommissionInput(e.target.value)}
             placeholder="Ex: 10"
-            className="px-3 py-2 border border-gray-200 rounded-lg text-sm w-28"
+            className="w-full sm:w-28 px-3 py-2 border border-gray-200 rounded-lg text-sm"
           />
         </div>
       </div>
 
-      <div className="border border-gray-100 rounded-xl overflow-auto">
+      <div className="border border-gray-100 rounded-xl table-scroll">
         <table className="min-w-full text-sm">
           <thead className="bg-gray-50 text-gray-500">
             <tr>

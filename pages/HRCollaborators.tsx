@@ -479,14 +479,14 @@ const HRCollaborators: React.FC = () => {
         <button
           type="button"
           onClick={openCreateModal}
-          className="px-4 py-2 rounded-lg bg-brand-600 text-white text-sm hover:bg-brand-700 flex items-center gap-2"
+          className="w-full sm:w-auto px-4 py-2 rounded-lg bg-brand-600 text-white text-sm hover:bg-brand-700 flex items-center justify-center gap-2"
         >
           <Plus size={16} /> Novo colaborador
         </button>
       </div>
 
-      <div className="bg-white border border-gray-100 rounded-2xl p-5 flex flex-wrap gap-3 items-center justify-between">
-        <div className="relative flex-1 min-w-[240px]">
+      <div className="bg-white border border-gray-100 rounded-2xl p-5 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center sm:justify-between">
+        <div className="relative flex-1 min-w-[180px]">
           <Search size={16} className="absolute left-3 top-3 text-gray-400" />
           <input
             value={search}
@@ -502,7 +502,7 @@ const HRCollaborators: React.FC = () => {
       </div>
 
       <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 grid grid-cols-[70px_1.2fr_1.2fr_140px_140px_160px_150px_120px] gap-4 text-xs uppercase text-gray-400 tracking-wider">
+        <div className="px-6 py-4 border-b border-gray-100 grid grid-cols-[70px_1.2fr_1.2fr_140px_140px_160px_150px_120px] gap-4 text-xs uppercase text-gray-400 tracking-wider hidden lg:grid">
           <span>ID</span>
           <span>Nome</span>
           <span>Email</span>
@@ -525,7 +525,7 @@ const HRCollaborators: React.FC = () => {
               return (
                 <div
                   key={collab.id}
-                  className={`grid grid-cols-[70px_1.2fr_1.2fr_140px_140px_160px_150px_120px] gap-4 items-center rounded-2xl border px-4 py-3 ${baseRow}`}
+                  className={`grid gap-3 md:gap-4 rounded-2xl border px-4 py-3 ${baseRow} md:grid-cols-[70px_1.2fr_1.2fr_140px_140px_160px_150px_120px]`}
                 >
                   <span className={`text-sm ${subtleText}`}>{String(idx + 1).padStart(2, '0')}</span>
                   <div className="flex items-center gap-3">
@@ -547,7 +547,7 @@ const HRCollaborators: React.FC = () => {
                   <span className={`text-xs font-semibold px-3 py-1 rounded-full w-fit ${badgeClass}`}>
                     {firstAccessLabel(collab)}
                   </span>
-                  <div className="flex items-center gap-2 justify-end">
+                  <div className="flex items-center gap-2 justify-start md:justify-end">
                     <button
                       type="button"
                       onClick={() => openDetailModal(collab)}

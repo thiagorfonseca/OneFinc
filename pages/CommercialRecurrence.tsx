@@ -164,7 +164,7 @@ const CommercialRecurrence: React.FC = () => {
             <Loader2 className="animate-spin mr-2" size={20}/> Carregando...
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="table-scroll">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-600 border-b border-gray-100">
                 <tr>

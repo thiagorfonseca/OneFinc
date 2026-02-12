@@ -244,7 +244,7 @@ const HRDepartments: React.FC = () => {
       </div>
 
       <div className="bg-white border border-gray-100 rounded-2xl p-5 flex flex-wrap gap-3 items-center justify-between">
-        <div className="relative flex-1 min-w-[240px]">
+        <div className="relative flex-1 min-w-[180px]">
           <Search size={16} className="absolute left-3 top-3 text-gray-400" />
           <input
             value={search}
@@ -269,13 +269,13 @@ const HRDepartments: React.FC = () => {
         ) : (
           <div className="divide-y divide-gray-100">
             {filteredDepartments.map((dep, idx) => (
-              <div key={dep.id} className="px-6 py-4 flex flex-wrap items-center gap-4 hover:bg-gray-50">
+              <div key={dep.id} className="px-4 sm:px-6 py-4 flex flex-col md:flex-row md:flex-wrap md:items-center gap-4 hover:bg-gray-50">
                 <div className="w-10 text-sm text-gray-400">#{String(idx + 1).padStart(2, '0')}</div>
-                <div className="flex-1 min-w-[200px]">
+                <div className="flex-1 md:min-w-[200px]">
                   <p className="text-sm font-semibold text-gray-900">{dep.name}</p>
                   <p className="text-xs text-gray-500">Criado em {formatDate(dep.created_at || '')}</p>
                 </div>
-                <div className="min-w-[240px]">
+                <div className="md:min-w-[240px]">
                   <p className="text-xs text-gray-400 mb-1">Departamentos afiliados</p>
                   <div className="flex flex-wrap gap-2">
                     {(dep.affiliates || []).map((aff: any) => (
@@ -288,7 +288,7 @@ const HRDepartments: React.FC = () => {
                     )}
                   </div>
                 </div>
-                <div className="ml-auto flex items-center gap-2">
+                <div className="md:ml-auto flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={() => openEditModal(dep)}

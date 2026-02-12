@@ -482,11 +482,11 @@ const HRFeedback: React.FC = () => {
 
       <div className="bg-white border border-gray-100 rounded-2xl p-5 space-y-4">
         <div className="flex flex-wrap items-center gap-3">
-          <select
-            value={filters.departmentId}
-            onChange={(e) => setFilters((prev) => ({ ...prev, departmentId: e.target.value }))}
-            className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white min-w-[180px]"
-          >
+            <select
+              value={filters.departmentId}
+              onChange={(e) => setFilters((prev) => ({ ...prev, departmentId: e.target.value }))}
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white min-w-[180px] w-full sm:w-auto"
+            >
             <option value="">Departamento</option>
             {departmentOptions.map((dep: any) => (
               <option key={dep.id} value={dep.id}>
@@ -494,11 +494,11 @@ const HRFeedback: React.FC = () => {
               </option>
             ))}
           </select>
-          <select
-            value={filters.leaderId}
-            onChange={(e) => setFilters((prev) => ({ ...prev, leaderId: e.target.value }))}
-            className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white min-w-[180px]"
-          >
+            <select
+              value={filters.leaderId}
+              onChange={(e) => setFilters((prev) => ({ ...prev, leaderId: e.target.value }))}
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white min-w-[180px] w-full sm:w-auto"
+            >
             <option value="">Líder</option>
             {clinicUsers.map((u) => (
               <option key={u.id} value={u.id}>
@@ -506,11 +506,11 @@ const HRFeedback: React.FC = () => {
               </option>
             ))}
           </select>
-          <select
-            value={filters.type}
-            onChange={(e) => setFilters((prev) => ({ ...prev, type: e.target.value }))}
-            className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white min-w-[180px]"
-          >
+            <select
+              value={filters.type}
+              onChange={(e) => setFilters((prev) => ({ ...prev, type: e.target.value }))}
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white min-w-[180px] w-full sm:w-auto"
+            >
             <option value="">Tipo de feedback</option>
             {FEEDBACK_TYPES.map((type) => (
               <option key={type} value={type}>
@@ -536,7 +536,7 @@ const HRFeedback: React.FC = () => {
               />
             </div>
           </div>
-          <div className="relative flex-1 min-w-[240px]">
+          <div className="relative flex-1 min-w-[180px]">
             <Search size={16} className="absolute left-3 top-3 text-gray-400" />
             <input
               value={filters.search}
@@ -566,7 +566,7 @@ const HRFeedback: React.FC = () => {
       </div>
 
       <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <p className="text-sm font-semibold text-gray-800">Histórico de feedbacks</p>
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <Users size={16} />
@@ -577,7 +577,7 @@ const HRFeedback: React.FC = () => {
           <div className="px-6 py-12 text-center text-sm text-gray-500">Carregando feedbacks...</div>
         ) : (
           <div className="divide-y divide-gray-100">
-            <div className="px-6 py-3 border-b border-gray-100 bg-gray-50 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+            <div className="px-6 py-3 border-b border-gray-100 bg-gray-50 text-[11px] font-semibold text-gray-500 uppercase tracking-wide hidden md:block">
               <div className="flex flex-wrap items-center gap-4">
                 <div className="w-10">#</div>
                 <div className="min-w-[200px]">Colaborador</div>
@@ -589,9 +589,9 @@ const HRFeedback: React.FC = () => {
               </div>
             </div>
             {filteredFeedbacks.map((fb: any, idx: number) => (
-              <div key={fb.id} className="px-6 py-4 flex flex-wrap items-center gap-4 hover:bg-gray-50">
+              <div key={fb.id} className="px-4 sm:px-6 py-4 flex flex-col md:flex-row md:flex-wrap md:items-center gap-4 hover:bg-gray-50">
                 <div className="w-10 text-sm text-gray-400">#{String(idx + 1).padStart(2, '0')}</div>
-                <div className="flex items-center gap-3 min-w-[200px]">
+                <div className="flex items-center gap-3 md:min-w-[200px]">
                   {fb.subject?.avatar_url ? (
                     <img src={fb.subject.avatar_url} alt={fb.subject.name} className="w-9 h-9 rounded-full object-cover" />
                   ) : (
@@ -604,15 +604,15 @@ const HRFeedback: React.FC = () => {
                     <p className="text-xs text-gray-500">{fb.department?.name || 'Sem departamento'}</p>
                   </div>
                 </div>
-                <div className="min-w-[160px] text-sm text-gray-700">{formatDate(fb.feedback_date)}</div>
-                <div className="min-w-[160px] text-sm text-gray-700">{fb.feedback_type || 'Não informado'}</div>
-                <div className="min-w-[160px] text-sm text-gray-500">{fb.result || 'Não informado'}</div>
-                <div className="min-w-[80px] flex justify-center">
+                <div className="md:min-w-[160px] text-sm text-gray-700">{formatDate(fb.feedback_date)}</div>
+                <div className="md:min-w-[160px] text-sm text-gray-700">{fb.feedback_type || 'Não informado'}</div>
+                <div className="md:min-w-[160px] text-sm text-gray-500">{fb.result || 'Não informado'}</div>
+                <div className="md:min-w-[80px] flex justify-start md:justify-center">
                   <span className={`px-3 py-1 rounded-full text-xs font-semibold ${scoreBubbleClass(fb.score_management ?? fb.score_personal)}`}>
                     {fb.score_management ?? fb.score_personal ?? '--'}
                   </span>
                 </div>
-                <div className="ml-auto flex items-center gap-2">
+                <div className="md:ml-auto flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setDetailFeedback(fb)}

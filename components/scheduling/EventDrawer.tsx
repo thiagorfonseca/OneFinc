@@ -129,20 +129,20 @@ const EventDrawer: React.FC<EventDrawerProps> = ({
           </div>
         )}
 
-        <div className="flex flex-wrap items-center gap-2 pt-2">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 pt-2">
           {clinicView ? (
             <>
               <button
                 type="button"
                 onClick={onConfirm}
-                className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm"
+                className="w-full sm:w-auto px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm"
               >
                 Confirmar
               </button>
               <button
                 type="button"
                 onClick={onRequestReschedule}
-                className="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600"
+                className="w-full sm:w-auto px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600"
               >
                 Solicitar reagendamento
               </button>
@@ -152,14 +152,14 @@ const EventDrawer: React.FC<EventDrawerProps> = ({
               <button
                 type="button"
                 onClick={onEdit}
-                className="px-4 py-2 rounded-lg bg-brand-600 text-white text-sm"
+                className="w-full sm:w-auto px-4 py-2 rounded-lg bg-brand-600 text-white text-sm"
               >
                 Editar
               </button>
               <button
                 type="button"
                 onClick={onCancel}
-                className="px-4 py-2 rounded-lg border border-rose-200 text-rose-600 text-sm"
+                className="w-full sm:w-auto px-4 py-2 rounded-lg border border-rose-200 text-rose-600 text-sm"
               >
                 Cancelar evento
               </button>

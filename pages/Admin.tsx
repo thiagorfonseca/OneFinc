@@ -777,23 +777,23 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
           </div>
 
           <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
-            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+            <div className="p-4 border-b border-gray-100 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
               <div>
                 <p className="font-semibold text-gray-800">Clínicas</p>
                 <p className="text-sm text-gray-500">Dados gerais de todos os clientes</p>
               </div>
-              <div className="flex flex-wrap gap-2 items-center">
+              <div className="flex flex-col sm:flex-row flex-wrap gap-2 items-stretch sm:items-center">
                 <input
                   type="text"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   placeholder="Buscar clínica por nome..."
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-500"
                 />
                 <select
                   value={statusFilter}
                   onChange={e => setStatusFilter(e.target.value as any)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-brand-500"
                 >
                   <option value="todas">Todas</option>
                   <option value="ativas">Ativas</option>
@@ -801,7 +801,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
                 </select>
               </div>
             </div>
-            <div className="overflow-x-auto">
+            <div className="table-scroll">
               <table className="w-full text-sm text-left">
                 <thead className="bg-gray-50 text-gray-500 border-b border-gray-100">
                   <tr>
@@ -1118,7 +1118,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
               onClick={clinicModalControls.onBackdropClick}
             >
               <div
-                className="bg-white rounded-xl shadow-xl p-6 w-full max-w-3xl max-h-[90vh] overflow-auto space-y-4"
+                className="bg-white rounded-xl shadow-xl p-4 sm:p-6 w-full max-w-3xl max-h-[90vh] overflow-auto space-y-4"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between">
@@ -1426,7 +1426,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
                   </button>
                 </div>
               </div>
-              <div className="overflow-x-auto">
+              <div className="table-scroll">
                 <table className="w-full text-sm text-left">
                   <thead className="bg-white text-gray-500 border border-gray-200">
                     <tr>
@@ -1711,7 +1711,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
               onClick={userModalControls.onBackdropClick}
             >
               <div
-                className="bg-white rounded-xl shadow-xl p-6 w-full max-w-2xl space-y-4"
+                className="bg-white rounded-xl shadow-xl p-4 sm:p-6 w-full max-w-2xl space-y-4"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between">

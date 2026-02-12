@@ -623,26 +623,26 @@ const CardAnalysis: React.FC = () => {
                 </AreaChart>
               </ResponsiveContainer>
             </div>
-            <div className="flex justify-between items-center mt-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-3">
               <span className="text-sm text-gray-600 flex items-center gap-2 font-semibold">
                 Detalhe de vendas
               </span>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <button
                   onClick={() => exportCSV(vendasDetalhadas, 'onefinc-vendas')}
-                  className="flex items-center gap-1 px-3 py-1 text-xs border rounded-lg text-gray-700 hover:bg-gray-50"
+                  className="w-full sm:w-auto flex items-center justify-center gap-1 px-3 py-1 text-xs border rounded-lg text-gray-700 hover:bg-gray-50"
                 >
                   <Download size={14}/> CSV
                 </button>
                 <button
                   onClick={() => exportPDF(vendasDetalhadas, 'Vendas')}
-                  className="flex items-center gap-1 px-3 py-1 text-xs border rounded-lg text-gray-700 hover:bg-gray-50"
+                  className="w-full sm:w-auto flex items-center justify-center gap-1 px-3 py-1 text-xs border rounded-lg text-gray-700 hover:bg-gray-50"
                 >
                   <Download size={14}/> PDF
                 </button>
               </div>
             </div>
-            <div className="mt-2 max-h-[420px] overflow-auto">
+            <div className="mt-2 max-h-[420px] overflow-auto table-scroll">
               <table className="min-w-[1100px] w-full text-sm border-t border-gray-100 table-fixed whitespace-nowrap">
                 <thead>
                   <tr className="text-left text-gray-500">
@@ -733,26 +733,26 @@ const CardAnalysis: React.FC = () => {
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            <div className="flex justify-between items-center mt-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-3">
               <span className="text-sm text-gray-600 flex items-center gap-2 font-semibold">
                 Detalhe de recebíveis
               </span>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <button
                   onClick={() => exportCSV(recebiveisDetalhados, 'onefinc-recebiveis')}
-                  className="flex items-center gap-1 px-3 py-1 text-xs border rounded-lg text-gray-700 hover:bg-gray-50"
+                  className="w-full sm:w-auto flex items-center justify-center gap-1 px-3 py-1 text-xs border rounded-lg text-gray-700 hover:bg-gray-50"
                 >
                   <Download size={14}/> CSV
                 </button>
                 <button
                   onClick={() => exportPDF(recebiveisDetalhados, 'Recebiveis')}
-                  className="flex items-center gap-1 px-3 py-1 text-xs border rounded-lg text-gray-700 hover:bg-gray-50"
+                  className="w-full sm:w-auto flex items-center justify-center gap-1 px-3 py-1 text-xs border rounded-lg text-gray-700 hover:bg-gray-50"
                 >
                   <Download size={14}/> PDF
                 </button>
               </div>
             </div>
-            <div className="mt-2 max-h-[420px] overflow-auto">
+            <div className="mt-2 max-h-[420px] overflow-auto table-scroll">
               <table className="min-w-[1100px] w-full text-sm border-t border-gray-100 table-fixed whitespace-nowrap">
                 <thead>
                   <tr className="text-left text-gray-500">

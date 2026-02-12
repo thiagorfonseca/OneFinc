@@ -94,7 +94,7 @@ const PricingProcedures: React.FC = () => {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
               <CheckSquare size={16} /> Procedimentos realizados
@@ -207,7 +207,7 @@ const PricingProcedures: React.FC = () => {
             value={procedureSearch}
             onChange={(e) => setProcedureSearch(e.target.value)}
             placeholder="Buscar procedimento..."
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-500 flex-1 min-w-[220px]"
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-500 flex-1 min-w-[180px]"
           />
           <button
             onClick={async () => {
@@ -236,13 +236,13 @@ const PricingProcedures: React.FC = () => {
               });
               setShowProcedureModal(true);
             }}
-            className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 flex items-center gap-2"
+            className="w-full sm:w-auto px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 flex items-center justify-center gap-2"
           >
             <Plus size={16} /> Novo procedimento
           </button>
         </div>
 
-        <div className="border border-gray-100 rounded-lg overflow-hidden">
+        <div className="border border-gray-100 rounded-lg table-scroll">
           <table className="min-w-full text-sm">
             <thead className="bg-gray-50 text-gray-600 border-b">
               <tr>

@@ -25,7 +25,7 @@ const DataTable = <TData,>({ data, columns, pageSize = 10 }: DataTableProps<TDat
 
   return (
     <div className="space-y-3">
-      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+      <div className="table-scroll rounded-lg border border-gray-200 bg-white">
         <table className="min-w-full text-sm">
           <thead className="bg-gray-50">
             {table.getHeaderGroups().map((headerGroup) => (

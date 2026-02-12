@@ -26,18 +26,23 @@ const AdminLayout: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <button
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-md shadow"
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-md shadow focus:outline-none focus:ring-2 focus:ring-brand-500"
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        aria-label={isMobileMenuOpen ? 'Fechar menu' : 'Abrir menu'}
+        aria-expanded={isMobileMenuOpen}
+        aria-controls="admin-sidebar"
       >
         <Menu size={24} />
       </button>
 
       <aside
+        id="admin-sidebar"
         className={`
           fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 transform transition-transform duration-200 ease-in-out
           ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
           lg:translate-x-0 lg:block
         `}
+        aria-hidden={!isMobileMenuOpen && typeof window !== 'undefined' && window.innerWidth < 1024}
       >
         <div className="h-full flex flex-col">
           <div className="h-16 flex items-center px-4 border-b border-gray-100">
@@ -85,11 +90,11 @@ const AdminLayout: React.FC = () => {
       </aside>
 
       <main className="flex-1 overflow-auto lg:ml-64">
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 lg:hidden">
+        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6 lg:hidden">
           <div className="w-8"></div>
           <span className="font-semibold text-gray-700">Admin</span>
         </header>
-        <div className="py-4 md:py-8 px-4 md:px-6 max-w-screen-2xl mx-auto space-y-3">
+        <div className="pt-20 lg:pt-6 pb-4 md:pb-8 px-4 md:px-6 max-w-screen-2xl mx-auto space-y-3">
           <Outlet />
         </div>
       </main>
@@ -98,6 +103,7 @@ const AdminLayout: React.FC = () => {
         <div
           className="fixed inset-0 bg-black/20 z-30 lg:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
+          aria-hidden="true"
         />
       )}
     </div>

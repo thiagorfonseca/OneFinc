@@ -27,10 +27,13 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black/40 z-50 flex items-start justify-center overflow-y-auto py-8"
+      className="fixed inset-0 bg-black/40 z-50 flex items-start justify-center overflow-y-auto py-6 sm:py-8"
       onClick={modalControls.onBackdropClick}
     >
-      <div className="bg-white w-full max-w-xl rounded-2xl p-6 shadow-xl space-y-4" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="bg-white w-full max-w-xl rounded-2xl p-4 sm:p-6 shadow-xl space-y-4 max-h-[calc(100vh-3rem)] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-800">Solicitar reagendamento</h3>
           <button
@@ -73,11 +76,11 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-lg border border-gray-200 text-gray-600"
+            className="w-full sm:w-auto px-4 py-2 rounded-lg border border-gray-200 text-gray-600"
           >
             Cancelar
           </button>
@@ -85,7 +88,7 @@ const RescheduleModal: React.FC<RescheduleModalProps> = ({
             type="button"
             onClick={onSubmit}
             disabled={submitting}
-            className="px-4 py-2 rounded-lg bg-brand-600 text-white disabled:opacity-50"
+            className="w-full sm:w-auto px-4 py-2 rounded-lg bg-brand-600 text-white disabled:opacity-50"
           >
             {submitting ? 'Enviando...' : 'Enviar solicitação'}
           </button>
