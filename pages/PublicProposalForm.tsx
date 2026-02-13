@@ -39,18 +39,27 @@ const PublicProposalForm: React.FC = () => {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState(initialForm);
   const [error, setError] = useState('');
+  const [personType, setPersonType] = useState<'pf' | 'pj'>('pj');
+  const [sameAsCompany, setSameAsCompany] = useState(false);
+  const [cepLoading, setCepLoading] = useState(false);
+  const [cepError, setCepError] = useState('');
+  const [lastCep, setLastCep] = useState('');
 
   const trimValue = (value: string) => value.trim();
   const digitsOnly = (value: string) => value.replace(/\D/g, '');
   const isEmail = (value: string) => /\S+@\S+\.\S+/.test(trimValue(value));
   const hasValue = (value: string) => trimValue(value).length > 0;
+  const normalizeOptional = (value: string) => {
+    const trimmed = trimValue(value);
+    return trimmed.length ? trimmed : null;
+  };
 
   const isStep1Valid = useMemo(() => {
     return (
       hasValue(form.company.legal_name) &&
       digitsOnly(form.company.cnpj).length >= 8 &&
       isEmail(form.company.email_principal) &&
-      hasValue(form.company.telefone) &&
+      hasValue(form.company.whatsapp) &&
       hasValue(form.company.address.logradouro) &&
       hasValue(form.company.address.numero) &&
       hasValue(form.company.address.bairro) &&
@@ -101,6 +110,86 @@ const PublicProposalForm: React.FC = () => {
     if (error) setError('');
   }, [form]);
 
+  useEffect(() => {
+    if (personType === 'pj') return;
+    setForm((prev) => ({
+      ...prev,
+      company: {
+        ...prev.company,
+        trade_name: '',
+        state_registration: '',
+      },
+    }));
+  }, [personType]);
+
+  useEffect(() => {
+    if (!sameAsCompany) return;
+    setForm((prev) => {
+      const nextResponsible = {
+        name: prev.company.legal_name,
+        cpf: prev.company.cnpj,
+        email: prev.company.email_principal,
+        telefone: prev.company.whatsapp,
+      };
+      const same =
+        prev.responsible.name === nextResponsible.name &&
+        prev.responsible.cpf === nextResponsible.cpf &&
+        prev.responsible.email === nextResponsible.email &&
+        prev.responsible.telefone === nextResponsible.telefone;
+      return same ? prev : { ...prev, responsible: nextResponsible };
+    });
+  }, [
+    sameAsCompany,
+    form.company.legal_name,
+    form.company.cnpj,
+    form.company.email_principal,
+    form.company.whatsapp,
+  ]);
+
+  useEffect(() => {
+    const cepDigits = digitsOnly(form.company.address.cep);
+    if (cepDigits.length !== 8 || cepDigits === lastCep) return;
+
+    let cancelled = false;
+    setCepLoading(true);
+    setCepError('');
+
+    fetch(`https://viacep.com.br/ws/${cepDigits}/json/`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        if (data?.erro) {
+          setCepError('CEP não encontrado.');
+          return;
+        }
+        setLastCep(cepDigits);
+        setForm((prev) => ({
+          ...prev,
+          company: {
+            ...prev.company,
+            address: {
+              ...prev.company.address,
+              logradouro: data.logradouro || prev.company.address.logradouro,
+              bairro: data.bairro || prev.company.address.bairro,
+              cidade: data.localidade || prev.company.address.cidade,
+              uf: data.uf || prev.company.address.uf,
+              complemento: data.complemento || prev.company.address.complemento,
+            },
+          },
+        }));
+      })
+      .catch(() => {
+        if (!cancelled) setCepError('Não foi possível consultar o CEP.');
+      })
+      .finally(() => {
+        if (!cancelled) setCepLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [form.company.address.cep, lastCep]);
+
   const nextDisabled = useMemo(() => {
     if (step === 1) return !isStep1Valid;
     if (step === 2) return !isStep2Valid;
@@ -118,12 +207,12 @@ const PublicProposalForm: React.FC = () => {
       company: {
         ...form.company,
         legal_name: trimValue(form.company.legal_name),
-        trade_name: trimValue(form.company.trade_name),
+        trade_name: normalizeOptional(form.company.trade_name),
         cnpj: trimValue(form.company.cnpj),
-        state_registration: trimValue(form.company.state_registration),
+        state_registration: personType === 'pj' ? normalizeOptional(form.company.state_registration) : null,
         email_principal: trimValue(form.company.email_principal),
-        email_financeiro: trimValue(form.company.email_financeiro),
-        telefone: trimValue(form.company.telefone),
+        email_financeiro: normalizeOptional(form.company.email_financeiro),
+        telefone: trimValue(form.company.whatsapp),
         whatsapp: trimValue(form.company.whatsapp),
         address: {
           ...form.company.address,
@@ -205,30 +294,61 @@ const PublicProposalForm: React.FC = () => {
 
           {step === 1 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <div className="text-xs text-gray-500 mb-2">Tipo de cadastro</div>
+                <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setPersonType('pf')}
+                    className={`px-3 py-1.5 text-sm rounded-md ${
+                      personType === 'pf' ? 'bg-white text-gray-900 shadow' : 'text-gray-500'
+                    }`}
+                  >
+                    Pessoa Física
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPersonType('pj')}
+                    className={`px-3 py-1.5 text-sm rounded-md ${
+                      personType === 'pj' ? 'bg-white text-gray-900 shadow' : 'text-gray-500'
+                    }`}
+                  >
+                    Pessoa Jurídica
+                  </button>
+                </div>
+              </div>
               <input
-                placeholder="Razão social"
+                placeholder={personType === 'pf' ? 'Nome completo' : 'Razão social'}
                 value={form.company.legal_name}
                 onChange={(e) => setForm((prev) => ({ ...prev, company: { ...prev.company, legal_name: e.target.value } }))}
                 className="px-3 py-2 border border-gray-200 rounded-lg"
               />
+              {personType === 'pj' ? (
+                <input
+                  placeholder="Nome fantasia"
+                  value={form.company.trade_name}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, company: { ...prev.company, trade_name: e.target.value } }))
+                  }
+                  className="px-3 py-2 border border-gray-200 rounded-lg"
+                />
+              ) : null}
               <input
-                placeholder="Nome fantasia"
-                value={form.company.trade_name}
-                onChange={(e) => setForm((prev) => ({ ...prev, company: { ...prev.company, trade_name: e.target.value } }))}
-                className="px-3 py-2 border border-gray-200 rounded-lg"
-              />
-              <input
-                placeholder="CNPJ"
+                placeholder={personType === 'pf' ? 'CPF' : 'CNPJ'}
                 value={form.company.cnpj}
                 onChange={(e) => setForm((prev) => ({ ...prev, company: { ...prev.company, cnpj: e.target.value } }))}
                 className="px-3 py-2 border border-gray-200 rounded-lg"
               />
-              <input
-                placeholder="Inscrição estadual"
-                value={form.company.state_registration}
-                onChange={(e) => setForm((prev) => ({ ...prev, company: { ...prev.company, state_registration: e.target.value } }))}
-                className="px-3 py-2 border border-gray-200 rounded-lg"
-              />
+              {personType === 'pj' ? (
+                <input
+                  placeholder="Inscrição estadual"
+                  value={form.company.state_registration}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, company: { ...prev.company, state_registration: e.target.value } }))
+                  }
+                  className="px-3 py-2 border border-gray-200 rounded-lg"
+                />
+              ) : null}
               <input
                 placeholder="Email principal"
                 value={form.company.email_principal}
@@ -236,19 +356,7 @@ const PublicProposalForm: React.FC = () => {
                 className="px-3 py-2 border border-gray-200 rounded-lg"
               />
               <input
-                placeholder="Email financeiro"
-                value={form.company.email_financeiro}
-                onChange={(e) => setForm((prev) => ({ ...prev, company: { ...prev.company, email_financeiro: e.target.value } }))}
-                className="px-3 py-2 border border-gray-200 rounded-lg"
-              />
-              <input
-                placeholder="Telefone"
-                value={form.company.telefone}
-                onChange={(e) => setForm((prev) => ({ ...prev, company: { ...prev.company, telefone: e.target.value } }))}
-                className="px-3 py-2 border border-gray-200 rounded-lg"
-              />
-              <input
-                placeholder="WhatsApp"
+                placeholder="WhatsApp (com DDD)"
                 value={form.company.whatsapp}
                 onChange={(e) => setForm((prev) => ({ ...prev, company: { ...prev.company, whatsapp: e.target.value } }))}
                 className="px-3 py-2 border border-gray-200 rounded-lg"
@@ -330,34 +438,48 @@ const PublicProposalForm: React.FC = () => {
                 }
                 className="px-3 py-2 border border-gray-200 rounded-lg"
               />
+              {cepLoading ? <div className="text-xs text-gray-400 md:col-span-2">Buscando CEP...</div> : null}
+              {cepError ? <div className="text-xs text-rose-500 md:col-span-2">{cepError}</div> : null}
             </div>
           )}
 
           {step === 2 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <label className="md:col-span-2 flex items-center gap-2 text-sm text-gray-600">
+                <input
+                  type="checkbox"
+                  checked={sameAsCompany}
+                  onChange={(e) => setSameAsCompany(e.target.checked)}
+                />
+                Os mesmos da tela anterior
+              </label>
               <input
                 placeholder="Nome do responsável"
                 value={form.responsible.name}
                 onChange={(e) => setForm((prev) => ({ ...prev, responsible: { ...prev.responsible, name: e.target.value } }))}
-                className="px-3 py-2 border border-gray-200 rounded-lg"
+                disabled={sameAsCompany}
+                className="px-3 py-2 border border-gray-200 rounded-lg disabled:bg-gray-100"
               />
               <input
                 placeholder="CPF"
                 value={form.responsible.cpf}
                 onChange={(e) => setForm((prev) => ({ ...prev, responsible: { ...prev.responsible, cpf: e.target.value } }))}
-                className="px-3 py-2 border border-gray-200 rounded-lg"
+                disabled={sameAsCompany}
+                className="px-3 py-2 border border-gray-200 rounded-lg disabled:bg-gray-100"
               />
               <input
                 placeholder="Email"
                 value={form.responsible.email}
                 onChange={(e) => setForm((prev) => ({ ...prev, responsible: { ...prev.responsible, email: e.target.value } }))}
-                className="px-3 py-2 border border-gray-200 rounded-lg"
+                disabled={sameAsCompany}
+                className="px-3 py-2 border border-gray-200 rounded-lg disabled:bg-gray-100"
               />
               <input
-                placeholder="Telefone"
+                placeholder="WhatsApp (com DDD)"
                 value={form.responsible.telefone}
                 onChange={(e) => setForm((prev) => ({ ...prev, responsible: { ...prev.responsible, telefone: e.target.value } }))}
-                className="px-3 py-2 border border-gray-200 rounded-lg"
+                disabled={sameAsCompany}
+                className="px-3 py-2 border border-gray-200 rounded-lg disabled:bg-gray-100"
               />
             </div>
           )}
@@ -365,9 +487,9 @@ const PublicProposalForm: React.FC = () => {
           {step === 3 && (
             <div className="space-y-4 text-sm text-gray-600">
               <div>
-                <h3 className="font-semibold text-gray-700">Empresa</h3>
-                <p>{form.company.legal_name} ({form.company.trade_name})</p>
-                <p>{form.company.email_principal}</p>
+                <h3 className="font-semibold text-gray-700">{personType === 'pf' ? 'Titular' : 'Empresa'}</h3>
+                <p>{form.company.legal_name}{form.company.trade_name ? ` (${form.company.trade_name})` : ''}</p>
+                <p>{form.company.email_principal} • {form.company.whatsapp}</p>
               </div>
               <div>
                 <h3 className="font-semibold text-gray-700">Responsável</h3>
