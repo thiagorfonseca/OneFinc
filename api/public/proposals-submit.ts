@@ -145,7 +145,7 @@ const ensureSignature = async (proposal: any, payload: any) => {
         email: payload.responsible.email,
         cpf: normalizeDoc(payload.responsible.cpf),
         anchor: '<<signer1>>',
-        redirectUrl,
+        redirectLink: redirectUrl,
       },
       ...(internalSigner ? [internalSigner] : []),
     ],
@@ -163,8 +163,7 @@ const ensureSignature = async (proposal: any, payload: any) => {
     document?.url ||
     null;
 
-  const finalSignUrl =
-    signUrl && redirectUrl ? `${signUrl}${signUrl.includes('?') ? '&' : '?'}redirect_url=${encodeURIComponent(redirectUrl)}` : signUrl;
+  const finalSignUrl = signUrl;
 
   if (internalSigner && ZAPSIGN_INTERNAL_USER_TOKEN) {
     const internalMatch = document?.signers?.find((item: any) => {

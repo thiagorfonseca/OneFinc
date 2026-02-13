@@ -41,7 +41,12 @@ export default async function handler(req: any, res: any) {
 
     if (!docId) return json(res, 200, { ok: true });
 
-    const rawStatus = body?.status || body?.event || body?.data?.status || body?.data?.event;
+    const rawStatus =
+      body?.status ||
+      body?.data?.status ||
+      body?.event_type ||
+      body?.event ||
+      body?.data?.event;
     const status = mapStatus(rawStatus);
 
     const { data: updated } = await supabaseAdmin

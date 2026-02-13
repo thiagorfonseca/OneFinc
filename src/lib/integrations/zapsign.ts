@@ -10,7 +10,7 @@ export type ZapsignSigner = {
   lockEmail?: boolean;
   lockPhone?: boolean;
   phoneCountry?: string;
-  redirectUrl?: string;
+  redirectLink?: string;
 };
 
 export type ZapsignCreateDocumentParams = {
@@ -77,7 +77,7 @@ export const createDocumentFromBase64 = async (
       send_automatic_whatsapp: signer.sendAutomaticWhatsapp,
       lock_email: signer.lockEmail,
       lock_phone: signer.lockPhone,
-      redirect_url: signer.redirectUrl,
+      redirect_link: signer.redirectLink,
     })),
   };
 
