@@ -6,3 +6,6 @@ env.local
 supabase/.temp
 *.log
 .DS_Store
+
+# build output
+dist/
