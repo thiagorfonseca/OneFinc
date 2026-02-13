@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import { readJson, json, methodNotAllowed, badRequest, notFound, serverError } from '../../../_utils/http';
-import { supabaseAdmin } from '../../../_utils/supabase';
-import { ASAAS_API_KEY, ASAAS_ENV, ASAAS_SPLIT_WALLETS_JSON, ZAPSIGN_API_TOKEN, APP_BASE_URL } from '../../../_utils/env';
-import { applyContractTags } from '../../../_utils/contract';
-import { buildPdfFromHtml } from '../../../_utils/pdf';
-import { createDocumentFromBase64 } from '../../../../src/lib/integrations/zapsign';
-import { createPayment, ensureCustomer } from '../../../../src/lib/integrations/asaas';
+import { readJson, json, methodNotAllowed, badRequest, notFound, serverError } from '../../../_utils/http.js';
+import { supabaseAdmin } from '../../../_utils/supabase.js';
+import { ASAAS_API_KEY, ASAAS_ENV, ASAAS_SPLIT_WALLETS_JSON, ZAPSIGN_API_TOKEN, APP_BASE_URL } from '../../../_utils/env.js';
+import { applyContractTags } from '../../../_utils/contract.js';
+import { buildPdfFromHtml } from '../../../_utils/pdf.js';
+import { createDocumentFromBase64 } from '../../../../src/lib/integrations/zapsign.js';
+import { createPayment, ensureCustomer } from '../../../../src/lib/integrations/asaas.js';
 
 const payloadSchema = z.object({
   company: z.object({

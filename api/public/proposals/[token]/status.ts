@@ -1,7 +1,7 @@
-import { json, methodNotAllowed, notFound, badRequest, serverError } from '../../../_utils/http';
-import { supabaseAdmin } from '../../../_utils/supabase';
-import { ASAAS_API_KEY, ASAAS_ENV, ASAAS_SPLIT_WALLETS_JSON } from '../../../_utils/env';
-import { createPayment, ensureCustomer } from '../../../../src/lib/integrations/asaas';
+import { json, methodNotAllowed, notFound, badRequest, serverError } from '../../../_utils/http.js';
+import { supabaseAdmin } from '../../../_utils/supabase.js';
+import { ASAAS_API_KEY, ASAAS_ENV, ASAAS_SPLIT_WALLETS_JSON } from '../../../_utils/env.js';
+import { createPayment, ensureCustomer } from '../../../../src/lib/integrations/asaas.js';
 
 const normalizeDoc = (value?: string | null) => (value || '').replace(/\D/g, '');
 
