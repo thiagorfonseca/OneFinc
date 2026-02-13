@@ -38,7 +38,8 @@ const PublicPaymentPage: React.FC = () => {
     );
   }
 
-  const invoiceUrl = data?.payment?.invoice_url || '';
+  const invoiceUrl = data?.invoiceUrl || data?.payment?.invoice_url || '';
+  const status = data?.status || data?.payment?.status || 'aguardando';
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
@@ -52,7 +53,7 @@ const PublicPaymentPage: React.FC = () => {
             <div className="text-sm text-gray-600">
               Valor: {formatCurrency((data?.proposal?.amount_cents || 0) / 100)}
             </div>
-            <div className="text-sm text-gray-600">Status: {data?.payment?.status || 'aguardando'}</div>
+            <div className="text-sm text-gray-600">Status: {status}</div>
           </>
         )}
 

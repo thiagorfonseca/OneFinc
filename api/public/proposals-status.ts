@@ -121,12 +121,33 @@ export default async function handler(req: any, res: any) {
 
     if (!proposal) return notFound(res, 'Proposta não encontrada.');
 
+    let payment: any = null;
+    let invoiceUrl: string | null = null;
+
     if (proposal.status === 'signed' || proposal.status === 'payment_created' || proposal.status === 'paid') {
-      const { invoiceUrl } = await ensurePaymentForProposal(proposal);
-      return json(res, 200, { status: proposal.status, invoiceUrl });
+      const ensured = await ensurePaymentForProposal(proposal);
+      payment = ensured.payment;
+      invoiceUrl = ensured.invoiceUrl;
+    } else {
+      const { data: existing } = await supabaseAdmin
+        .from('od_asaas_payments')
+        .select('*')
+        .eq('proposal_id', proposal.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (existing) {
+        payment = existing;
+        invoiceUrl = existing.invoice_url || null;
+      }
     }
 
-    return json(res, 200, { status: proposal.status, invoiceUrl: null });
+    return json(res, 200, {
+      status: proposal.status,
+      proposal,
+      payment,
+      invoiceUrl,
+    });
   } catch (err: any) {
     console.error(err);
     return serverError(res, 'Erro ao consultar status.', err?.message || err);
