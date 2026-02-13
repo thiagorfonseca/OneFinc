@@ -40,6 +40,37 @@ const PublicProposalForm: React.FC = () => {
   const [form, setForm] = useState(initialForm);
   const [error, setError] = useState('');
 
+  const trimValue = (value: string) => value.trim();
+  const digitsOnly = (value: string) => value.replace(/\D/g, '');
+  const isEmail = (value: string) => /\S+@\S+\.\S+/.test(trimValue(value));
+  const hasValue = (value: string) => trimValue(value).length > 0;
+
+  const isStep1Valid = useMemo(() => {
+    return (
+      hasValue(form.company.legal_name) &&
+      digitsOnly(form.company.cnpj).length >= 8 &&
+      isEmail(form.company.email_principal) &&
+      hasValue(form.company.telefone) &&
+      hasValue(form.company.address.logradouro) &&
+      hasValue(form.company.address.numero) &&
+      hasValue(form.company.address.bairro) &&
+      hasValue(form.company.address.cidade) &&
+      trimValue(form.company.address.uf).length === 2 &&
+      digitsOnly(form.company.address.cep).length >= 8
+    );
+  }, [form]);
+
+  const isStep2Valid = useMemo(() => {
+    return (
+      hasValue(form.responsible.name) &&
+      digitsOnly(form.responsible.cpf).length >= 8 &&
+      isEmail(form.responsible.email) &&
+      hasValue(form.responsible.telefone)
+    );
+  }, [form]);
+
+  const isFormValid = isStep1Valid && isStep2Valid;
+
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -66,24 +97,66 @@ const PublicProposalForm: React.FC = () => {
     if (token) load();
   }, [token]);
 
+  useEffect(() => {
+    if (error) setError('');
+  }, [form]);
+
   const nextDisabled = useMemo(() => {
-    if (step === 1) return !form.company.legal_name || !form.company.cnpj || !form.company.email_principal;
-    if (step === 2) return !form.responsible.name || !form.responsible.email;
+    if (step === 1) return !isStep1Valid;
+    if (step === 2) return !isStep2Valid;
     return false;
-  }, [step, form]);
+  }, [step, isStep1Valid, isStep2Valid]);
 
   const handleSubmit = async () => {
+    if (!isFormValid) {
+      setError('Preencha todos os campos obrigatórios antes de continuar.');
+      return;
+    }
     setSending(true);
     setError('');
+    const payload = {
+      company: {
+        ...form.company,
+        legal_name: trimValue(form.company.legal_name),
+        trade_name: trimValue(form.company.trade_name),
+        cnpj: trimValue(form.company.cnpj),
+        state_registration: trimValue(form.company.state_registration),
+        email_principal: trimValue(form.company.email_principal),
+        email_financeiro: trimValue(form.company.email_financeiro),
+        telefone: trimValue(form.company.telefone),
+        whatsapp: trimValue(form.company.whatsapp),
+        address: {
+          ...form.company.address,
+          logradouro: trimValue(form.company.address.logradouro),
+          numero: trimValue(form.company.address.numero),
+          complemento: trimValue(form.company.address.complemento),
+          bairro: trimValue(form.company.address.bairro),
+          cidade: trimValue(form.company.address.cidade),
+          uf: trimValue(form.company.address.uf).toUpperCase(),
+          cep: trimValue(form.company.address.cep),
+        },
+      },
+      responsible: {
+        ...form.responsible,
+        name: trimValue(form.responsible.name),
+        cpf: trimValue(form.responsible.cpf),
+        email: trimValue(form.responsible.email),
+        telefone: trimValue(form.responsible.telefone),
+      },
+    };
     const res = await fetch(`/api/public/proposals/${token}/submit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
+      body: JSON.stringify(payload),
     });
     const data = await res.json().catch(() => ({}));
     setSending(false);
     if (!res.ok) {
-      setError(data?.error || 'Erro ao enviar formulário.');
+      if (data?.details?.fieldErrors) {
+        setError('Preencha todos os campos obrigatórios antes de continuar.');
+      } else {
+        setError(data?.error || 'Erro ao enviar formulário.');
+      }
       return;
     }
     if (data.next === 'signature' && data.signUrl) {
