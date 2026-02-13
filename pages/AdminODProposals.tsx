@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Link as LinkIcon } from 'lucide-react';
+import { Plus, Link as LinkIcon, Pencil, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { formatCurrency } from '../lib/utils';
+import { useToast } from '../hooks/useToast';
+import { ToastStack } from '../components/Toast';
 
 interface ProposalRow {
   id: string;
@@ -28,6 +30,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const AdminODProposals: React.FC = () => {
+  const { toasts, push, dismiss } = useToast();
   const [loading, setLoading] = useState(true);
   const [proposals, setProposals] = useState<ProposalRow[]>([]);
   const [search, setSearch] = useState('');
@@ -47,6 +50,20 @@ const AdminODProposals: React.FC = () => {
     loadProposals();
   }, []);
 
+  const handleDelete = async (proposalId: string) => {
+    if (!window.confirm('Tem certeza que deseja apagar esta proposta? Essa ação não poderá ser desfeita.')) return;
+    const { error } = await (supabase as any)
+      .from('od_proposals')
+      .delete()
+      .eq('id', proposalId);
+    if (error) {
+      push({ title: 'Erro ao apagar proposta.', description: error.message, variant: 'error' });
+      return;
+    }
+    setProposals((prev) => prev.filter((item) => item.id !== proposalId));
+    push({ title: 'Proposta apagada.', variant: 'success' });
+  };
+
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     return proposals.filter((proposal) => {
@@ -64,6 +81,7 @@ const AdminODProposals: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      <ToastStack items={toasts} onDismiss={dismiss} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Propostas</h1>
@@ -147,6 +165,21 @@ const AdminODProposals: React.FC = () => {
                             Link
                           </a>
                         ) : null}
+                        <Link
+                          to={`/admin/propostas/${proposal.id}/editar`}
+                          className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-brand-600"
+                        >
+                          <Pencil size={14} />
+                          Editar
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(proposal.id)}
+                          className="inline-flex items-center gap-1 text-xs text-rose-500 hover:text-rose-600"
+                        >
+                          <Trash2 size={14} />
+                          Apagar
+                        </button>
                         <Link
                           to={`/admin/propostas/${proposal.id}`}
                           className="text-brand-600 hover:text-brand-700 font-medium"

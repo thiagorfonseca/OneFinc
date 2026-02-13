@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { Copy, Mail, MessageCircle, RefreshCw, Link as LinkIcon } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { Copy, Mail, MessageCircle, RefreshCw, Link as LinkIcon, Pencil, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { formatCurrency } from '../lib/utils';
 import { useToast } from '../hooks/useToast';
@@ -32,6 +32,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 const AdminODProposalDetail: React.FC = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { toasts, push, dismiss } = useToast();
   const [loading, setLoading] = useState(true);
   const [proposal, setProposal] = useState<any>(null);
@@ -148,6 +149,21 @@ const AdminODProposalDetail: React.FC = () => {
     }
   };
 
+  const handleDelete = async () => {
+    if (!id) return;
+    if (!window.confirm('Tem certeza que deseja apagar esta proposta? Essa ação não poderá ser desfeita.')) return;
+    const { error } = await (supabase as any)
+      .from('od_proposals')
+      .delete()
+      .eq('id', id);
+    if (error) {
+      push({ title: 'Erro ao apagar proposta.', description: error.message, variant: 'error' });
+      return;
+    }
+    push({ title: 'Proposta apagada.', variant: 'success' });
+    navigate('/admin/propostas');
+  };
+
   if (loading) {
     return <div className="text-sm text-gray-400">Carregando...</div>;
   }
@@ -163,9 +179,29 @@ const AdminODProposalDetail: React.FC = () => {
     <div className="space-y-4">
       <ToastStack items={toasts} onDismiss={dismiss} />
 
-      <div>
-        <h1 className="text-2xl font-bold text-gray-800">{proposal.title}</h1>
-        <p className="text-gray-500">Detalhes da proposta e acompanhamento do fluxo.</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">{proposal.title}</h1>
+          <p className="text-gray-500">Detalhes da proposta e acompanhamento do fluxo.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => navigate(`/admin/propostas/${proposal.id}/editar`)}
+            className="inline-flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
+          >
+            <Pencil size={16} />
+            Editar
+          </button>
+          <button
+            type="button"
+            onClick={handleDelete}
+            className="inline-flex items-center gap-2 px-3 py-2 border border-rose-200 text-rose-600 rounded-lg text-sm hover:bg-rose-50"
+          >
+            <Trash2 size={16} />
+            Apagar
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">

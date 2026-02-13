@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Check, Copy, Save } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../hooks/useToast';
@@ -16,12 +16,15 @@ const generateToken = () => {
 
 const AdminODProposalForm: React.FC = () => {
   const navigate = useNavigate();
+  const { id } = useParams();
   const { toasts, push, dismiss } = useToast();
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [templates, setTemplates] = useState<any[]>([]);
   const [packages, setPackages] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
   const [savedLink, setSavedLink] = useState('');
+  const [publicToken, setPublicToken] = useState('');
 
   const [form, setForm] = useState({
     direct_link: false,
@@ -41,12 +44,19 @@ const AdminODProposalForm: React.FC = () => {
     client_id: '',
   });
 
+  const isEdit = Boolean(id);
+
   const amountCents = useMemo(() => {
     const raw = form.amount.replace(/\./g, '').replace(',', '.');
     const value = Number(raw);
     if (Number.isNaN(value)) return 0;
     return Math.round(value * 100);
   }, [form.amount]);
+
+  const formatAmountInput = (cents: number | null | undefined) => {
+    if (!cents) return '';
+    return (cents / 100).toFixed(2).replace('.', ',');
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -72,6 +82,42 @@ const AdminODProposalForm: React.FC = () => {
     load();
   }, []);
 
+  useEffect(() => {
+    if (!id) return;
+    const loadProposal = async () => {
+      setLoading(true);
+      const { data, error } = await (supabase as any)
+        .from('od_proposals')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+      if (error || !data) {
+        push({ title: 'Não foi possível carregar a proposta.', variant: 'error' });
+        setLoading(false);
+        return;
+      }
+      setForm({
+        direct_link: data.direct_link ?? false,
+        requires_signature: data.requires_signature ?? true,
+        title: data.title || '',
+        confirmation_text: data.confirmation_text || '',
+        product_type: data.product_type || 'platform',
+        payment_methods: data.payment_methods || { creditCard: true, boleto: false, pix: false },
+        installments: data.installments || 1,
+        amount: formatAmountInput(data.amount_cents),
+        contract_template_id: data.contract_template_id || '',
+        package_id: data.package_id || '',
+        client_id: data.client_id || '',
+      });
+      if (data.public_token) {
+        setPublicToken(data.public_token);
+        setSavedLink(`${window.location.origin}/cadastro/${data.public_token}`);
+      }
+      setLoading(false);
+    };
+    loadProposal();
+  }, [id, push]);
+
   const publicUrl = savedLink || '';
 
   const handleSave = async () => {
@@ -85,27 +131,34 @@ const AdminODProposalForm: React.FC = () => {
     }
 
     setSaving(true);
-    const token = generateToken();
+    const token = publicToken || generateToken();
+    const payload = {
+      title: form.title.trim(),
+      direct_link: form.direct_link,
+      requires_signature: form.requires_signature,
+      confirmation_text: form.confirmation_text || null,
+      product_type: form.product_type,
+      payment_methods: form.payment_methods,
+      installments: form.payment_methods.creditCard ? form.installments || 1 : null,
+      amount_cents: amountCents,
+      contract_template_id: form.contract_template_id || null,
+      package_id: form.package_id || null,
+      client_id: form.client_id || null,
+      public_token: token,
+    };
 
-    const { data, error } = await (supabase as any)
-      .from('od_proposals')
-      .insert({
-        title: form.title.trim(),
-        direct_link: form.direct_link,
-        requires_signature: form.requires_signature,
-        confirmation_text: form.confirmation_text || null,
-        product_type: form.product_type,
-        payment_methods: form.payment_methods,
-        installments: form.payment_methods.creditCard ? form.installments || 1 : null,
-        amount_cents: amountCents,
-        contract_template_id: form.contract_template_id || null,
-        package_id: form.package_id || null,
-        client_id: form.client_id || null,
-        status: 'sent',
-        public_token: token,
-      })
-      .select('id, public_token')
-      .single();
+    const { data, error } = isEdit
+      ? await (supabase as any)
+          .from('od_proposals')
+          .update(payload)
+          .eq('id', id)
+          .select('id, public_token')
+          .single()
+      : await (supabase as any)
+          .from('od_proposals')
+          .insert({ ...payload, status: 'sent' })
+          .select('id, public_token')
+          .single();
 
     setSaving(false);
 
@@ -116,7 +169,7 @@ const AdminODProposalForm: React.FC = () => {
 
     const link = `${window.location.origin}/cadastro/${data.public_token}`;
     setSavedLink(link);
-    push({ title: 'Proposta criada!', variant: 'success' });
+    push({ title: isEdit ? 'Proposta atualizada!' : 'Proposta criada!', variant: 'success' });
     navigate(`/admin/propostas/${data.id}`);
   };
 
@@ -134,11 +187,14 @@ const AdminODProposalForm: React.FC = () => {
     <div className="space-y-4">
       <ToastStack items={toasts} onDismiss={dismiss} />
       <div>
-        <h1 className="text-2xl font-bold text-gray-800">Nova proposta</h1>
-        <p className="text-gray-500">Crie uma proposta comercial e gere o link público.</p>
+        <h1 className="text-2xl font-bold text-gray-800">{isEdit ? 'Editar proposta' : 'Nova proposta'}</h1>
+        <p className="text-gray-500">
+          {isEdit ? 'Atualize os dados da proposta selecionada.' : 'Crie uma proposta comercial e gere o link público.'}
+        </p>
       </div>
 
       <div className="bg-white border border-gray-100 rounded-xl p-4 space-y-4">
+        {loading ? <div className="text-sm text-gray-400">Carregando proposta...</div> : null}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <label className="space-y-2 text-sm text-gray-600">
             <span>Link Direto</span>
@@ -292,7 +348,7 @@ const AdminODProposalForm: React.FC = () => {
           <button
             type="button"
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || loading}
             className="inline-flex items-center gap-2 px-4 py-2 bg-brand-600 text-white rounded-lg text-sm hover:bg-brand-700 disabled:opacity-50"
           >
             <Save size={16} />

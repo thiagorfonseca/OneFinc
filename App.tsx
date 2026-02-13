@@ -350,6 +350,7 @@ function App() {
               <Route path="contratos/:id" element={<AdminODContractForm />} />
               <Route path="propostas" element={<AdminODProposals />} />
               <Route path="propostas/nova" element={<AdminODProposalForm />} />
+              <Route path="propostas/:id/editar" element={<AdminODProposalForm />} />
               <Route path="propostas/:id" element={<AdminODProposalDetail />} />
               <Route path="comercial/relatorios" element={<AdminCommercialReports />} />
             </Route>
