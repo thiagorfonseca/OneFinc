@@ -4,7 +4,9 @@ import { ZAPSIGN_WEBHOOK_SECRET } from '../_utils/env.js';
 
 const mapStatus = (value?: string | null) => {
   const raw = (value || '').toLowerCase();
-  if (raw.includes('signed')) return 'signed';
+  if (raw.includes('signed') || raw.includes('completed') || raw.includes('concluido') || raw.includes('concluído') || raw.includes('finalizado')) {
+    return 'signed';
+  }
   if (raw.includes('rejected')) return 'rejected';
   if (raw.includes('canceled') || raw.includes('cancelled')) return 'canceled';
   if (raw.includes('sent')) return 'sent';

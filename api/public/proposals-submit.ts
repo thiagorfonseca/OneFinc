@@ -96,6 +96,8 @@ const ensureSignature = async (proposal: any, payload: any) => {
     }
   }
 
+  const redirectUrl = APP_BASE_URL ? `${APP_BASE_URL}/assinatura/retorno?token=${proposal.public_token}` : undefined;
+
   const internalSigner =
     ZAPSIGN_INTERNAL_SIGNER_NAME && ZAPSIGN_INTERNAL_SIGNER_EMAIL
       ? {
@@ -143,12 +145,13 @@ const ensureSignature = async (proposal: any, payload: any) => {
         email: payload.responsible.email,
         cpf: normalizeDoc(payload.responsible.cpf),
         anchor: '<<signer1>>',
+        redirectUrl,
       },
       ...(internalSigner ? [internalSigner] : []),
     ],
     lang: 'pt-br',
     external_id: proposal.id,
-    redirectUrl: APP_BASE_URL ? `${APP_BASE_URL}/assinatura/retorno?token=${proposal.public_token}` : undefined,
+    redirectUrl,
   });
 
   const signer = document?.signers?.[0];
@@ -159,6 +162,9 @@ const ensureSignature = async (proposal: any, payload: any) => {
     (signerToken ? `https://app.zapsign.com.br/verificar/${signerToken}` : null) ||
     document?.url ||
     null;
+
+  const finalSignUrl =
+    signUrl && redirectUrl ? `${signUrl}${signUrl.includes('?') ? '&' : '?'}redirect_url=${encodeURIComponent(redirectUrl)}` : signUrl;
 
   if (internalSigner && ZAPSIGN_INTERNAL_USER_TOKEN) {
     const internalMatch = document?.signers?.find((item: any) => {
@@ -193,7 +199,7 @@ const ensureSignature = async (proposal: any, payload: any) => {
     .update({ status: 'signature_sent' })
     .eq('id', proposal.id);
 
-  return { signUrl, doc: stored };
+  return { signUrl: finalSignUrl, doc: stored };
 };
 
 const ensurePayment = async (proposal: any, payload: any) => {

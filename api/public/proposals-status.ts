@@ -8,7 +8,14 @@ const normalizeDoc = (value?: string | null) => (value || '').replace(/\D/g, '')
 const isSignedStatus = (value?: string | null) => {
   if (!value) return false;
   const raw = value.toLowerCase();
-  return raw.includes('signed') || raw.includes('assinado');
+  return (
+    raw.includes('signed') ||
+    raw.includes('assinado') ||
+    raw.includes('completed') ||
+    raw.includes('concluido') ||
+    raw.includes('concluído') ||
+    raw.includes('finalizado')
+  );
 };
 
 const pickBillingType = (methods: any) => {
@@ -168,6 +175,19 @@ export default async function handler(req: any, res: any) {
           doc.raw?.signer_url ||
           doc.raw?.url ||
           null;
+
+        const storedAllSigned =
+          isSignedStatus(doc.raw?.status) ||
+          (Array.isArray(doc.raw?.signers) && doc.raw.signers.length > 0
+            ? doc.raw.signers.every((signer: any) => isSignedStatus(signer?.status))
+            : false);
+        if (storedAllSigned) {
+          await supabaseAdmin
+            .from('od_zapsign_documents')
+            .update({ status: 'signed', signed_at: new Date().toISOString() })
+            .eq('id', doc.id);
+          await supabaseAdmin.from('od_proposals').update({ status: 'signed' }).eq('id', proposal.id);
+        }
 
         const docToken =
           doc.zapsign_doc_id ||
