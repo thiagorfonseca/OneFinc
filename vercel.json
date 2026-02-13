@@ -1,5 +1,8 @@
 {
   "rewrites": [
+    { "source": "/api/public/proposals/:token/submit", "destination": "/api/public/proposals-submit?token=:token" },
+    { "source": "/api/public/proposals/:token/status", "destination": "/api/public/proposals-status?token=:token" },
+    { "source": "/api/public/proposals/:token", "destination": "/api/public/proposals-get?token=:token" },
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]

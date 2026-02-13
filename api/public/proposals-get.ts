@@ -1,5 +1,5 @@
-import { json, methodNotAllowed, notFound, badRequest } from '../../_utils/http.js';
-import { supabaseAdmin } from '../../_utils/supabase.js';
+import { json, methodNotAllowed, notFound, badRequest } from '../_utils/http.js';
+import { supabaseAdmin } from '../_utils/supabase.js';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'GET') return methodNotAllowed(res, ['GET']);

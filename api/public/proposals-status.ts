@@ -1,7 +1,7 @@
-import { json, methodNotAllowed, notFound, badRequest, serverError } from '../../../_utils/http.js';
-import { supabaseAdmin } from '../../../_utils/supabase.js';
-import { ASAAS_API_KEY, ASAAS_ENV, ASAAS_SPLIT_WALLETS_JSON } from '../../../_utils/env.js';
-import { createPayment, ensureCustomer } from '../../../../src/lib/integrations/asaas.js';
+import { json, methodNotAllowed, notFound, badRequest, serverError } from '../_utils/http.js';
+import { supabaseAdmin } from '../_utils/supabase.js';
+import { ASAAS_API_KEY, ASAAS_ENV, ASAAS_SPLIT_WALLETS_JSON } from '../_utils/env.js';
+import { createPayment, ensureCustomer } from '../../src/lib/integrations/asaas.js';
 
 const normalizeDoc = (value?: string | null) => (value || '').replace(/\D/g, '');
 
@@ -121,51 +121,14 @@ export default async function handler(req: any, res: any) {
 
     if (!proposal) return notFound(res, 'Proposta não encontrada.');
 
-    const { data: zapsign } = await supabaseAdmin
-      .from('od_zapsign_documents')
-      .select('*')
-      .eq('proposal_id', proposal.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    let payment = await supabaseAdmin
-      .from('od_asaas_payments')
-      .select('*')
-      .eq('proposal_id', proposal.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (proposal.requires_signature && zapsign?.status === 'signed' && !payment.data) {
-      const ensured = await ensurePaymentForProposal(proposal);
-      payment = { data: ensured.payment, error: null } as any;
+    if (proposal.status === 'signed' || proposal.status === 'payment_created' || proposal.status === 'paid') {
+      const { invoiceUrl } = await ensurePaymentForProposal(proposal);
+      return json(res, 200, { status: proposal.status, invoiceUrl });
     }
 
-    return json(res, 200, {
-      proposal: {
-        id: proposal.id,
-        status: proposal.status,
-        requires_signature: proposal.requires_signature,
-        amount_cents: proposal.amount_cents,
-        payment_methods: proposal.payment_methods,
-      },
-      signature: zapsign
-        ? {
-            status: zapsign.status,
-            signUrl: zapsign.raw?.signers?.[0]?.url || null,
-          }
-        : null,
-      payment: payment?.data
-        ? {
-            status: payment.data.status,
-            invoice_url: payment.data.invoice_url,
-            paid_at: payment.data.paid_at,
-          }
-        : null,
-    });
+    return json(res, 200, { status: proposal.status, invoiceUrl: null });
   } catch (err: any) {
     console.error(err);
-    return serverError(res, 'Erro ao buscar status.', err?.message);
+    return serverError(res, 'Erro ao consultar status.', err?.message || err);
   }
 }
