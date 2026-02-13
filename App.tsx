@@ -114,6 +114,11 @@ function App() {
                 <TransactionsPage type={TransactionTypeEnum.INCOME} />
               </ProtectedRoute>
             } />
+            <Route path="/sales" element={
+              <ProtectedRoute page="/sales">
+                <TransactionsPage type={TransactionTypeEnum.INCOME} view="sales" autoOpen />
+              </ProtectedRoute>
+            } />
 
             <Route path="/expenses" element={
               <ProtectedRoute page="/expenses">

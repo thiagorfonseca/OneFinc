@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Users, Building2, Wallet, RefreshCw, Plus, Loader2, CheckSquare, LayoutGrid, List } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -69,43 +69,7 @@ const getClinicInitials = (name: string) => {
 const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
   const navigate = useNavigate();
   const { isSystemAdmin, selectedClinicId, setSelectedClinicId } = useAuth();
-  const PAGE_OPTIONS = [
-    { value: '/', label: 'Dash Financeiro' },
-    { value: '/reports/attendance', label: 'Relatório de Atendimento' },
-    { value: '/incomes', label: 'Receitas' },
-    { value: '/expenses', label: 'Despesas' },
-    { value: '/card-analysis', label: 'Análise de cartão' },
-    { value: '/reconciliation', label: 'Conciliação bancária' },
-    { value: '/profile', label: 'Meu perfil' },
-    { value: '/assistant', label: 'Assistente AI' },
-    { value: '/contents/courses', label: 'Conteúdos • Cursos' },
-    { value: '/contents/trainings', label: 'Conteúdos • Treinamentos' },
-    { value: '/accounts', label: 'Contas bancárias' },
-    { value: '/settings', label: 'Minha Clínica' },
-    { value: '/settings?section=geral', label: 'Minha Clínica • Informações gerais' },
-    { value: '/settings?section=categorias', label: 'Minha Clínica • Categorias' },
-    { value: '/settings?section=taxas', label: 'Minha Clínica • Taxas' },
-    { value: '/settings?section=clientes', label: 'Minha Clínica • Clientes' },
-    { value: '/settings?section=profissionais', label: 'Minha Clínica • Profissionais' },
-    { value: '/settings?section=fornecedores', label: 'Minha Clínica • Fornecedores' },
-    { value: '/settings?section=usuarios', label: 'Minha Clínica • Usuários' },
-    { value: '/commercial/dashboard', label: 'Comercial • Dash comercial' },
-    { value: '/commercial/ranking', label: 'Comercial • Ranking dos clientes' },
-    { value: '/commercial/recurrence', label: 'Comercial • Recorrência' },
-    { value: '/commercial/geo', label: 'Comercial • Geolocalização' },
-    { value: '/pricing/calculator', label: 'Precificação • Calculadora' },
-    { value: '/pricing/procedures', label: 'Precificação • Procedimentos' },
-    { value: '/pricing/expenses', label: 'Precificação • Gastos' },
-    { value: '/pricing/focus-matrix', label: 'Precificação • Matriz de Foco' },
-    { value: '/hr/departments', label: 'Minha Clínica • Departamentos' },
-    { value: '/hr/collaborators', label: 'Minha Clínica • Colaboradores' },
-    { value: '/hr/feedback', label: 'Recursos Humanos • Feedback' },
-    { value: '/hr/meetings', label: 'Recursos Humanos • Reuniões' },
-    { value: '/app/agenda', label: 'Recursos Humanos • Agenda' },
-    { value: '/hr/archetypes', label: 'Recursos Humanos • Arquétipos' },
-    { value: '/hr/values', label: 'Recursos Humanos • Teoria de valores' },
-    { value: '/analytics/perfil', label: 'Analytics • Perfil comportamental' },
-  ];
+  
   const COMMERCIAL_PRODUCT_OPTIONS = [
     'Plataforma OnePay',
     'Cursos',
@@ -114,7 +78,6 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     'Suporte',
     'Onboarding',
   ];
-  const PAGE_LABEL_MAP = useMemo(() => Object.fromEntries(PAGE_OPTIONS.map(p => [p.value, p.label])), []);
   const [tab, setTab] = useState<'overview' | 'clinics' | 'users'>(initialTab);
   const [loading, setLoading] = useState(true);
   const [clinics, setClinics] = useState<any[]>([]);
@@ -181,7 +144,6 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [userSearch, setUserSearch] = useState('');
   const [bulkUserRole, setBulkUserRole] = useState('user');
-  const [bulkUserPages, setBulkUserPages] = useState<string[]>([]);
   const [savingClinic, setSavingClinic] = useState(false);
   const [savingUser, setSavingUser] = useState(false);
   const [resendingAccessId, setResendingAccessId] = useState<string | null>(null);
@@ -191,11 +153,6 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
   const [sendingInvite, setSendingInvite] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const callbackUrl = buildPublicUrl('/auth/callback');
-  const clinicPagesRef = useRef<HTMLDetailsElement | null>(null);
-  const editClinicPagesRef = useRef<HTMLDetailsElement | null>(null);
-  const userPagesRef = useRef<HTMLDetailsElement | null>(null);
-  const editUserPagesRef = useRef<HTMLDetailsElement | null>(null);
-  const bulkPagesRef = useRef<HTMLDetailsElement | null>(null);
   const tabRoutes: Record<'overview' | 'clinics' | 'users', string> = {
     overview: '/admin/dashboard',
     clinics: '/admin/clinics',
@@ -257,6 +214,19 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
       await (supabase as any).from('clinic_packages').insert(rows);
     }
     fetchClinicPackages();
+  };
+
+  const resolvePackagePages = (packageId: string) => {
+    if (!packageId) return [];
+    const pkg = packages.find((item) => item.id === packageId);
+    if (!pkg?.pages || !Array.isArray(pkg.pages)) return [];
+    return pkg.pages.map((page: string) => page.trim()).filter(Boolean);
+  };
+
+  const resolveClinicPackagePages = (clinicId: string) => {
+    const packageIds = clinicPackageMap[clinicId] || [];
+    const pages = packageIds.flatMap((packageId) => resolvePackagePages(packageId));
+    return Array.from(new Set(pages));
   };
 
   const parseAmountToCents = (value: string) => {
@@ -516,6 +486,14 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     setSavingClinic(true);
     try {
       const { package_id, ...clinicPayload } = clinicForm;
+      delete (clinicPayload as any).commercial_products;
+      delete (clinicPayload as any).commercial_package_id;
+      delete (clinicPayload as any).commercial_amount;
+      delete (clinicPayload as any).commercial_start_date;
+      delete (clinicPayload as any).commercial_end_date;
+      delete (clinicPayload as any).commercial_status;
+      delete (clinicPayload as any).commercial_owner_user_id;
+      delete (clinicPayload as any).paginas_liberadas;
       const selectedPackage = packages.find((pkg) => pkg.id === package_id);
       const payloadWithPlan = {
         ...clinicPayload,
@@ -548,6 +526,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
         }
       }
       if (createdClinic?.id && contactEmail) {
+        const defaultPages = resolvePackagePages(package_id || '');
         const { data: existingUser } = await supabase
           .from('clinic_users')
           .select('id')
@@ -561,7 +540,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
             name: clinicForm.responsavel_nome?.trim() || contactEmail.split('@')[0] || 'Responsável',
             role: 'owner',
             ativo: true,
-            paginas_liberadas: clinicForm.paginas_liberadas || [],
+            paginas_liberadas: defaultPages,
           });
           if (userError) {
             console.warn('Erro ao criar usuário da clínica:', userError.message);
@@ -604,6 +583,14 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     setSavingClinic(true);
     try {
       const { package_id, ...clinicPayload } = editClinicForm;
+      delete (clinicPayload as any).commercial_products;
+      delete (clinicPayload as any).commercial_package_id;
+      delete (clinicPayload as any).commercial_amount;
+      delete (clinicPayload as any).commercial_start_date;
+      delete (clinicPayload as any).commercial_end_date;
+      delete (clinicPayload as any).commercial_status;
+      delete (clinicPayload as any).commercial_owner_user_id;
+      delete (clinicPayload as any).paginas_liberadas;
       const selectedPackage = packages.find((pkg) => pkg.id === package_id);
       const payloadWithPlan = {
         ...clinicPayload,
@@ -713,9 +700,19 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
         alert('Já existe um usuário com este e-mail em outra clínica. Use um e-mail diferente.');
         return;
       }
+      const clinicId = userForm.clinic_id;
+      if (!clinicId) {
+        alert('Selecione a clínica do usuário.');
+        return;
+      }
+      const packagePages = resolveClinicPackagePages(clinicId);
+      if (!packagePages.length) {
+        alert('Defina um pacote com páginas para esta clínica antes de criar usuários.');
+        return;
+      }
       const { error } = await supabase
         .from('clinic_users')
-        .insert([{ ...userForm, email: normalizedEmail }]);
+        .insert([{ ...userForm, email: normalizedEmail, paginas_liberadas: packagePages }]);
       if (error) throw error;
       if (normalizedEmail) {
         const redirectTo = callbackUrl ? `${callbackUrl}?redirectTo=${encodeURIComponent('/')}` : undefined;
@@ -758,9 +755,11 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
         alert('Já existe um usuário com este e-mail em outra clínica. Use um e-mail diferente.');
         return;
       }
+      const userPayload = { ...editUserForm } as any;
+      delete userPayload.paginas_liberadas;
       const { error } = await supabase
         .from('clinic_users')
-        .update({ ...editUserForm, email: normalizedEmail })
+        .update({ ...userPayload, email: normalizedEmail })
         .eq('id', editingUserId);
       if (error) throw error;
       const { data } = await supabase.from('clinic_users').select('*').order('created_at', { ascending: false });
@@ -1244,56 +1243,6 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
                 </div>
               </div>
             </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Páginas liberadas</label>
-              <div className="flex gap-2 mb-2">
-                <button type="button" onClick={() => setClinicForm(prev => ({ ...prev, paginas_liberadas: PAGE_OPTIONS.map(p => p.value) }))} className="px-2 py-1 text-xs bg-emerald-50 text-emerald-700 rounded border border-emerald-100">Selecionar tudo</button>
-                <button type="button" onClick={() => setClinicForm(prev => ({ ...prev, paginas_liberadas: [] }))} className="px-2 py-1 text-xs bg-red-50 text-red-700 rounded border border-red-100">Limpar</button>
-              </div>
-              <div className="space-y-2">
-                <details ref={clinicPagesRef} className="relative">
-                  <summary className="list-none cursor-pointer w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm text-gray-700">
-                    Selecionar página...
-                  </summary>
-                  <div className="absolute z-20 mt-2 w-full max-h-56 overflow-auto border border-gray-200 rounded-lg bg-white shadow-lg">
-                    {PAGE_OPTIONS.map((page) => (
-                      <button
-                        key={page.value}
-                        type="button"
-                        onClick={() => {
-                          if (clinicForm.paginas_liberadas.includes(page.value)) return;
-                          setClinicForm((prev) => ({
-                            ...prev,
-                            paginas_liberadas: [...prev.paginas_liberadas, page.value],
-                          }));
-                          if (clinicPagesRef.current) clinicPagesRef.current.removeAttribute('open');
-                        }}
-                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                      >
-                        {page.label}
-                      </button>
-                    ))}
-                  </div>
-                </details>
-                <div className="flex flex-wrap gap-2">
-                  {clinicForm.paginas_liberadas.map((page) => (
-                    <button
-                      key={page}
-                      type="button"
-                      onClick={() =>
-                        setClinicForm((prev) => ({
-                          ...prev,
-                          paginas_liberadas: prev.paginas_liberadas.filter((p) => p !== page),
-                        }))
-                      }
-                      className="px-3 py-1 rounded-full border border-gray-200 text-xs text-gray-600 hover:border-gray-300"
-                    >
-                      {PAGE_LABEL_MAP[page] || page} ✕
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
             <div className="flex items-end gap-3">
               <label className="flex items-center gap-2 text-sm text-gray-700">
                 <input type="checkbox" checked={clinicForm.ativo} onChange={e => setClinicForm(prev => ({ ...prev, ativo: e.target.checked }))} className="h-4 w-4 text-brand-600 border-gray-300 rounded" />
@@ -1740,68 +1689,6 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
                         </div>
                       </div>
                     </div>
-                    <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Páginas liberadas</label>
-                    <div className="flex gap-2 mb-2">
-                      <button
-                        type="button"
-                        onClick={() => setEditClinicForm(prev => ({ ...prev, paginas_liberadas: PAGE_OPTIONS.map(p => p.value) }))}
-                        className="px-2 py-1 text-xs bg-emerald-50 text-emerald-700 rounded border border-emerald-100"
-                      >
-                        Selecionar tudo
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditClinicForm(prev => ({ ...prev, paginas_liberadas: [] }))}
-                        className="px-2 py-1 text-xs bg-red-50 text-red-700 rounded border border-red-100"
-                      >
-                        Limpar
-                      </button>
-                    </div>
-                    <div className="space-y-2">
-                      <details ref={editClinicPagesRef} className="relative">
-                        <summary className="list-none cursor-pointer w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm text-gray-700">
-                          Selecionar página...
-                        </summary>
-                        <div className="absolute z-20 mt-2 w-full max-h-56 overflow-auto border border-gray-200 rounded-lg bg-white shadow-lg">
-                          {PAGE_OPTIONS.map((page) => (
-                            <button
-                              key={page.value}
-                              type="button"
-                              onClick={() => {
-                                if (editClinicForm.paginas_liberadas.includes(page.value)) return;
-                                setEditClinicForm((prev) => ({
-                                  ...prev,
-                                  paginas_liberadas: [...prev.paginas_liberadas, page.value],
-                                }));
-                                if (editClinicPagesRef.current) editClinicPagesRef.current.removeAttribute('open');
-                              }}
-                              className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                            >
-                              {page.label}
-                            </button>
-                          ))}
-                        </div>
-                      </details>
-                      <div className="flex flex-wrap gap-2">
-                        {editClinicForm.paginas_liberadas.map((page) => (
-                          <button
-                            key={page}
-                            type="button"
-                            onClick={() =>
-                              setEditClinicForm((prev) => ({
-                                ...prev,
-                                paginas_liberadas: prev.paginas_liberadas.filter((p) => p !== page),
-                              }))
-                            }
-                            className="px-3 py-1 rounded-full border border-gray-200 text-xs text-gray-600 hover:border-gray-300"
-                          >
-                            {PAGE_LABEL_MAP[page] || page} ✕
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    </div>
                   </div>
                   <div className="flex flex-wrap items-center justify-end gap-2 w-full">
                     <label className="flex items-center gap-2 text-sm text-gray-700">
@@ -2039,56 +1926,6 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
                 <option value="user">Usuário</option>
               </select>
             </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Páginas liberadas</label>
-              <div className="flex gap-2 mb-2">
-                <button type="button" onClick={() => setUserForm(prev => ({ ...prev, paginas_liberadas: PAGE_OPTIONS.map(p => p.value) }))} className="px-2 py-1 text-xs bg-emerald-50 text-emerald-700 rounded border border-emerald-100">Selecionar tudo</button>
-                <button type="button" onClick={() => setUserForm(prev => ({ ...prev, paginas_liberadas: [] }))} className="px-2 py-1 text-xs bg-red-50 text-red-700 rounded border border-red-100">Limpar</button>
-              </div>
-              <div className="space-y-2">
-                <details ref={userPagesRef} className="relative">
-                  <summary className="list-none cursor-pointer w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm text-gray-700">
-                    Selecionar página...
-                  </summary>
-                  <div className="absolute z-20 mt-2 w-full max-h-56 overflow-auto border border-gray-200 rounded-lg bg-white shadow-lg">
-                    {PAGE_OPTIONS.map((page) => (
-                      <button
-                        key={page.value}
-                        type="button"
-                        onClick={() => {
-                          if (userForm.paginas_liberadas.includes(page.value)) return;
-                          setUserForm((prev) => ({
-                            ...prev,
-                            paginas_liberadas: [...prev.paginas_liberadas, page.value],
-                          }));
-                          if (userPagesRef.current) userPagesRef.current.removeAttribute('open');
-                        }}
-                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                      >
-                        {page.label}
-                      </button>
-                    ))}
-                  </div>
-                </details>
-                <div className="flex flex-wrap gap-2">
-                  {userForm.paginas_liberadas.map((page) => (
-                    <button
-                      key={page}
-                      type="button"
-                      onClick={() =>
-                        setUserForm((prev) => ({
-                          ...prev,
-                          paginas_liberadas: prev.paginas_liberadas.filter((p) => p !== page),
-                        }))
-                      }
-                      className="px-3 py-1 rounded-full border border-gray-200 text-xs text-gray-600 hover:border-gray-300"
-                    >
-                      {PAGE_LABEL_MAP[page] || page} ✕
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
             <div className="flex items-end gap-3">
               <label className="flex items-center gap-2 text-sm text-gray-700">
                 <input type="checkbox" checked={userForm.ativo} onChange={e => setUserForm(prev => ({ ...prev, ativo: e.target.checked }))} className="h-4 w-4 text-brand-600 border-gray-300 rounded" />
@@ -2117,12 +1954,11 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
               onClick={() => {
                 supabase.from('clinic_users').update({
                   role: bulkUserRole,
-                  paginas_liberadas: bulkUserPages,
                 }).in('id', selectedUsers).then(() => supabase.from('clinic_users').select('*').order('created_at', { ascending: false }).then(({ data }) => data && setClinicUsers(data as any[])));
               }}
               className="px-3 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700"
             >
-              Aplicar papel/páginas
+              Aplicar papel
             </button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-3">
@@ -2137,48 +1973,6 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
                 <option value="admin">Admin</option>
                 <option value="user">Usuário</option>
               </select>
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Páginas liberadas (aplicar aos selecionados)</label>
-              <div className="flex gap-2 mb-2">
-                <button type="button" onClick={() => setBulkUserPages(PAGE_OPTIONS.map(p => p.value))} className="px-2 py-1 text-xs bg-emerald-50 text-emerald-700 rounded border border-emerald-100">Selecionar tudo</button>
-                <button type="button" onClick={() => setBulkUserPages([])} className="px-2 py-1 text-xs bg-red-50 text-red-700 rounded border border-red-100">Limpar</button>
-              </div>
-              <div className="space-y-2">
-                <details ref={bulkPagesRef} className="relative">
-                  <summary className="list-none cursor-pointer w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm text-gray-700">
-                    Selecionar página...
-                  </summary>
-                  <div className="absolute z-20 mt-2 w-full max-h-56 overflow-auto border border-gray-200 rounded-lg bg-white shadow-lg">
-                    {PAGE_OPTIONS.map((page) => (
-                      <button
-                        key={page.value}
-                        type="button"
-                        onClick={() => {
-                          if (bulkUserPages.includes(page.value)) return;
-                          setBulkUserPages((prev) => [...prev, page.value]);
-                          if (bulkPagesRef.current) bulkPagesRef.current.removeAttribute('open');
-                        }}
-                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                      >
-                        {page.label}
-                      </button>
-                    ))}
-                  </div>
-                </details>
-                <div className="flex flex-wrap gap-2">
-                  {bulkUserPages.map((page) => (
-                    <button
-                      key={page}
-                      type="button"
-                      onClick={() => setBulkUserPages((prev) => prev.filter((p) => p !== page))}
-                      className="px-3 py-1 rounded-full border border-gray-200 text-xs text-gray-600 hover:border-gray-300"
-                    >
-                      {PAGE_LABEL_MAP[page] || page} ✕
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
           </div>
 
@@ -2292,68 +2086,6 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
                         <option value="admin">Admin</option>
                         <option value="user">Usuário</option>
                       </select>
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Páginas liberadas</label>
-                      <div className="flex gap-2 mb-2">
-                        <button
-                          type="button"
-                          onClick={() => setEditUserForm(prev => ({ ...prev, paginas_liberadas: PAGE_OPTIONS.map(p => p.value) }))}
-                          className="px-2 py-1 text-xs bg-emerald-50 text-emerald-700 rounded border border-emerald-100"
-                        >
-                          Selecionar tudo
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditUserForm(prev => ({ ...prev, paginas_liberadas: [] }))}
-                          className="px-2 py-1 text-xs bg-red-50 text-red-700 rounded border border-red-100"
-                        >
-                          Limpar
-                        </button>
-                      </div>
-                      <div className="space-y-2">
-                        <details ref={editUserPagesRef} className="relative">
-                          <summary className="list-none cursor-pointer w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm text-gray-700">
-                            Selecionar página...
-                          </summary>
-                          <div className="absolute z-20 mt-2 w-full max-h-56 overflow-auto border border-gray-200 rounded-lg bg-white shadow-lg">
-                            {PAGE_OPTIONS.map((page) => (
-                              <button
-                                key={page.value}
-                                type="button"
-                                onClick={() => {
-                                  if (editUserForm.paginas_liberadas.includes(page.value)) return;
-                                  setEditUserForm((prev) => ({
-                                    ...prev,
-                                    paginas_liberadas: [...prev.paginas_liberadas, page.value],
-                                  }));
-                                  if (editUserPagesRef.current) editUserPagesRef.current.removeAttribute('open');
-                                }}
-                                className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                              >
-                                {page.label}
-                              </button>
-                            ))}
-                          </div>
-                        </details>
-                        <div className="flex flex-wrap gap-2">
-                          {editUserForm.paginas_liberadas.map((page) => (
-                            <button
-                              key={page}
-                              type="button"
-                              onClick={() =>
-                                setEditUserForm((prev) => ({
-                                  ...prev,
-                                  paginas_liberadas: prev.paginas_liberadas.filter((p) => p !== page),
-                                }))
-                              }
-                              className="px-3 py-1 rounded-full border border-gray-200 text-xs text-gray-600 hover:border-gray-300"
-                            >
-                              {PAGE_LABEL_MAP[page] || page} ✕
-                            </button>
-                          ))}
-                        </div>
-                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <input

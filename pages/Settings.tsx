@@ -209,12 +209,13 @@ const Settings: React.FC = () => {
   const [selectedRevenueCategories, setSelectedRevenueCategories] = useState<string[]>([]);
   const [selectedExpenseCategories, setSelectedExpenseCategories] = useState<string[]>([]);
   const [savingCategories, setSavingCategories] = useState(false);
-  const { effectiveClinicId: clinicId, isAdmin, clinic, role } = useAuth();
+  const { effectiveClinicId: clinicId, isAdmin, clinic, role, clinicPackagePages } = useAuth();
 
   const PAGE_OPTIONS = [
     { value: '/', label: 'Dash Financeiro' },
     { value: '/reports/attendance', label: 'Relatório de Atendimento' },
     { value: '/incomes', label: 'Receitas' },
+    { value: '/sales', label: 'Vendas' },
     { value: '/expenses', label: 'Despesas' },
     { value: '/card-analysis', label: 'Análise de cartão' },
     { value: '/reconciliation', label: 'Conciliação bancária' },
@@ -402,8 +403,8 @@ const Settings: React.FC = () => {
   };
 
   const clinicPages = useMemo(() => {
-    return (clinic?.paginas_liberadas || []).map((page) => page.trim()).filter(Boolean);
-  }, [clinic?.paginas_liberadas]);
+    return (clinicPackagePages || []).map((page) => page.trim()).filter(Boolean);
+  }, [clinicPackagePages]);
 
   const availablePageOptions = useMemo(() => {
     if (!clinicPages.length) return PAGE_OPTIONS;
@@ -412,7 +413,7 @@ const Settings: React.FC = () => {
       if (option.value === '/settings?section=usuarios') {
         return hasSettings || clinicPages.includes(option.value);
       }
-      return clinicPages.includes(option.value);
+      return clinicPages.includes(option.value) || clinicPages.some((allowed) => option.value.startsWith(allowed));
     });
   }, [clinicPages, PAGE_OPTIONS]);
 
@@ -1553,17 +1554,17 @@ const Settings: React.FC = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <p className="text-sm font-medium text-gray-700">Páginas liberadas</p>
-                {clinic.paginas_liberadas && clinic.paginas_liberadas.length > 0 ? (
+                <p className="text-sm font-medium text-gray-700">Páginas do pacote</p>
+                {clinicPages.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
-                    {clinic.paginas_liberadas.map((page) => (
+                    {clinicPages.map((page) => (
                       <span key={page} className="px-2 py-1 text-xs rounded-full border border-gray-200 text-gray-600">
                         {PAGE_LABEL_MAP[page] || page}
                       </span>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-500">Nenhuma página definida.</p>
+                  <p className="text-sm text-gray-500">Pacote sem páginas definidas.</p>
                 )}
               </div>
             </>

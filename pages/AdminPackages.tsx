@@ -14,6 +14,7 @@ type PackageForm = {
 const PAGE_OPTIONS = [
   { value: '/', label: 'Dash Financeiro' },
   { value: '/incomes', label: 'Receitas' },
+  { value: '/sales', label: 'Vendas' },
   { value: '/expenses', label: 'Despesas' },
   { value: '/card-analysis', label: 'Análise de cartão' },
   { value: '/reconciliation', label: 'Conciliação bancária' },

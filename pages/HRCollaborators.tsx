@@ -12,6 +12,7 @@ const MAX_AVATAR_DIMENSION = 350;
 const PAGE_OPTIONS = [
   { value: '/', label: 'Dash Financeiro' },
   { value: '/incomes', label: 'Receitas' },
+  { value: '/sales', label: 'Vendas' },
   { value: '/expenses', label: 'Despesas' },
   { value: '/card-analysis', label: 'Análise de cartão' },
   { value: '/reconciliation', label: 'Conciliação bancária' },
@@ -104,7 +105,7 @@ const getInitials = (name: string, email: string) => {
 };
 
 const HRCollaborators: React.FC = () => {
-  const { effectiveClinicId: clinicId, clinic, clinicUser } = useAuth();
+  const { effectiveClinicId: clinicId, clinicUser, clinicPackagePages } = useAuth();
   const [collaborators, setCollaborators] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -158,8 +159,8 @@ const HRCollaborators: React.FC = () => {
   const resetRedirectUrl = buildPublicUrl('/auth/reset');
 
   const clinicPages = useMemo(() => {
-    return (clinic?.paginas_liberadas || []).map((page) => page.trim()).filter(Boolean);
-  }, [clinic?.paginas_liberadas]);
+    return (clinicPackagePages || []).map((page) => page.trim()).filter(Boolean);
+  }, [clinicPackagePages]);
 
   const availablePageOptions = useMemo(() => {
     if (!clinicPages.length) return PAGE_OPTIONS;

@@ -38,7 +38,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     },
     {
       name: 'VENDAS',
-      href: '/incomes?new=1',
+      href: '/sales',
       icon: TrendingUp,
       variant: 'highlight',
     },
@@ -166,8 +166,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const displayName = formatDisplayName(rawDisplayName) || (user?.email ? user.email.split('@')[0] : '');
   const displayEmail = user?.email || clinicUser?.email || '';
   const displayClinic = clinic?.name?.trim() || '';
-  const vendasReturnTo = `${location.pathname}${location.search}`;
-  const vendasHref = `/incomes?new=1&return_to=${encodeURIComponent(vendasReturnTo)}`;
 
   const toggleExpand = (name: string) => {
     setExpanded((prev) => {
@@ -270,7 +268,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               const isFinanceiro = item.name === 'Financeiro';
               const isHighlight = item.variant === 'highlight' || item.variant === 'highlight-amber';
               const highlightTone = item.variant === 'highlight-amber' ? 'amber' : 'brand';
-              const itemHref = item.name === 'VENDAS' ? vendasHref : item.href;
+              const itemHref = item.href;
               const parentHref = hasPageAccess(item.href) ? item.href : (item.children?.[0]?.href || item.href);
               return (
                 <div key={item.name}>

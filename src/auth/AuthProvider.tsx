@@ -289,25 +289,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const allowedPages = useMemo(() => {
-    const clinicPages = (clinic?.paginas_liberadas || []).map(normalizePage).filter(Boolean);
     const userPages = (clinicUser?.paginas_liberadas || []).map(normalizePage).filter(Boolean);
     const packagePages = (clinicPackagePages || []).map(normalizePage).filter(Boolean);
-    const combinedClinicPages = Array.from(new Set([...clinicPages, ...packagePages]));
-    if (!combinedClinicPages.length && !userPages.length) return [];
-    if (!combinedClinicPages.length) return Array.from(new Set(userPages));
-    if (!userPages.length) return Array.from(new Set(combinedClinicPages));
-    const userSet = new Set(userPages);
-    const intersection = combinedClinicPages.filter((page) => userSet.has(page));
+
+    if (!packagePages.length && !userPages.length) return [];
+    if (!packagePages.length) return Array.from(new Set(userPages));
+    if (!userPages.length) return Array.from(new Set(packagePages));
+
+    const matchesPackage = (page: string) => {
+      const normalized = normalizePage(page);
+      const [pageBase] = normalized.split('?');
+      return packagePages.some((pkg) => {
+        const normalizedPkg = normalizePage(pkg);
+        if (!normalizedPkg) return false;
+        if (normalized === normalizedPkg) return true;
+        const [pkgBase] = normalizedPkg.split('?');
+        if (pkgBase === pageBase) return true;
+        if (normalized.startsWith(`${pkgBase}?`)) return true;
+        if (normalizedPkg.startsWith(`${pageBase}?`)) return true;
+        return false;
+      });
+    };
+
+    const intersection = userPages.filter(matchesPackage);
     return Array.from(new Set(intersection));
-  }, [clinic?.paginas_liberadas, clinicUser?.paginas_liberadas, clinicPackagePages]);
+  }, [clinicUser?.paginas_liberadas, clinicPackagePages]);
 
   const allowedPagesSet = useMemo(() => new Set(allowedPages), [allowedPages]);
   const hasPageRules = useMemo(() => {
-    const clinicPages = (clinic?.paginas_liberadas || []).map(normalizePage).filter(Boolean);
     const userPages = (clinicUser?.paginas_liberadas || []).map(normalizePage).filter(Boolean);
     const packagePages = (clinicPackagePages || []).map(normalizePage).filter(Boolean);
-    return clinicPages.length > 0 || userPages.length > 0 || packagePages.length > 0;
-  }, [clinic?.paginas_liberadas, clinicUser?.paginas_liberadas, clinicPackagePages]);
+    return userPages.length > 0 || packagePages.length > 0;
+  }, [clinicUser?.paginas_liberadas, clinicPackagePages]);
 
   const hasPageAccess = (page: string) => {
     if (!hasPageRules) return true;

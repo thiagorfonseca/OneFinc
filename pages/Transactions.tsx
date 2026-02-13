@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Search, Filter, Trash2, Loader2, AlertCircle, Calendar, Edit2, Download, CalendarCheck, AlertTriangle } from 'lucide-react';
 import { Category, BankAccount } from '../types';
 import { formatCurrency, formatDate } from '../lib/utils';
@@ -9,6 +9,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 interface TransactionsPageProps {
   type: string;
+  view?: 'default' | 'sales';
+  autoOpen?: boolean;
 }
 
 const PAYMENT_METHODS = [
@@ -90,11 +92,13 @@ type ManualParcela = {
   numero_folha?: string;
 };
 
-const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
+const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'default', autoOpen = false }) => {
   const isIncome = type === 'income';
   const table = isIncome ? 'revenues' : 'expenses';
   const location = useLocation();
   const navigate = useNavigate();
+  const isSalesView = view === 'sales';
+  const autoOpenRef = useRef(false);
 
   // --- States ---
   const { effectiveClinicId: clinicId } = useAuth();
@@ -1398,16 +1402,24 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
     navigate(`${location.pathname}${nextSearch ? `?${nextSearch}` : ''}`, { replace: true });
   }, [isIncome, location.pathname, location.search, navigate, openNewModal]);
 
+  useEffect(() => {
+    if (!autoOpen || autoOpenRef.current) return;
+    autoOpenRef.current = true;
+    openNewModal();
+  }, [autoOpen, openNewModal]);
+
+  const headerTitle = isSalesView ? 'Vendas' : isIncome ? 'Receitas' : 'Despesas';
+  const headerDescription = isSalesView
+    ? 'Registre e acompanhe vendas da clínica'
+    : `Gerencie ${isIncome ? 'os recebimentos' : 'os pagamentos'} da clínica`;
+  const entryLabel = isSalesView ? 'Venda' : isIncome ? 'Receita' : 'Despesa';
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">
-            {isIncome ? 'Receitas' : 'Despesas'}
-          </h1>
-          <p className="text-gray-500">
-            Gerencie {isIncome ? 'os recebimentos' : 'os pagamentos'} da clínica
-          </p>
+          <h1 className="text-2xl font-bold text-gray-800">{headerTitle}</h1>
+          <p className="text-gray-500">{headerDescription}</p>
         </div>
         {!isIncome && (
           <button
@@ -1415,7 +1427,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
             className={`w-full sm:w-auto justify-center flex items-center gap-2 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm ${isIncome ? 'bg-brand-600 hover:bg-brand-700' : 'bg-red-600 hover:bg-red-700'}`}
           >
             <Plus size={20} />
-            Nova {isIncome ? 'Receita' : 'Despesa'}
+            Nova {entryLabel}
           </button>
         )}
       </div>
@@ -1936,7 +1948,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type }) => {
             className="bg-white rounded-xl shadow-xl max-w-4xl w-full p-4 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-xl font-bold text-gray-800">{editingId ? 'Editar' : 'Nova'} {isIncome ? 'Receita' : 'Despesa'}</h2>
+            <h2 className="text-xl font-bold text-gray-800">{editingId ? 'Editar' : 'Nova'} {entryLabel}</h2>
 
             {((!isIncome && categories.length === 0) || accounts.length === 0) && (
               <div className="p-3 bg-yellow-50 text-yellow-700 rounded-lg flex items-start gap-2 text-sm">
