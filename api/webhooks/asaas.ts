@@ -1,7 +1,7 @@
-import { readJson, json, methodNotAllowed } from '../_utils/http';
-import { supabaseAdmin } from '../_utils/supabase';
-import { ASAAS_WEBHOOK_TOKEN } from '../_utils/env';
-import { provisionForProposal } from '../_utils/provisioning';
+import { readJson, json, methodNotAllowed } from '../_utils/http.js';
+import { supabaseAdmin } from '../_utils/supabase.js';
+import { ASAAS_WEBHOOK_TOKEN } from '../_utils/env.js';
+import { provisionForProposal } from '../_utils/provisioning.js';
 
 const mapStatus = (value?: string | null) => {
   const raw = (value || '').toUpperCase();

@@ -1,4 +1,4 @@
-import { supabaseAdmin } from './supabase';
+import { supabaseAdmin } from './supabase.js';
 
 const normalizeCnpj = (cnpj?: string | null) => (cnpj || '').replace(/\D/g, '');
 

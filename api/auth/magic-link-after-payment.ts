@@ -1,7 +1,7 @@
-import { json, methodNotAllowed, badRequest, notFound, serverError } from '../_utils/http';
-import { supabaseAdmin } from '../_utils/supabase';
-import { APP_BASE_URL } from '../_utils/env';
-import { provisionForProposal } from '../_utils/provisioning';
+import { json, methodNotAllowed, badRequest, notFound, serverError } from '../_utils/http.js';
+import { supabaseAdmin } from '../_utils/supabase.js';
+import { APP_BASE_URL } from '../_utils/env.js';
+import { provisionForProposal } from '../_utils/provisioning.js';
 
 const loadLatestPayload = async (proposalId: string) => {
   const { data } = await supabaseAdmin

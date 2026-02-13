@@ -1,4 +1,4 @@
-import { supabaseAdmin } from './supabase';
+import { supabaseAdmin } from './supabase.js';
 
 const INTERNAL_ROLES = new Set(['system_owner', 'super_admin', 'one_doctor_admin', 'one_doctor_sales']);
 

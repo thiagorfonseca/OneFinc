@@ -1,9 +1,9 @@
-import { readJson, json, methodNotAllowed, badRequest, notFound, serverError, unauthorized } from '../_utils/http';
-import { supabaseAdmin } from '../_utils/supabase';
-import { requireClinicAccess } from '../_utils/auth';
-import { RESEND_API_KEY, RESEND_FROM } from '../_utils/env';
-import { buildPdfFromHtml } from '../_utils/pdf';
-import { buildArchetypeEmailHtml, buildArchetypeResultHtml } from '../_utils/archetypeReport';
+import { readJson, json, methodNotAllowed, badRequest, notFound, serverError, unauthorized } from '../_utils/http.js';
+import { supabaseAdmin } from '../_utils/supabase.js';
+import { requireClinicAccess } from '../_utils/auth.js';
+import { RESEND_API_KEY, RESEND_FROM } from '../_utils/env.js';
+import { buildPdfFromHtml } from '../_utils/pdf.js';
+import { buildArchetypeEmailHtml, buildArchetypeResultHtml } from '../_utils/archetypeReport.js';
 
 const toFileSafeName = (value: string) =>
   value

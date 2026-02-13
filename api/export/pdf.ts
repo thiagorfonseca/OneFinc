@@ -1,7 +1,7 @@
-import { buildPdfFromHtml } from '../_utils/pdf';
-import { requireInternalUser } from '../_utils/auth';
-import { badRequest, methodNotAllowed, serverError, unauthorized } from '../_utils/http';
-import { supabaseAdmin } from '../_utils/supabase';
+import { buildPdfFromHtml } from '../_utils/pdf.js';
+import { requireInternalUser } from '../_utils/auth.js';
+import { badRequest, methodNotAllowed, serverError, unauthorized } from '../_utils/http.js';
+import { supabaseAdmin } from '../_utils/supabase.js';
 
 const toArray = (value?: string | string[]) => {
   if (!value) return [];

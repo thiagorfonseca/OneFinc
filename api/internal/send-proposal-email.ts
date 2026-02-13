@@ -1,7 +1,7 @@
-import { readJson, json, methodNotAllowed, badRequest, serverError, unauthorized } from '../_utils/http';
-import { supabaseAdmin } from '../_utils/supabase';
-import { APP_BASE_URL, RESEND_API_KEY, RESEND_FROM } from '../_utils/env';
-import { requireInternalUser } from '../_utils/auth';
+import { readJson, json, methodNotAllowed, badRequest, serverError, unauthorized } from '../_utils/http.js';
+import { supabaseAdmin } from '../_utils/supabase.js';
+import { APP_BASE_URL, RESEND_API_KEY, RESEND_FROM } from '../_utils/env.js';
+import { requireInternalUser } from '../_utils/auth.js';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST']);
