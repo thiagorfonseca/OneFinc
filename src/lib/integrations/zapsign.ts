@@ -96,6 +96,10 @@ export const getDocument = async (token: string, docId: string) => {
   return request(`/docs/${docId}`, token, { method: 'GET' });
 };
 
+export const getSigner = async (token: string, signerToken: string) => {
+  return request(`/signers/${signerToken}/`, token, { method: 'GET' });
+};
+
 export const downloadSigned = async (token: string, docId: string) => {
   return request(`/docs/${docId}/download`, token, { method: 'GET' });
 };

@@ -2,7 +2,7 @@ import { json, methodNotAllowed, notFound, badRequest, serverError } from '../_u
 import { supabaseAdmin } from '../_utils/supabase.js';
 import { ASAAS_API_KEY, ASAAS_ENV, ASAAS_SPLIT_WALLETS_JSON, ZAPSIGN_API_TOKEN } from '../_utils/env.js';
 import { createPayment, ensureCustomer } from '../../src/lib/integrations/asaas.js';
-import { getDocument } from '../../src/lib/integrations/zapsign.js';
+import { getDocument, getSigner } from '../../src/lib/integrations/zapsign.js';
 
 const normalizeDoc = (value?: string | null) => (value || '').replace(/\D/g, '');
 const isSignedStatus = (value?: string | null) => {
@@ -168,6 +168,9 @@ export default async function handler(req: any, res: any) {
       if (doc) {
         const storedSigner = doc.raw?.signers?.[0];
         const storedToken = storedSigner?.signer_token || storedSigner?.token;
+        const signerTokens = Array.isArray(doc.raw?.signers)
+          ? doc.raw.signers.map((signer: any) => signer?.signer_token || signer?.token).filter(Boolean)
+          : [];
         signatureUrl =
           storedSigner?.sign_url ||
           storedSigner?.url ||
@@ -196,6 +199,27 @@ export default async function handler(req: any, res: any) {
           doc.raw?.id ||
           doc.raw?.docId ||
           null;
+        if (!storedAllSigned && signerTokens.length && ZAPSIGN_API_TOKEN) {
+          try {
+            const signerStatuses = await Promise.all(
+              signerTokens.map(async (token) => {
+                const data = await getSigner(ZAPSIGN_API_TOKEN, token);
+                return isSignedStatus(data?.status);
+              })
+            );
+            const allSigned = signerStatuses.length > 0 && signerStatuses.every(Boolean);
+            if (allSigned) {
+              await supabaseAdmin
+                .from('od_zapsign_documents')
+                .update({ status: 'signed', signed_at: new Date().toISOString() })
+                .eq('id', doc.id);
+              await supabaseAdmin.from('od_proposals').update({ status: 'signed' }).eq('id', proposal.id);
+            }
+          } catch (err) {
+            console.error(err);
+          }
+        }
+
         if (docToken && ZAPSIGN_API_TOKEN) {
           try {
             if (!doc.zapsign_doc_id) {
