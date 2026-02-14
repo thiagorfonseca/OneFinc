@@ -18,7 +18,14 @@ export default async function handler(req: any, res: any) {
     return badRequest(res, 'Proposta expirada.');
   }
 
+  const { data: draft } = await supabaseAdmin
+    .from('od_proposal_form_drafts')
+    .select('payload, step, meta, updated_at')
+    .eq('proposal_id', proposal.id)
+    .maybeSingle();
+
   return json(res, 200, {
     proposal,
+    draft,
   });
 }

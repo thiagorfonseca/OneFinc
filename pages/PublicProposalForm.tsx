@@ -45,6 +45,7 @@ const PublicProposalForm: React.FC = () => {
   const [cepError, setCepError] = useState('');
   const [lastCep, setLastCep] = useState('');
   const [restored, setRestored] = useState(false);
+  const [draftLoaded, setDraftLoaded] = useState(false);
 
   const trimValue = (value: string) => value.trim();
   const digitsOnly = (value: string) => value.replace(/\D/g, '');
@@ -114,6 +115,14 @@ const PublicProposalForm: React.FC = () => {
         }
         const data = await res.json();
         setProposal(data.proposal);
+        if (data?.draft?.payload) {
+          setForm(data.draft.payload);
+          if (data.draft.step) setStep(data.draft.step);
+          if (data.draft.meta?.personType) setPersonType(data.draft.meta.personType);
+          if (typeof data.draft.meta?.sameAsCompany === 'boolean') setSameAsCompany(data.draft.meta.sameAsCompany);
+          setDraftLoaded(true);
+          setRestored(true);
+        }
       } catch {
         setError('Erro ao carregar proposta.');
       } finally {
@@ -128,7 +137,7 @@ const PublicProposalForm: React.FC = () => {
   }, [form]);
 
   useEffect(() => {
-    if (!token || restored) return;
+    if (!token || restored || draftLoaded) return;
     try {
       const raw = window.localStorage.getItem(`od:proposal-form:${token}`);
       if (!raw) {
@@ -145,7 +154,7 @@ const PublicProposalForm: React.FC = () => {
     } finally {
       setRestored(true);
     }
-  }, [token, restored]);
+  }, [token, restored, draftLoaded]);
 
   useEffect(() => {
     if (!token || !restored) return;
@@ -162,6 +171,22 @@ const PublicProposalForm: React.FC = () => {
     } catch {
       // ignore
     }
+  }, [token, form, step, personType, sameAsCompany, restored]);
+
+  useEffect(() => {
+    if (!token || !restored) return;
+    const timeout = setTimeout(() => {
+      fetch(`/api/public/proposals/${token}/draft`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          payload: form,
+          step,
+          meta: { personType, sameAsCompany },
+        }),
+      }).catch(() => undefined);
+    }, 800);
+    return () => clearTimeout(timeout);
   }, [token, form, step, personType, sameAsCompany, restored]);
 
   useEffect(() => {
@@ -308,10 +333,12 @@ const PublicProposalForm: React.FC = () => {
     }
     if (data.next === 'signature' && data.signUrl) {
       if (token) window.localStorage.removeItem(`od:proposal-form:${token}`);
+      if (token) fetch(`/api/public/proposals/${token}/draft`, { method: 'DELETE' }).catch(() => undefined);
       window.location.href = data.signUrl;
       return;
     }
     if (token) window.localStorage.removeItem(`od:proposal-form:${token}`);
+    if (token) fetch(`/api/public/proposals/${token}/draft`, { method: 'DELETE' }).catch(() => undefined);
     window.location.href = `/pagamento/${token}`;
   };
 
