@@ -202,8 +202,8 @@ export default async function handler(req: any, res: any) {
         if (!storedAllSigned && signerTokens.length && ZAPSIGN_API_TOKEN) {
           try {
             const signerStatuses = await Promise.all(
-              signerTokens.map(async (token) => {
-                const data = await getSigner(ZAPSIGN_API_TOKEN, token);
+              signerTokens.map(async (signerToken: string) => {
+                const data = await getSigner(ZAPSIGN_API_TOKEN, signerToken);
                 return isSignedStatus(data?.status);
               })
             );
