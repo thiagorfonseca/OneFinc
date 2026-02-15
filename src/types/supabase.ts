@@ -510,6 +510,7 @@ export type Database = {
           created_at: string | null
           documento: string | null
           email_contato: string | null
+          helper_agenda_quota: number | null
           id: string
           logo_url: string | null
           name: string
@@ -523,6 +524,7 @@ export type Database = {
           created_at?: string | null
           documento?: string | null
           email_contato?: string | null
+          helper_agenda_quota?: number | null
           id?: string
           logo_url?: string | null
           name: string
@@ -536,6 +538,7 @@ export type Database = {
           created_at?: string | null
           documento?: string | null
           email_contato?: string | null
+          helper_agenda_quota?: number | null
           id?: string
           logo_url?: string | null
           name?: string
@@ -545,6 +548,70 @@ export type Database = {
           telefone_contato?: string | null
         }
         Relationships: []
+      }
+      clinic_helper_agenda_requests: {
+        Row: {
+          clinic_id: string
+          created_at: string | null
+          handled_at: string | null
+          handled_by: string | null
+          id: string
+          preferred_end_at: string | null
+          preferred_start_at: string
+          reason: string
+          requested_by: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          clinic_id: string
+          created_at?: string | null
+          handled_at?: string | null
+          handled_by?: string | null
+          id?: string
+          preferred_end_at?: string | null
+          preferred_start_at: string
+          reason: string
+          requested_by: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          clinic_id?: string
+          created_at?: string | null
+          handled_at?: string | null
+          handled_by?: string | null
+          id?: string
+          preferred_end_at?: string | null
+          preferred_start_at?: string
+          reason?: string
+          requested_by?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinic_helper_agenda_requests_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinic_helper_agenda_requests_handled_by_fkey"
+            columns: ["handled_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinic_helper_agenda_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       content_items: {
         Row: {
@@ -1681,6 +1748,15 @@ export type Database = {
       }
       is_clinic_admin: { Args: { p_clinic_id: string }; Returns: boolean }
       is_clinic_member: { Args: { p_clinic_id: string }; Returns: boolean }
+      request_helper_agenda: {
+        Args: {
+          p_clinic_id: string
+          p_start_at: string
+          p_end_at: string | null
+          p_reason: string
+        }
+        Returns: undefined
+      }
       submit_archetype_response: {
         Args: {
           p_public_token: string

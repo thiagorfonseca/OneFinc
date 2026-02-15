@@ -92,6 +92,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     package_id: '',
     ativo: true,
     logo_url: null as string | null,
+    helper_agenda_quota: 0,
     commercial_products: [] as string[],
     commercial_package_id: '',
     commercial_amount: '',
@@ -119,6 +120,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     package_id: '',
     ativo: true,
     logo_url: null as string | null,
+    helper_agenda_quota: 0,
     commercial_products: [] as string[],
     commercial_package_id: '',
     commercial_amount: '',
@@ -303,6 +305,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
       package_id: '',
       ativo: true,
       logo_url: null,
+      helper_agenda_quota: 0,
       commercial_products: [],
       commercial_package_id: '',
       commercial_amount: '',
@@ -330,6 +333,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
       package_id: '',
       ativo: true,
       logo_url: null,
+      helper_agenda_quota: 0,
       commercial_products: [],
       commercial_package_id: '',
       commercial_amount: '',
@@ -434,6 +438,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
       package_id: (clinicPackageMap[clinic.id] || [])[0] || '',
       ativo: clinic.ativo ?? true,
       logo_url: clinic.logo_url || null,
+      helper_agenda_quota: Number(clinic.helper_agenda_quota ?? 0),
       commercial_products: [],
       commercial_package_id: '',
       commercial_amount: '',
@@ -1457,6 +1462,19 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
                       ))}
                     </select>
                     </div>
+                    <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Qtd. agendas helpers</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={editClinicForm.helper_agenda_quota}
+                      onChange={(e) => {
+                        const value = Number(e.target.value || 0);
+                        setEditClinicForm(prev => ({ ...prev, helper_agenda_quota: Number.isNaN(value) ? 0 : value }));
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                    />
+                    </div>
                     <div className="md:col-span-3 border-t border-gray-100 pt-4">
                       <div className="flex flex-col gap-1 mb-3">
                         <h3 className="text-sm font-semibold text-gray-800">Contrato Comercial</h3>
@@ -1727,6 +1745,19 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
                         <option key={pkg.id} value={pkg.id}>{pkg.name || 'Sem nome'}</option>
                       ))}
                     </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Qtd. agendas helpers</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={clinicForm.helper_agenda_quota}
+                      onChange={(e) => {
+                        const value = Number(e.target.value || 0);
+                        setClinicForm(prev => ({ ...prev, helper_agenda_quota: Number.isNaN(value) ? 0 : value }));
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                    />
                   </div>
                   <div className="md:col-span-3 border-t border-gray-100 pt-4">
                     <div className="flex flex-col gap-1 mb-3">

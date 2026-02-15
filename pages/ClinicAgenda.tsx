@@ -4,12 +4,13 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import type { DatesSetArg, EventClickArg } from '@fullcalendar/core';
-import { Calendar, Clock } from 'lucide-react';
+import { Calendar, Clock, Plus } from 'lucide-react';
 import { useAuth } from '../src/auth/AuthProvider';
 import { ToastStack } from '../components/Toast';
 import { useToast } from '../hooks/useToast';
 import EventDrawer from '../components/scheduling/EventDrawer';
 import RescheduleModal from '../components/scheduling/RescheduleModal';
+import { supabase } from '../lib/supabase';
 import {
   confirmEventAttendance,
   listEventsForClinic,
@@ -56,6 +57,16 @@ const ClinicAgenda: React.FC = () => {
     suggestedEnd: '',
   });
   const [submitting, setSubmitting] = useState(false);
+  const [helperModalOpen, setHelperModalOpen] = useState(false);
+  const [helperForm, setHelperForm] = useState({
+    start: '',
+    end: '',
+    reason: '',
+  });
+  const [helperSubmitting, setHelperSubmitting] = useState(false);
+  const [helperQuota, setHelperQuota] = useState(0);
+  const [helperUsed, setHelperUsed] = useState(0);
+  const [helperLoading, setHelperLoading] = useState(false);
 
   const fetchEvents = async (start?: Date, end?: Date) => {
     if (!clinicId) return;
@@ -70,10 +81,39 @@ const ClinicAgenda: React.FC = () => {
     }
   };
 
+  const refreshHelperQuota = async () => {
+    if (!clinicId) return;
+    setHelperLoading(true);
+    try {
+      const { data: clinicRow } = await supabase
+        .from('clinics')
+        .select('helper_agenda_quota')
+        .eq('id', clinicId)
+        .maybeSingle();
+      const quota = Number(clinicRow?.helper_agenda_quota ?? clinic?.helper_agenda_quota ?? 0);
+      setHelperQuota(Number.isNaN(quota) ? 0 : quota);
+      const { count } = await supabase
+        .from('clinic_helper_agenda_requests')
+        .select('id', { count: 'exact', head: true })
+        .eq('clinic_id', clinicId)
+        .in('status', ['pending', 'confirmed']);
+      setHelperUsed(count || 0);
+    } catch (err: any) {
+      console.error(err);
+    } finally {
+      setHelperLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!range) return;
     fetchEvents(range.start, range.end);
   }, [range?.start?.toISOString(), range?.end?.toISOString()]);
+
+  useEffect(() => {
+    if (!clinicId) return;
+    refreshHelperQuota();
+  }, [clinicId, clinic?.helper_agenda_quota]);
 
   const calendarEvents = useMemo(() => {
     return events.map((event) => {
@@ -155,6 +195,43 @@ const ClinicAgenda: React.FC = () => {
     }
   };
 
+  const handleRequestHelperAgenda = async () => {
+    if (!clinicId) return;
+    if (!helperForm.start) {
+      push({ title: 'Informe a data e hora desejadas.', variant: 'info' });
+      return;
+    }
+    if (!helperForm.reason.trim()) {
+      push({ title: 'Descreva o motivo da agenda extraordinária.', variant: 'info' });
+      return;
+    }
+    const remaining = Math.max(0, helperQuota - helperUsed);
+    if (remaining <= 0) {
+      push({ title: 'Limite de agendas helpers atingido.', variant: 'error' });
+      return;
+    }
+    setHelperSubmitting(true);
+    try {
+      const startIso = new Date(helperForm.start).toISOString();
+      const endIso = helperForm.end ? new Date(helperForm.end).toISOString() : null;
+      const { error } = await supabase.rpc('request_helper_agenda', {
+        p_clinic_id: clinicId,
+        p_start_at: startIso,
+        p_end_at: endIso,
+        p_reason: helperForm.reason.trim(),
+      });
+      if (error) throw error;
+      push({ title: 'Solicitação enviada para os helpers.', variant: 'success' });
+      setHelperModalOpen(false);
+      setHelperForm({ start: '', end: '', reason: '' });
+      await refreshHelperQuota();
+    } catch (err: any) {
+      push({ title: 'Não foi possível solicitar.', description: err?.message, variant: 'error' });
+    } finally {
+      setHelperSubmitting(false);
+    }
+  };
+
   const handleDatesSet = (info: DatesSetArg) => {
     setRange({ start: info.start, end: info.end });
     setCalendarLabel(formatMonthYear(info.view.currentStart));
@@ -169,6 +246,8 @@ const ClinicAgenda: React.FC = () => {
     return <div className="text-sm text-gray-500">Selecione uma clínica para visualizar a agenda.</div>;
   }
 
+  const helperRemaining = Math.max(0, helperQuota - helperUsed);
+
   return (
     <div className="space-y-6">
       <ToastStack items={toasts} onDismiss={dismiss} />
@@ -178,6 +257,17 @@ const ClinicAgenda: React.FC = () => {
           <p className="text-sm text-gray-500">{clinic?.name ? `Clínica ${clinic.name}` : 'Agenda da clínica'}</p>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
+          <div className="px-3 py-2 text-xs rounded-lg border border-gray-200 bg-white text-gray-600">
+            {helperLoading ? 'Helpers: carregando...' : `Helpers: ${helperRemaining} de ${helperQuota}`}
+          </div>
+          <button
+            type="button"
+            onClick={() => setHelperModalOpen(true)}
+            disabled={helperRemaining <= 0 || helperLoading}
+            className="px-3 py-2 text-sm bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50 flex items-center gap-2"
+          >
+            <Plus size={16} /> Solicitar agenda helper
+          </button>
           <button
             type="button"
             onClick={() => calendarRef.current?.getApi().today()}
@@ -296,6 +386,86 @@ const ClinicAgenda: React.FC = () => {
         onSubmit={handleRequestReschedule}
         onClose={() => setRescheduleOpen(false)}
       />
+
+      {helperModalOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+          onClick={() => setHelperModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl p-4 sm:p-6 w-full max-w-xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h4 className="text-lg font-semibold text-gray-800">Solicitar agenda de helpers</h4>
+              <button
+                type="button"
+                onClick={() => setHelperModalOpen(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div className="text-sm text-gray-500">
+                Informe a data e horário desejados. Nossa equipe confirmará a disponibilidade.
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Início desejado</label>
+                  <input
+                    type="datetime-local"
+                    value={helperForm.start}
+                    onChange={(e) => setHelperForm((prev) => ({ ...prev, start: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Fim sugerido (opcional)</label>
+                  <input
+                    type="datetime-local"
+                    value={helperForm.end}
+                    onChange={(e) => setHelperForm((prev) => ({ ...prev, end: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Motivo / detalhes</label>
+                <textarea
+                  value={helperForm.reason}
+                  onChange={(e) => setHelperForm((prev) => ({ ...prev, reason: e.target.value }))}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                  placeholder="Descreva o motivo da agenda extraordinária."
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="text-xs text-gray-500">
+                Saldo disponível: {helperRemaining} de {helperQuota}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setHelperModalOpen(false)}
+                  className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRequestHelperAgenda}
+                  disabled={helperSubmitting || helperRemaining <= 0}
+                  className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50"
+                >
+                  {helperSubmitting ? 'Enviando...' : 'Enviar solicitação'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

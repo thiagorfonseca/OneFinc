@@ -326,8 +326,13 @@ const Reconciliation: React.FC = () => {
 
       const reader = new FileReader();
       reader.onload = async (e) => {
-        const text = e.target?.result;
-        if (typeof text === 'string') {
+        const buffer = e.target?.result;
+        if (buffer instanceof ArrayBuffer) {
+          const utf8 = new TextDecoder('utf-8', { fatal: false }).decode(buffer);
+          const cleanedUtf8 = utf8.replace(/^\uFEFF/, '');
+          const text = cleanedUtf8.includes('\uFFFD')
+            ? new TextDecoder('windows-1252', { fatal: false }).decode(buffer).replace(/^\uFEFF/, '')
+            : cleanedUtf8;
           const parsed = parseOFX(text);
           let addedCount = 0;
           let dupCount = 0;
@@ -363,7 +368,7 @@ const Reconciliation: React.FC = () => {
         }
         setLoading(false);
       };
-      reader.readAsText(file);
+      reader.readAsArrayBuffer(file);
     }
   };
 
