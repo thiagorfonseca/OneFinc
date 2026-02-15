@@ -539,7 +539,7 @@ const HRCollaborators: React.FC = () => {
           <>
             {viewMode === 'boxes' ? (
               <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredCollaborators.map((collab: any, idx: number) => {
+                {filteredCollaborators.map((collab: any) => {
                   const isSelf = clinicUser?.id === collab.id;
                   const badgeClass = collab.user_id ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700';
                   return (
