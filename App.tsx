@@ -2,6 +2,7 @@ import { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
+import { Loader2 } from 'lucide-react';
 import { TransactionTypeEnum } from './types';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { AuthProvider } from './src/auth/AuthProvider';
@@ -82,7 +83,13 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <Suspense fallback={<div className="p-8 text-gray-500">Carregando...</div>}>
+        <Suspense
+          fallback={
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-500">
+              <Loader2 className="animate-spin" size={24} />
+            </div>
+          }
+        >
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
