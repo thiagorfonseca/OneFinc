@@ -76,6 +76,10 @@ const AdminAgenda: React.FC = () => {
   const [rescheduleLoading, setRescheduleLoading] = useState(false);
   const lastRescheduleCount = useRef(0);
   const [pendingRescheduleRequest, setPendingRescheduleRequest] = useState<any | null>(null);
+  const [helperRequests, setHelperRequests] = useState<any[]>([]);
+  const [helperModalOpen, setHelperModalOpen] = useState(false);
+  const [helperLoading, setHelperLoading] = useState(false);
+  const lastHelperCount = useRef(0);
 
   const sb = supabase as any;
 
@@ -134,12 +138,32 @@ const AdminAgenda: React.FC = () => {
     setRescheduleLoading(false);
   }, [isSystemAdmin]);
 
+  const loadHelperRequests = useCallback(async () => {
+    if (!isSystemAdmin) return;
+    setHelperLoading(true);
+    const { data, error } = await sb
+      .from('clinic_helper_agenda_requests')
+      .select('id, clinic_id, preferred_start_at, preferred_end_at, reason, status, created_at, clinics (id, name)')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+    if (!error) {
+      const next = data || [];
+      setHelperRequests(next);
+      if (next.length > 0 && next.length !== lastHelperCount.current) {
+        setHelperModalOpen(true);
+      }
+      lastHelperCount.current = next.length;
+    }
+    setHelperLoading(false);
+  }, [isSystemAdmin]);
+
   useEffect(() => {
     if (!isSystemAdmin) return;
     let active = true;
     const run = async () => {
       if (!active) return;
       await loadRescheduleRequests();
+      await loadHelperRequests();
     };
     run();
     const interval = window.setInterval(run, 60000);
@@ -147,7 +171,7 @@ const AdminAgenda: React.FC = () => {
       active = false;
       window.clearInterval(interval);
     };
-  }, [isSystemAdmin, loadRescheduleRequests]);
+  }, [isSystemAdmin, loadRescheduleRequests, loadHelperRequests]);
 
   const calendarEvents = useMemo(() => {
     return events.map((event) => ({
@@ -512,6 +536,71 @@ const AdminAgenda: React.FC = () => {
     }
   };
 
+  const approveHelperRequest = async (req: any) => {
+    if (!user?.id) return;
+    try {
+      await sb
+        .from('clinic_helper_agenda_requests')
+        .update({
+          status: 'confirmed',
+          handled_by: user.id,
+          handled_at: new Date().toISOString(),
+        })
+        .eq('id', req.id);
+
+      await sb.from('notifications').insert([
+        {
+          target: 'clinic',
+          clinic_id: req.clinic_id,
+          type: 'helper_agenda_confirmed',
+          payload: {
+            request_id: req.id,
+            clinic_id: req.clinic_id,
+            preferred_start_at: req.preferred_start_at,
+            preferred_end_at: req.preferred_end_at,
+          },
+        },
+      ]);
+
+      push({ title: 'Solicitação aprovada.', variant: 'success' });
+      await loadHelperRequests();
+    } catch (err: any) {
+      push({ title: 'Não foi possível aprovar.', description: err?.message, variant: 'error' });
+    }
+  };
+
+  const rejectHelperRequest = async (req: any) => {
+    if (!user?.id) return;
+    try {
+      await sb
+        .from('clinic_helper_agenda_requests')
+        .update({
+          status: 'rejected',
+          handled_by: user.id,
+          handled_at: new Date().toISOString(),
+        })
+        .eq('id', req.id);
+
+      await sb.from('notifications').insert([
+        {
+          target: 'clinic',
+          clinic_id: req.clinic_id,
+          type: 'helper_agenda_rejected',
+          payload: {
+            request_id: req.id,
+            clinic_id: req.clinic_id,
+            reason: req.reason,
+          },
+        },
+      ]);
+
+      push({ title: 'Solicitação rejeitada.', variant: 'success' });
+      await loadHelperRequests();
+    } catch (err: any) {
+      push({ title: 'Não foi possível rejeitar.', description: err?.message, variant: 'error' });
+    }
+  };
+
   if (!isSystemAdmin) {
     return <div className="text-sm text-gray-500">Acesso restrito aos consultores One Doctor.</div>;
   }
@@ -532,6 +621,15 @@ const AdminAgenda: React.FC = () => {
               className="px-3 py-2 text-sm rounded-lg bg-amber-600 text-white flex items-center gap-2 shadow-sm hover:bg-amber-700"
             >
               Solicitações ({rescheduleRequests.length})
+            </button>
+          )}
+          {helperRequests.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setHelperModalOpen(true)}
+              className="px-3 py-2 text-sm rounded-lg bg-indigo-600 text-white flex items-center gap-2 shadow-sm hover:bg-indigo-700"
+            >
+              Helpers ({helperRequests.length})
             </button>
           )}
           <button
@@ -708,6 +806,75 @@ const AdminAgenda: React.FC = () => {
                         className="px-3 py-2 text-xs rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
                       >
                         Não reagendado
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {helperModalOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-50 flex items-start justify-center overflow-y-auto py-8"
+          onClick={() => setHelperModalOpen(false)}
+        >
+          <div
+            className="bg-white w-full max-w-3xl rounded-2xl p-6 shadow-xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800">Solicitações de helpers</h3>
+                <p className="text-sm text-gray-500">Pedidos de agenda extraordinária das clínicas.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setHelperModalOpen(false)}
+                className="w-9 h-9 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center"
+              >
+                ✕
+              </button>
+            </div>
+
+            {helperLoading && (
+              <p className="text-sm text-gray-500">Carregando solicitações...</p>
+            )}
+            {!helperLoading && helperRequests.length === 0 && (
+              <p className="text-sm text-gray-500">Nenhuma solicitação pendente.</p>
+            )}
+
+            {!helperLoading && helperRequests.length > 0 && (
+              <div className="space-y-3">
+                {helperRequests.map((req) => (
+                  <div key={req.id} className="border border-gray-100 rounded-xl p-4 text-sm text-gray-600">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="font-semibold text-gray-800">
+                        Clínica: {req.clinics?.name || req.clinic_id}
+                      </div>
+                      <div className="text-xs text-gray-400">{formatDateTime(req.created_at)}</div>
+                    </div>
+                    <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-gray-500">
+                      <div>Início desejado: {formatDateTime(req.preferred_start_at)}</div>
+                      <div>Fim sugerido: {formatDateTime(req.preferred_end_at)}</div>
+                    </div>
+                    <div className="mt-2 text-sm text-gray-700">{req.reason}</div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => approveHelperRequest(req)}
+                        className="px-3 py-2 text-xs rounded-lg bg-brand-600 text-white hover:bg-brand-700"
+                      >
+                        Aprovar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => rejectHelperRequest(req)}
+                        className="px-3 py-2 text-xs rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
+                      >
+                        Rejeitar
                       </button>
                     </div>
                   </div>

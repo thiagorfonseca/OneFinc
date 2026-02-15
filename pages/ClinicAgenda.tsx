@@ -21,6 +21,9 @@ import {
 const toLocalLabel = (value: string) =>
   new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 
+const formatDateTime = (value?: string | null) =>
+  value ? new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+
 const formatMonthYear = (value: Date) => {
   const label = value.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
   return label.charAt(0).toUpperCase() + label.slice(1);
@@ -67,6 +70,9 @@ const ClinicAgenda: React.FC = () => {
   const [helperQuota, setHelperQuota] = useState(0);
   const [helperUsed, setHelperUsed] = useState(0);
   const [helperLoading, setHelperLoading] = useState(false);
+  const [helperSummaryOpen, setHelperSummaryOpen] = useState(false);
+  const [helperRequests, setHelperRequests] = useState<any[]>([]);
+  const [helperRequestsLoading, setHelperRequestsLoading] = useState(false);
 
   const fetchEvents = async (start?: Date, end?: Date) => {
     if (!clinicId) return;
@@ -102,6 +108,25 @@ const ClinicAgenda: React.FC = () => {
       console.error(err);
     } finally {
       setHelperLoading(false);
+    }
+  };
+
+  const loadHelperRequests = async () => {
+    if (!clinicId) return;
+    setHelperRequestsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('clinic_helper_agenda_requests')
+        .select('id, preferred_start_at, preferred_end_at, reason, status, created_at, handled_at')
+        .eq('clinic_id', clinicId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      setHelperRequests(data || []);
+    } catch (err: any) {
+      push({ title: 'Não foi possível carregar as solicitações.', description: err?.message, variant: 'error' });
+    } finally {
+      setHelperRequestsLoading(false);
     }
   };
 
@@ -257,9 +282,16 @@ const ClinicAgenda: React.FC = () => {
           <p className="text-sm text-gray-500">{clinic?.name ? `Clínica ${clinic.name}` : 'Agenda da clínica'}</p>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
-          <div className="px-3 py-2 text-xs rounded-lg border border-gray-200 bg-white text-gray-600">
+          <button
+            type="button"
+            onClick={() => {
+              setHelperSummaryOpen(true);
+              loadHelperRequests();
+            }}
+            className="px-3 py-2 text-xs rounded-lg border border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+          >
             {helperLoading ? 'Helpers: carregando...' : `Helpers: ${helperRemaining} de ${helperQuota}`}
-          </div>
+          </button>
           <button
             type="button"
             onClick={() => setHelperModalOpen(true)}
@@ -463,6 +495,58 @@ const ClinicAgenda: React.FC = () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {helperSummaryOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+          onClick={() => setHelperSummaryOpen(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl p-4 sm:p-6 w-full max-w-2xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-lg font-semibold text-gray-800">Solicitações de helpers</h4>
+                <p className="text-sm text-gray-500">Resumo das solicitações enviadas pela clínica.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setHelperSummaryOpen(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            {helperRequestsLoading && (
+              <p className="text-sm text-gray-500">Carregando solicitações...</p>
+            )}
+            {!helperRequestsLoading && helperRequests.length === 0 && (
+              <p className="text-sm text-gray-500">Nenhuma solicitação encontrada.</p>
+            )}
+            {!helperRequestsLoading && helperRequests.length > 0 && (
+              <div className="space-y-3">
+                {helperRequests.map((req) => (
+                  <div key={req.id} className="border border-gray-100 rounded-xl p-3 text-sm text-gray-600">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-xs text-gray-400">
+                        {formatDateTime(req.created_at)}
+                      </div>
+                      <span className="px-2 py-1 text-[10px] rounded-full bg-gray-100 text-gray-600 uppercase">
+                        {req.status}
+                      </span>
+                    </div>
+                    <div className="mt-2 text-sm text-gray-800">
+                      {formatDateTime(req.preferred_start_at)} → {formatDateTime(req.preferred_end_at)}
+                    </div>
+                    <div className="mt-1 text-xs text-gray-500">{req.reason}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

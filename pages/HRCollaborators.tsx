@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Eye, Pencil, Plus, Search, Trash2, Users } from 'lucide-react';
+import { Eye, Pencil, Plus, Search, Trash2, Users, LayoutGrid, List } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { buildPublicUrl, formatDate } from '../lib/utils';
 import { useAuth } from '../src/auth/AuthProvider';
@@ -113,6 +113,7 @@ const HRCollaborators: React.FC = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'boxes' | 'list'>('boxes');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarError, setAvatarError] = useState<string | null>(null);
@@ -499,91 +500,200 @@ const HRCollaborators: React.FC = () => {
           <Users size={16} />
           {filteredCollaborators.length} registros
         </div>
+        <div className="inline-flex rounded-lg border border-gray-200 bg-white overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setViewMode('boxes')}
+            className={`px-3 py-2 text-xs font-medium flex items-center gap-2 ${viewMode === 'boxes' ? 'bg-brand-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+            aria-pressed={viewMode === 'boxes'}
+          >
+            <LayoutGrid size={14} /> Boxes
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('list')}
+            className={`px-3 py-2 text-xs font-medium flex items-center gap-2 ${viewMode === 'list' ? 'bg-brand-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+            aria-pressed={viewMode === 'list'}
+          >
+            <List size={14} /> Lista
+          </button>
+        </div>
       </div>
 
       <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 grid grid-cols-[70px_1.2fr_1.2fr_140px_140px_160px_150px_120px] gap-4 text-xs uppercase text-gray-400 tracking-wider hidden lg:grid">
-          <span>ID</span>
-          <span>Nome</span>
-          <span>Email</span>
-          <span>Admissão</span>
-          <span>Cargo</span>
-          <span>Arquétipos</span>
-          <span>Primeiro acesso</span>
-          <span></span>
-        </div>
+        {viewMode === 'list' && (
+          <div className="px-6 py-4 border-b border-gray-100 grid grid-cols-[70px_1.2fr_1.2fr_140px_140px_160px_150px_120px] gap-4 text-xs uppercase text-gray-400 tracking-wider hidden lg:grid">
+            <span>ID</span>
+            <span>Nome</span>
+            <span>Email</span>
+            <span>Admissão</span>
+            <span>Cargo</span>
+            <span>Arquétipos</span>
+            <span>Primeiro acesso</span>
+            <span></span>
+          </div>
+        )}
         {loading ? (
           <div className="px-6 py-12 text-center text-sm text-gray-500">Carregando colaboradores...</div>
         ) : (
-          <div className="p-4 space-y-3">
-            {filteredCollaborators.map((collab: any, idx: number) => {
-              const isSelf = clinicUser?.id === collab.id;
-              const baseRow = isSelf ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-100';
-              const mutedText = isSelf ? 'text-slate-200' : 'text-gray-600';
-              const subtleText = isSelf ? 'text-slate-300' : 'text-gray-500';
-              const badgeClass = collab.user_id ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700';
-              return (
-                <div
-                  key={collab.id}
-                  className={`grid gap-3 md:gap-4 rounded-2xl border px-4 py-3 ${baseRow} md:grid-cols-[70px_1.2fr_1.2fr_140px_140px_160px_150px_120px]`}
-                >
-                  <span className={`text-sm ${subtleText}`}>{String(idx + 1).padStart(2, '0')}</span>
-                  <div className="flex items-center gap-3">
-                    {collab.avatar_url ? (
-                      <img src={collab.avatar_url} alt={collab.name} className="w-9 h-9 rounded-full object-cover" />
-                    ) : (
-                      <div className="w-9 h-9 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center text-xs font-semibold">
-                        {getInitials(collab.name || '', collab.email || '')}
+          <>
+            {viewMode === 'boxes' ? (
+              <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredCollaborators.map((collab: any, idx: number) => {
+                  const isSelf = clinicUser?.id === collab.id;
+                  const badgeClass = collab.user_id ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700';
+                  return (
+                    <div
+                      key={collab.id}
+                      className={`border rounded-2xl p-4 flex flex-col gap-3 ${isSelf ? 'border-slate-800 bg-slate-900 text-white' : 'border-gray-100 bg-white'}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        {collab.avatar_url ? (
+                          <img src={collab.avatar_url} alt={collab.name} className="w-10 h-10 rounded-full object-cover" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center text-xs font-semibold">
+                            {getInitials(collab.name || '', collab.email || '')}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className={`text-sm font-semibold ${isSelf ? 'text-white' : 'text-gray-900'}`}>{collab.name}</p>
+                          <p className={`text-xs ${isSelf ? 'text-slate-300' : 'text-gray-500'} break-all`}>{collab.email}</p>
+                        </div>
                       </div>
-                    )}
-                    <span className={`text-sm font-semibold ${isSelf ? 'text-white' : 'text-gray-900'}`}>{collab.name}</span>
-                  </div>
-                  <span className={`text-sm ${mutedText} break-all`}>{collab.email}</span>
-                  <span className={`text-sm ${mutedText}`}>
-                    {collab.admission_date ? formatDate(collab.admission_date) : '-'}
-                  </span>
-                  <span className={`text-sm ${mutedText}`}>{collab.job_title || 'Não informado'}</span>
-                  <span className={`text-sm ${subtleText}`}>{collab.archetype || 'Não respondido'}</span>
-                  <span className={`text-xs font-semibold px-3 py-1 rounded-full w-fit ${badgeClass}`}>
-                    {firstAccessLabel(collab)}
-                  </span>
-                  <div className="flex items-center gap-2 justify-start md:justify-end">
-                    <button
-                      type="button"
-                      onClick={() => openDetailModal(collab)}
-                      className={`w-8 h-8 rounded-full flex items-center justify-center border ${isSelf ? 'border-slate-600 text-white' : 'border-gray-200 text-gray-500'}`}
-                      title="Visualizar"
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <p className={isSelf ? 'text-slate-400' : 'text-gray-400'}>Admissão</p>
+                          <p className={isSelf ? 'text-slate-200' : 'text-gray-700'}>
+                            {collab.admission_date ? formatDate(collab.admission_date) : '-'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className={isSelf ? 'text-slate-400' : 'text-gray-400'}>Cargo</p>
+                          <p className={isSelf ? 'text-slate-200' : 'text-gray-700'}>
+                            {collab.job_title || 'Não informado'}
+                          </p>
+                        </div>
+                        <div className="col-span-2">
+                          <p className={isSelf ? 'text-slate-400' : 'text-gray-400'}>Arquétipo</p>
+                          <p className={isSelf ? 'text-slate-200' : 'text-gray-700'}>
+                            {collab.archetype || 'Não respondido'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className={`text-xs font-semibold px-3 py-1 rounded-full w-fit ${badgeClass}`}>
+                          {firstAccessLabel(collab)}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openDetailModal(collab)}
+                            className={`w-8 h-8 rounded-full flex items-center justify-center border ${isSelf ? 'border-slate-600 text-white' : 'border-gray-200 text-gray-500'}`}
+                            title="Visualizar"
+                          >
+                            <Eye size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(collab)}
+                            className={`w-8 h-8 rounded-full flex items-center justify-center border ${isSelf ? 'border-slate-600 text-white' : 'border-brand-100 text-brand-600'}`}
+                            title="Editar"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!confirm('Excluir colaborador?')) return;
+                              const { error } = await supabase.from('clinic_users').delete().eq('id', collab.id);
+                              if (!error) loadCollaborators();
+                            }}
+                            className={`w-8 h-8 rounded-full flex items-center justify-center border ${isSelf ? 'border-rose-400 text-rose-200' : 'border-rose-100 text-rose-600'}`}
+                            title="Apagar"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {filteredCollaborators.length === 0 && (
+                  <div className="col-span-full px-6 py-12 text-center text-sm text-gray-400">Nenhum colaborador encontrado.</div>
+                )}
+              </div>
+            ) : (
+              <div className="p-4 space-y-3">
+                {filteredCollaborators.map((collab: any, idx: number) => {
+                  const isSelf = clinicUser?.id === collab.id;
+                  const baseRow = isSelf ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-100';
+                  const mutedText = isSelf ? 'text-slate-200' : 'text-gray-600';
+                  const subtleText = isSelf ? 'text-slate-300' : 'text-gray-500';
+                  const badgeClass = collab.user_id ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700';
+                  return (
+                    <div
+                      key={collab.id}
+                      className={`grid gap-3 md:gap-4 rounded-2xl border px-4 py-3 ${baseRow} md:grid-cols-[70px_1.2fr_1.2fr_140px_140px_160px_150px_120px]`}
                     >
-                      <Eye size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openEditModal(collab)}
-                      className={`w-8 h-8 rounded-full flex items-center justify-center border ${isSelf ? 'border-slate-600 text-white' : 'border-brand-100 text-brand-600'}`}
-                      title="Editar"
-                    >
-                      <Pencil size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (!confirm('Excluir colaborador?')) return;
-                        const { error } = await supabase.from('clinic_users').delete().eq('id', collab.id);
-                        if (!error) loadCollaborators();
-                      }}
-                      className={`w-8 h-8 rounded-full flex items-center justify-center border ${isSelf ? 'border-rose-400 text-rose-200' : 'border-rose-100 text-rose-600'}`}
-                      title="Apagar"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-            {filteredCollaborators.length === 0 && (
-              <div className="px-6 py-12 text-center text-sm text-gray-400">Nenhum colaborador encontrado.</div>
+                      <span className={`text-sm ${subtleText}`}>{String(idx + 1).padStart(2, '0')}</span>
+                      <div className="flex items-center gap-3">
+                        {collab.avatar_url ? (
+                          <img src={collab.avatar_url} alt={collab.name} className="w-9 h-9 rounded-full object-cover" />
+                        ) : (
+                          <div className="w-9 h-9 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center text-xs font-semibold">
+                            {getInitials(collab.name || '', collab.email || '')}
+                          </div>
+                        )}
+                        <span className={`text-sm font-semibold ${isSelf ? 'text-white' : 'text-gray-900'}`}>{collab.name}</span>
+                      </div>
+                      <span className={`text-sm ${mutedText} break-all`}>{collab.email}</span>
+                      <span className={`text-sm ${mutedText}`}>
+                        {collab.admission_date ? formatDate(collab.admission_date) : '-'}
+                      </span>
+                      <span className={`text-sm ${mutedText}`}>{collab.job_title || 'Não informado'}</span>
+                      <span className={`text-sm ${subtleText}`}>{collab.archetype || 'Não respondido'}</span>
+                      <span className={`text-xs font-semibold px-3 py-1 rounded-full w-fit ${badgeClass}`}>
+                        {firstAccessLabel(collab)}
+                      </span>
+                      <div className="flex items-center gap-2 justify-start md:justify-end">
+                        <button
+                          type="button"
+                          onClick={() => openDetailModal(collab)}
+                          className={`w-8 h-8 rounded-full flex items-center justify-center border ${isSelf ? 'border-slate-600 text-white' : 'border-gray-200 text-gray-500'}`}
+                          title="Visualizar"
+                        >
+                          <Eye size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(collab)}
+                          className={`w-8 h-8 rounded-full flex items-center justify-center border ${isSelf ? 'border-slate-600 text-white' : 'border-brand-100 text-brand-600'}`}
+                          title="Editar"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!confirm('Excluir colaborador?')) return;
+                            const { error } = await supabase.from('clinic_users').delete().eq('id', collab.id);
+                            if (!error) loadCollaborators();
+                          }}
+                          className={`w-8 h-8 rounded-full flex items-center justify-center border ${isSelf ? 'border-rose-400 text-rose-200' : 'border-rose-100 text-rose-600'}`}
+                          title="Apagar"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+                {filteredCollaborators.length === 0 && (
+                  <div className="px-6 py-12 text-center text-sm text-gray-400">Nenhum colaborador encontrado.</div>
+                )}
+              </div>
             )}
-          </div>
+          </>
         )}
       </div>
 
