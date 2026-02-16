@@ -1,4 +1,4 @@
-import { badRequest, methodNotAllowed, unauthorized } from '../../_utils/http.js';
+import { badRequest, json, methodNotAllowed, unauthorized } from '../../_utils/http.js';
 import { buildAuthUrl, loadConsultantProfile, signState } from '../../_utils/gcal.js';
 import { resolveAuthUser, requireInternalUser } from '../../_utils/auth.js';
 
@@ -27,6 +27,12 @@ export default async function handler(req: any, res: any) {
     ts: Date.now(),
   });
   const url = buildAuthUrl(state);
+  const accept = String(req.headers?.accept || '');
+  const wantsJson = accept.includes('application/json') || req.query?.format === 'json';
+
+  if (wantsJson) {
+    return json(res, 200, { url });
+  }
 
   res.statusCode = 302;
   res.setHeader('Location', url);

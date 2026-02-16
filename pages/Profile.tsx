@@ -187,10 +187,28 @@ const Profile: React.FC = () => {
     setSavingCalendar(false);
   };
 
-  const handleConnectGoogle = () => {
+  const handleConnectGoogle = async () => {
     if (!user?.id) return;
-    const url = `/api/gcal/oauth/start?consultor_id=${user.id}&return_to=/profile?gcal=connected`;
-    window.location.href = url;
+    const session = await supabase.auth.getSession();
+    const token = session.data.session?.access_token;
+    if (!token) {
+      setCalendarMessage('Sessão inválida. Faça login novamente.');
+      return;
+    }
+    const response = await fetch(
+      `/api/gcal/oauth/start?consultor_id=${user.id}&return_to=/profile?gcal=connected&format=json`,
+      { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } }
+    );
+    if (!response.ok) {
+      setCalendarMessage('Não foi possível iniciar a conexão com o Google.');
+      return;
+    }
+    const data = await response.json().catch(() => ({}));
+    if (!data?.url) {
+      setCalendarMessage('Resposta inválida do Google OAuth.');
+      return;
+    }
+    window.location.href = data.url;
   };
 
   const handlePasswordChange = async (event: React.FormEvent) => {
