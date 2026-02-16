@@ -409,7 +409,9 @@ const AdminAgenda: React.FC = () => {
     const event = events.find((e) => e.id === arg.event.id);
     if (!event) return;
     if (event.is_external) {
-      push({ title: 'Compromisso externo', description: 'Este bloqueio veio do Google Calendar.', variant: 'info' });
+      setSelectedEvent(event);
+      setChangeRequests([]);
+      setDrawerOpen(true);
       return;
     }
     setSelectedEvent(event);
@@ -854,6 +856,10 @@ const AdminAgenda: React.FC = () => {
         event={selectedEvent}
         attendees={selectedEvent?.attendees || []}
         changeRequests={changeRequests}
+        isExternal={Boolean(selectedEvent?.is_external)}
+        readOnly={Boolean(selectedEvent?.is_external)}
+        externalAttendees={selectedEvent?.external_block?.attendees || []}
+        externalLink={selectedEvent?.external_block?.html_link || null}
         onEdit={() => {
           if (selectedEvent) {
             openEdit(selectedEvent);

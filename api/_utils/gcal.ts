@@ -286,6 +286,7 @@ export const syncGoogleEvents = async (params: {
       calendarId: params.calendarId,
       singleEvents: true,
       showDeleted: true,
+      conferenceDataVersion: 1,
       maxResults: 2500,
       pageToken,
       syncToken: params.syncToken || undefined,
@@ -318,6 +319,16 @@ export const syncGoogleEvents = async (params: {
       if (!startAt || !endAt) continue;
       const allDay = Boolean(event.start.date && !event.start.dateTime);
       const status = event.status === 'cancelled' ? 'cancelled' : 'confirmed';
+      const attendees = (event.attendees || []).map((att) => ({
+        email: att.email || null,
+        name: att.displayName || null,
+        responseStatus: att.responseStatus || null,
+        self: att.self || null,
+        organizer: att.organizer || null,
+      }));
+      const entryPoint = event.conferenceData?.entryPoints?.find((entry) => entry.entryPointType === 'video')
+        || event.conferenceData?.entryPoints?.[0];
+      const meetingUrl = event.hangoutLink || entryPoint?.uri || null;
 
       await supabaseAdmin
         .from('schedule_external_blocks')
@@ -327,7 +338,12 @@ export const syncGoogleEvents = async (params: {
           start_at: startAt,
           end_at: endAt,
           all_day: allDay,
-          summary: 'Ocupado',
+          summary: event.summary || null,
+          description: event.description || null,
+          location: event.location || null,
+          meeting_url: meetingUrl,
+          attendees,
+          html_link: event.htmlLink || null,
           status,
           google_event_id: event.id,
           google_updated: event.updated ?? null,

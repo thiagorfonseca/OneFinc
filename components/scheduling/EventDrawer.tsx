@@ -10,6 +10,16 @@ type EventDrawerProps = {
   attendees?: ScheduleEventAttendee[];
   changeRequests?: ScheduleChangeRequest[];
   clinicView?: boolean;
+  readOnly?: boolean;
+  isExternal?: boolean;
+  externalAttendees?: Array<{
+    email?: string | null;
+    name?: string | null;
+    responseStatus?: string | null;
+    self?: boolean | null;
+    organizer?: boolean | null;
+  }>;
+  externalLink?: string | null;
   onEdit?: () => void;
   onCancel?: () => void;
   onConfirm?: () => void;
@@ -23,6 +33,10 @@ const EventDrawer: React.FC<EventDrawerProps> = ({
   attendees = [],
   changeRequests = [],
   clinicView = false,
+  readOnly = false,
+  isExternal = false,
+  externalAttendees = [],
+  externalLink = null,
   onEdit,
   onCancel,
   onConfirm,
@@ -44,7 +58,9 @@ const EventDrawer: React.FC<EventDrawerProps> = ({
     }
     return { label: value || '-', className: 'bg-gray-100 text-gray-600' };
   };
-  const eventStatusBadge = resolveStatusBadge(event.status);
+  const eventStatusBadge = isExternal
+    ? { label: 'EXTERNO', className: 'bg-slate-200 text-slate-700' }
+    : resolveStatusBadge(event.status);
 
   return (
     <div
@@ -96,6 +112,14 @@ const EventDrawer: React.FC<EventDrawerProps> = ({
               </a>
             </div>
           )}
+          {externalLink && (
+            <div className="flex items-start gap-2">
+              <LinkIcon size={16} className="mt-0.5 text-gray-400" />
+              <a href={externalLink} target="_blank" rel="noreferrer" className="text-brand-600 underline">
+                Abrir no Google Calendar
+              </a>
+            </div>
+          )}
         </div>
 
         {event.description && (
@@ -104,7 +128,7 @@ const EventDrawer: React.FC<EventDrawerProps> = ({
           </div>
         )}
 
-        {!clinicView && (
+        {!clinicView && !isExternal && (
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
               <Users size={16} /> Clínicas participantes
@@ -128,7 +152,7 @@ const EventDrawer: React.FC<EventDrawerProps> = ({
           </div>
         )}
 
-        {!clinicView && (
+        {!clinicView && !isExternal && (
           <div className="space-y-2">
             <h4 className="text-sm font-semibold text-gray-700">Pedidos de reagendamento</h4>
             {changeRequests.length === 0 ? (
@@ -151,7 +175,31 @@ const EventDrawer: React.FC<EventDrawerProps> = ({
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 pt-2">
+        {isExternal && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+              <Users size={16} /> Convidados
+            </div>
+            {externalAttendees.length === 0 ? (
+              <p className="text-xs text-gray-500">Nenhum convidado informado.</p>
+            ) : (
+              <div className="space-y-2">
+                {externalAttendees.map((att, index) => (
+                  <div key={`${att.email || att.name || 'att'}-${index}`} className="text-sm text-gray-600">
+                    <span className="font-medium text-gray-700">{att.name || att.email || 'Convidado'}</span>
+                    {att.email ? <span className="text-xs text-gray-500"> • {att.email}</span> : null}
+                    {att.responseStatus ? (
+                      <span className="ml-2 text-xs text-gray-500">({att.responseStatus})</span>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {!readOnly && (
+          <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 pt-2">
           {clinicView ? (
             <>
               <button
@@ -188,6 +236,7 @@ const EventDrawer: React.FC<EventDrawerProps> = ({
             </>
           )}
         </div>
+        )}
       </div>
     </div>
   );

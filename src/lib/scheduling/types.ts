@@ -75,6 +75,17 @@ export type ScheduleExternalBlock = {
   end_at: string;
   all_day: boolean;
   summary?: string | null;
+  description?: string | null;
+  location?: string | null;
+  meeting_url?: string | null;
+  attendees?: Array<{
+    email?: string | null;
+    name?: string | null;
+    responseStatus?: string | null;
+    self?: boolean | null;
+    organizer?: boolean | null;
+  }> | null;
+  html_link?: string | null;
   status: 'confirmed' | 'cancelled';
   google_event_id: string;
   google_updated?: string | null;
