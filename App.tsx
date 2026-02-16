@@ -15,6 +15,8 @@ const AttendanceReport = lazy(() => import('./pages/AttendanceReport'));
 const TransactionsPage = lazy(() => import('./pages/Transactions'));
 const Reconciliation = lazy(() => import('./pages/Reconciliation'));
 const Login = lazy(() => import('./pages/Login'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const TermsOfService = lazy(() => import('./pages/TermsOfService'));
 const BankAccounts = lazy(() => import('./pages/BankAccounts'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Admin = lazy(() => import('./pages/Admin'));
@@ -92,6 +94,8 @@ function App() {
         >
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/politica-de-privacidade" element={<PrivacyPolicy />} />
+            <Route path="/termos-de-servico" element={<TermsOfService />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/auth/reset" element={<AuthReset />} />
             <Route path="/accept-invite" element={<AcceptInvite />} />

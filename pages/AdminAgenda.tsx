@@ -786,14 +786,20 @@ const AdminAgenda: React.FC = () => {
           >
             Mês
           </button>
-          <button
-            type="button"
-            onClick={handleManualSync}
-            disabled={syncingGoogle}
-            className="px-3 py-2 text-sm border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-          >
-            {syncingGoogle ? 'Sincronizando...' : 'Sincronizar Google'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleManualSync}
+              disabled={syncingGoogle}
+              className="px-3 py-2 text-sm border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+            >
+              {syncingGoogle ? 'Sincronizando...' : 'Sincronizar Google'}
+            </button>
+            <span className="text-[11px] text-gray-500 leading-tight max-w-[220px]">
+              1) Conecte o Google no Perfil do consultor. 2) Selecione o consultor aqui. 3) Clique para puxar os
+              eventos do Google.
+            </span>
+          </div>
           <button
             type="button"
             onClick={() => openCreate()}

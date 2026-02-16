@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { buildPublicUrl } from '../lib/utils';
 
 const Login: React.FC = () => {
@@ -217,6 +217,17 @@ const Login: React.FC = () => {
         <button onClick={() => setIsSignUp(!isSignUp)} className="auth-secondary">
           {isSignUp ? 'Voltar para Login' : 'Criar nova conta'}
         </button>
+
+        <div className="mt-6 text-xs text-[var(--auth-muted)] flex flex-wrap items-center gap-2 justify-center">
+          <span>Ao continuar, você concorda com</span>
+          <Link to="/termos-de-servico" className="auth-link">
+            Termos de Serviço
+          </Link>
+          <span>e</span>
+          <Link to="/politica-de-privacidade" className="auth-link">
+            Política de Privacidade
+          </Link>
+        </div>
       </div>
     </div>
   );
