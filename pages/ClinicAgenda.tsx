@@ -19,10 +19,10 @@ import {
 } from '../src/lib/scheduling';
 
 const toLocalLabel = (value: string) =>
-  new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+  new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short', hour12: false });
 
 const formatDateTime = (value?: string | null) =>
-  value ? new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+  value ? new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short', hour12: false }) : '—';
 
 const formatMonthYear = (value: Date) => {
   const label = value.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });

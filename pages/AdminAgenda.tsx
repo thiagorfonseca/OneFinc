@@ -41,7 +41,7 @@ const toLocalInput = (value: string | Date) => {
 };
 
 const formatDateTime = (value?: string | null) =>
-  value ? new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+  value ? new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short', hour12: false }) : '—';
 
 const formatMonthYear = (value: Date) => {
   const label = value.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
@@ -820,6 +820,8 @@ const AdminAgenda: React.FC = () => {
           selectable
           editable
           eventResizableFromStart
+          eventTimeFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
+          slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
           events={calendarEvents}
           select={handleSelect}
           eventClick={handleEventClick}
