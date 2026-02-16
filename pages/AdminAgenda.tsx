@@ -49,12 +49,14 @@ const formatMonthYear = (value: Date) => {
 };
 
 const AdminAgenda: React.FC = () => {
-  const { user, isSystemAdmin } = useAuth();
+  const { user, profile, isSystemAdmin } = useAuth();
   const calendarRef = useRef<FullCalendar | null>(null);
   const { toasts, push, dismiss } = useToast();
   const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState<ScheduleAdminEvent[]>([]);
   const [clinics, setClinics] = useState<Array<{ id: string; name: string }>>([]);
+  const [consultants, setConsultants] = useState<Array<{ id: string; full_name: string | null; role?: string | null; google_connected?: boolean | null }>>([]);
+  const [selectedConsultantId, setSelectedConsultantId] = useState<string | null>(null);
   const [view, setView] = useState<'timeGridDay' | 'timeGridWeek' | 'dayGridMonth'>('dayGridMonth');
   const [range, setRange] = useState<{ start: Date; end: Date } | null>(null);
   const [calendarLabel, setCalendarLabel] = useState('');
@@ -98,12 +100,54 @@ const AdminAgenda: React.FC = () => {
     loadClinics();
   }, [isSystemAdmin]);
 
+  useEffect(() => {
+    if (!isSystemAdmin) return;
+    const loadConsultants = async () => {
+      const { data, error } = await sb
+        .from('profiles')
+        .select('id, full_name, role, google_connected')
+        .in('role', ['system_owner', 'super_admin', 'one_doctor_admin', 'one_doctor_sales'])
+        .order('full_name', { ascending: true });
+      let list = (data || []) as Array<{ id: string; full_name: string | null; role?: string | null; google_connected?: boolean | null }>;
+      if (user?.id && !list.some((row) => row.id === user.id)) {
+        list = [
+          {
+            id: user.id,
+            full_name: profile?.full_name || user.email || 'Você',
+            role: profile?.role ?? null,
+            google_connected: (profile as any)?.google_connected ?? null,
+          },
+          ...list,
+        ];
+      }
+      setConsultants(list);
+      if (!selectedConsultantId && list.length > 0) {
+        setSelectedConsultantId(list[0].id);
+      }
+      if (error) {
+        push({ title: 'Não foi possível carregar consultores.', description: error.message, variant: 'error' });
+      }
+    };
+    loadConsultants();
+  }, [isSystemAdmin, user?.id, user?.email, profile?.full_name, profile?.role]);
+
+  useEffect(() => {
+    if (user?.id && !selectedConsultantId) {
+      setSelectedConsultantId(user.id);
+    }
+  }, [user?.id, selectedConsultantId]);
+
+  const selectedConsultant = useMemo(
+    () => consultants.find((row) => row.id === selectedConsultantId) || null,
+    [consultants, selectedConsultantId],
+  );
+
   const fetchEvents = async (start?: Date, end?: Date) => {
-    if (!user?.id) return;
+    if (!selectedConsultantId) return;
     setLoading(true);
     try {
       const data = await listEventsForAdmin({
-        consultantId: user.id,
+        consultantId: selectedConsultantId,
         rangeStart: start,
         rangeEnd: end,
       });
@@ -118,7 +162,7 @@ const AdminAgenda: React.FC = () => {
   useEffect(() => {
     if (!range) return;
     fetchEvents(range.start, range.end);
-  }, [range?.start?.toISOString(), range?.end?.toISOString()]);
+  }, [range?.start?.toISOString(), range?.end?.toISOString(), selectedConsultantId]);
 
   const loadRescheduleRequests = useCallback(async () => {
     if (!isSystemAdmin) return;
@@ -234,6 +278,10 @@ const AdminAgenda: React.FC = () => {
 
   const handleSave = async () => {
     if (!user?.id) return;
+    if (!selectedConsultantId) {
+      push({ title: 'Selecione um consultor.', variant: 'error' });
+      return;
+    }
     if (!form.title.trim() || !form.start || !form.end) {
       push({ title: 'Preencha título, início e fim.', variant: 'error' });
       return;
@@ -245,7 +293,7 @@ const AdminAgenda: React.FC = () => {
     setSaving(true);
     try {
       const eventPayload = {
-        consultant_id: user.id,
+        consultant_id: selectedConsultantId,
         title: form.title.trim(),
         description: form.description.trim() || null,
         start_at: new Date(form.start).toISOString(),
@@ -331,7 +379,7 @@ const AdminAgenda: React.FC = () => {
   };
 
   const handleSuggest = async () => {
-    if (!user?.id) return;
+    if (!selectedConsultantId) return;
     if (!form.start || !form.end) {
       push({ title: 'Defina início e fim para sugerir horários.', variant: 'info' });
       return;
@@ -342,7 +390,7 @@ const AdminAgenda: React.FC = () => {
     setSuggesting(true);
     try {
       const slots = await suggestTimeSlots({
-        consultantId: user.id,
+        consultantId: selectedConsultantId,
         durationMinutes,
         dateRangeStart: start,
         dateRangeEnd: new Date(start.getTime() + 14 * 24 * 60 * 60000),
@@ -469,13 +517,13 @@ const AdminAgenda: React.FC = () => {
   };
 
   const handleManualSync = async () => {
-    if (!user?.id) return;
+    if (!selectedConsultantId) return;
     setSyncingGoogle(true);
     try {
       const response = await fetch('/api/gcal/sync/pull', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ consultor_id: user.id }),
+        body: JSON.stringify({ consultor_id: selectedConsultantId }),
       });
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
@@ -651,7 +699,7 @@ const AdminAgenda: React.FC = () => {
     return <div className="text-sm text-gray-500">Acesso restrito aos consultores One Doctor.</div>;
   }
 
-  return (
+    return (
     <div className="space-y-6">
       <ToastStack items={toasts} onDismiss={dismiss} />
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -660,6 +708,22 @@ const AdminAgenda: React.FC = () => {
           <p className="text-sm text-gray-500">Admin • Agenda do consultor</p>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Consultor</span>
+            <select
+              className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white text-gray-700"
+              value={selectedConsultantId || ''}
+              onChange={(event) => setSelectedConsultantId(event.target.value || null)}
+            >
+              {consultants.length === 0 && <option value="">Carregando...</option>}
+              {consultants.map((consultant) => (
+                <option key={consultant.id} value={consultant.id}>
+                  {consultant.full_name || consultant.id.slice(0, 8)}
+                  {consultant.google_connected ? ' • Google conectado' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
           {rescheduleRequests.length > 0 && (
             <button
               type="button"
@@ -742,7 +806,10 @@ const AdminAgenda: React.FC = () => {
         <div className="flex items-center justify-between gap-2 text-sm text-gray-500 mb-1">
           <Calendar size={16} /> {loading ? 'Carregando agenda...' : 'Agenda do consultor'}
         </div>
-        <div className="mb-3 text-lg font-semibold text-gray-800">{calendarLabel || '—'}</div>
+        <div className="mb-3 text-lg font-semibold text-gray-800">
+          {selectedConsultant?.full_name ? `Consultor: ${selectedConsultant.full_name}` : 'Consultor —'}
+          <span className="ml-2 text-sm font-normal text-gray-500">{calendarLabel || '—'}</span>
+        </div>
         <FullCalendar
           ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
