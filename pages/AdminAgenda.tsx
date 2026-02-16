@@ -80,6 +80,7 @@ const AdminAgenda: React.FC = () => {
   const [helperModalOpen, setHelperModalOpen] = useState(false);
   const [helperLoading, setHelperLoading] = useState(false);
   const lastHelperCount = useRef(0);
+  const [syncingGoogle, setSyncingGoogle] = useState(false);
 
   const sb = supabase as any;
 
@@ -467,6 +468,28 @@ const AdminAgenda: React.FC = () => {
     }
   };
 
+  const handleManualSync = async () => {
+    if (!user?.id) return;
+    setSyncingGoogle(true);
+    try {
+      const response = await fetch('/api/gcal/sync/pull', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ consultor_id: user.id }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body?.error || 'Falha ao sincronizar.');
+      }
+      push({ title: 'Sincronização concluída.', variant: 'success' });
+      if (range) await fetchEvents(range.start, range.end);
+    } catch (err: any) {
+      push({ title: 'Erro ao sincronizar.', description: err?.message, variant: 'error' });
+    } finally {
+      setSyncingGoogle(false);
+    }
+  };
+
   const switchView = (next: typeof view) => {
     setView(next);
     const api = calendarRef.current?.getApi();
@@ -696,6 +719,14 @@ const AdminAgenda: React.FC = () => {
             className={`px-3 py-2 text-sm border rounded-lg ${view === 'dayGridMonth' ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-700 border-gray-200'}`}
           >
             Mês
+          </button>
+          <button
+            type="button"
+            onClick={handleManualSync}
+            disabled={syncingGoogle}
+            className="px-3 py-2 text-sm border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+          >
+            {syncingGoogle ? 'Sincronizando...' : 'Sincronizar Google'}
           </button>
           <button
             type="button"
