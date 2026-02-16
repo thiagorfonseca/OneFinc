@@ -319,14 +319,14 @@ export const syncGoogleEvents = async (params: {
       if (!startAt || !endAt) continue;
       const allDay = Boolean(event.start.date && !event.start.dateTime);
       const status = event.status === 'cancelled' ? 'cancelled' : 'confirmed';
-      const attendees = (event.attendees || []).map((att) => ({
+      const attendees = (event.attendees || []).map((att: any) => ({
         email: att.email || null,
         name: att.displayName || null,
         responseStatus: att.responseStatus || null,
         self: att.self || null,
         organizer: att.organizer || null,
       }));
-      const entryPoint = event.conferenceData?.entryPoints?.find((entry) => entry.entryPointType === 'video')
+      const entryPoint = event.conferenceData?.entryPoints?.find((entry: any) => entry.entryPointType === 'video')
         || event.conferenceData?.entryPoints?.[0];
       const meetingUrl = event.hangoutLink || entryPoint?.uri || null;
 
