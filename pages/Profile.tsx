@@ -72,6 +72,8 @@ const Profile: React.FC = () => {
   const [googleCalendarLink, setGoogleCalendarLink] = useState((profile as any)?.google_calendar_link || '');
   const [googleCalendarId, setGoogleCalendarId] = useState((profile as any)?.google_calendar_id || '');
   const [googleConnected, setGoogleConnected] = useState(Boolean((profile as any)?.google_connected));
+  const [calendarLinkError, setCalendarLinkError] = useState<string | null>(null);
+  const [calendarLinkPreviewId, setCalendarLinkPreviewId] = useState<string | null>(null);
   const [savingCalendar, setSavingCalendar] = useState(false);
   const [calendarMessage, setCalendarMessage] = useState<string | null>(null);
 
@@ -84,6 +86,50 @@ const Profile: React.FC = () => {
     setGoogleCalendarId((profile as any)?.google_calendar_id || '');
     setGoogleConnected(Boolean((profile as any)?.google_connected));
   }, [profile]);
+
+  const decodeBase64Url = (value: string) => {
+    try {
+      const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+      return atob(padded);
+    } catch {
+      return null;
+    }
+  };
+
+  const parseCalendarIdFromLink = (raw: string) => {
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+    const cidMatch = trimmed.match(/cid=([^&]+)/i);
+    if (cidMatch?.[1]) {
+      return decodeBase64Url(cidMatch[1]);
+    }
+    const srcMatch = trimmed.match(/src=([^&]+)/i);
+    if (srcMatch?.[1]) {
+      return decodeURIComponent(srcMatch[1]);
+    }
+    if (trimmed.includes('@') && !trimmed.includes(' ')) {
+      return trimmed;
+    }
+    return null;
+  };
+
+  useEffect(() => {
+    const trimmed = googleCalendarLink.trim();
+    if (!trimmed) {
+      setCalendarLinkError(null);
+      setCalendarLinkPreviewId(null);
+      return;
+    }
+    const parsed = parseCalendarIdFromLink(trimmed);
+    if (!parsed) {
+      setCalendarLinkError('Link inválido. Use o link de embed ou o link com cid do Google Calendar.');
+      setCalendarLinkPreviewId(null);
+      return;
+    }
+    setCalendarLinkError(null);
+    setCalendarLinkPreviewId(parsed);
+  }, [googleCalendarLink]);
 
   useEffect(() => {
     return () => {
@@ -170,6 +216,10 @@ const Profile: React.FC = () => {
   const handleSaveCalendar = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!user) return;
+    if (calendarLinkError) {
+      setCalendarMessage(calendarLinkError);
+      return;
+    }
     setSavingCalendar(true);
     setCalendarMessage(null);
     const { error } = await (supabase as any)
@@ -189,6 +239,10 @@ const Profile: React.FC = () => {
 
   const handleConnectGoogle = async () => {
     if (!user?.id) return;
+    if (calendarLinkError) {
+      setCalendarMessage(calendarLinkError);
+      return;
+    }
     const session = await supabase.auth.getSession();
     const token = session.data.session?.access_token;
     if (!token) {
@@ -365,6 +419,15 @@ const Profile: React.FC = () => {
               placeholder="Cole o link compartilhado do Google Calendar"
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500"
             />
+            <p className="mt-2 text-xs text-gray-500">
+              Aceita: link de embed com `src=`, link com `cid=` ou o e-mail do calendário.
+            </p>
+            {calendarLinkPreviewId && (
+              <p className="mt-1 text-xs text-gray-600">Calendar ID detectado: {calendarLinkPreviewId}</p>
+            )}
+            {calendarLinkError && (
+              <p className="mt-1 text-xs text-red-600">{calendarLinkError}</p>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className={`px-2 py-1 rounded-full text-xs ${googleConnected ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
@@ -377,7 +440,7 @@ const Profile: React.FC = () => {
           <div className="flex flex-wrap gap-2">
             <button
               type="submit"
-              disabled={savingCalendar}
+              disabled={savingCalendar || !!calendarLinkError}
               className="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
               {savingCalendar ? 'Salvando...' : 'Salvar link'}
@@ -385,7 +448,8 @@ const Profile: React.FC = () => {
             <button
               type="button"
               onClick={handleConnectGoogle}
-              className="px-4 py-2 rounded-lg text-sm bg-brand-600 text-white hover:bg-brand-700"
+              disabled={!!calendarLinkError}
+              className="px-4 py-2 rounded-lg text-sm bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-60"
             >
               Conectar Google Calendar
             </button>

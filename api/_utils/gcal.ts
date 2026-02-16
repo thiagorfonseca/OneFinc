@@ -141,6 +141,18 @@ export const loadConsultantProfile = async (consultorId: string) => {
   return data || null;
 };
 
+const resolveConsultantClinicId = async (consultorId: string, profileClinicId?: string | null) => {
+  if (profileClinicId) return profileClinicId;
+  const { data } = await supabaseAdmin
+    .from('clinic_users')
+    .select('clinic_id')
+    .eq('user_id', consultorId)
+    .eq('ativo', true)
+    .order('created_at', { ascending: false })
+    .maybeSingle();
+  return data?.clinic_id || null;
+};
+
 export const upsertTokens = async (consultorId: string, tokens: {
   access_token?: string | null;
   refresh_token?: string | null;
@@ -263,7 +275,7 @@ export const syncGoogleEvents = async (params: {
   syncToken?: string | null;
 }) => {
   const profile = await loadConsultantProfile(params.consultorId);
-  const clinicId = profile?.clinic_id || null;
+  const clinicId = await resolveConsultantClinicId(params.consultorId, profile?.clinic_id);
   if (!clinicId) return { nextSyncToken: null };
 
   let pageToken: string | undefined;
