@@ -189,7 +189,7 @@ const Profile: React.FC = () => {
 
   const handleConnectGoogle = () => {
     if (!user?.id) return;
-    const url = `/api/gcal/oauth/start?consultor_id=${user.id}`;
+    const url = `/api/gcal/oauth/start?consultor_id=${user.id}&return_to=/profile?gcal=connected`;
     window.location.href = url;
   };
 

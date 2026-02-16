@@ -73,7 +73,10 @@ export default async function handler(req: any, res: any) {
     }
 
     const redirectBase = (APP_URL || '').replace(/\/$/, '');
-    const redirectUrl = redirectBase ? `${redirectBase}/admin/agenda?gcal=connected` : '/';
+    const returnTo = typeof state.return_to === 'string' && state.return_to.startsWith('/') ? state.return_to : '';
+    const fallback = '/profile?gcal=connected';
+    const redirectPath = returnTo || fallback;
+    const redirectUrl = redirectBase ? `${redirectBase}${redirectPath}` : redirectPath;
     res.statusCode = 302;
     res.setHeader('Location', redirectUrl);
     res.end();
