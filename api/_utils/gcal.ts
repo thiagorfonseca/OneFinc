@@ -193,7 +193,7 @@ export const getCalendarClientForConsultant = async (consultorId: string) => {
 
   const needsRefresh = !tokenRow.access_token || (expiryMs ? Date.now() > expiryMs - 60_000 : false);
   if (needsRefresh && tokenRow.refresh_token) {
-    const refreshed = await client.refreshToken(tokenRow.refresh_token);
+    const refreshed = await client.refreshAccessToken();
     const creds = refreshed.credentials || {};
     const updatedAccess = creds.access_token || tokenRow.access_token;
     const updatedRefresh = creds.refresh_token || tokenRow.refresh_token;
