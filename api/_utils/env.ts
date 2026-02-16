@@ -3,6 +3,12 @@ export const getEnv = (key: string): string => (process.env[key] || '').trim();
 export const SUPABASE_URL = getEnv('SUPABASE_URL') || getEnv('VITE_SUPABASE_URL');
 export const SUPABASE_SERVICE_ROLE_KEY = getEnv('SUPABASE_SERVICE_ROLE_KEY');
 export const APP_BASE_URL = getEnv('APP_BASE_URL');
+export const APP_URL = getEnv('APP_URL');
+export const WEBHOOK_PUBLIC_URL = getEnv('WEBHOOK_PUBLIC_URL');
+
+export const GOOGLE_CLIENT_ID = getEnv('GOOGLE_CLIENT_ID');
+export const GOOGLE_CLIENT_SECRET = getEnv('GOOGLE_CLIENT_SECRET');
+export const GOOGLE_TOKEN_SECRET = getEnv('GOOGLE_TOKEN_SECRET');
 
 export const ZAPSIGN_API_TOKEN = getEnv('ZAPSIGN_API_TOKEN');
 export const ZAPSIGN_WEBHOOK_SECRET = getEnv('ZAPSIGN_WEBHOOK_SECRET');

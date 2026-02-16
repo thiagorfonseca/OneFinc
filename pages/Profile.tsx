@@ -69,9 +69,21 @@ const Profile: React.FC = () => {
   const [savingNote, setSavingNote] = useState(false);
   const [noteMessage, setNoteMessage] = useState<string | null>(null);
 
+  const [googleCalendarLink, setGoogleCalendarLink] = useState((profile as any)?.google_calendar_link || '');
+  const [googleCalendarId, setGoogleCalendarId] = useState((profile as any)?.google_calendar_id || '');
+  const [googleConnected, setGoogleConnected] = useState(Boolean((profile as any)?.google_connected));
+  const [savingCalendar, setSavingCalendar] = useState(false);
+  const [calendarMessage, setCalendarMessage] = useState<string | null>(null);
+
   useEffect(() => {
     setFullName(profile?.full_name || '');
   }, [profile?.full_name]);
+
+  useEffect(() => {
+    setGoogleCalendarLink((profile as any)?.google_calendar_link || '');
+    setGoogleCalendarId((profile as any)?.google_calendar_id || '');
+    setGoogleConnected(Boolean((profile as any)?.google_connected));
+  }, [profile]);
 
   useEffect(() => {
     return () => {
@@ -153,6 +165,32 @@ const Profile: React.FC = () => {
       await refresh();
     }
     setSavingProfile(false);
+  };
+
+  const handleSaveCalendar = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!user) return;
+    setSavingCalendar(true);
+    setCalendarMessage(null);
+    const { error } = await (supabase as any)
+      .from('profiles')
+      .update({
+        google_calendar_link: googleCalendarLink.trim() || null,
+      })
+      .eq('id', user.id);
+    if (error) {
+      setCalendarMessage('Erro ao salvar link do calendário: ' + error.message);
+    } else {
+      setCalendarMessage('Link do calendário salvo.');
+      await refresh();
+    }
+    setSavingCalendar(false);
+  };
+
+  const handleConnectGoogle = () => {
+    if (!user?.id) return;
+    const url = `/api/gcal/oauth/start?consultor_id=${user.id}`;
+    window.location.href = url;
   };
 
   const handlePasswordChange = async (event: React.FormEvent) => {
@@ -293,6 +331,48 @@ const Profile: React.FC = () => {
           >
             {savingPassword ? 'Atualizando...' : 'Atualizar senha'}
           </button>
+        </form>
+
+        <form onSubmit={handleSaveCalendar} className="bg-white border border-gray-100 rounded-xl p-6 space-y-4">
+          <h2 className="text-lg font-semibold text-gray-800">Google Calendar</h2>
+          <p className="text-sm text-gray-500">
+            Conecte seu calendário para sincronizar a agenda do consultor.
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Link do Google Calendar</label>
+            <input
+              type="text"
+              value={googleCalendarLink}
+              onChange={(e) => setGoogleCalendarLink(e.target.value)}
+              placeholder="Cole o link compartilhado do Google Calendar"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500"
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className={`px-2 py-1 rounded-full text-xs ${googleConnected ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+              {googleConnected ? 'Conectado' : 'Não conectado'}
+            </span>
+            {googleCalendarId ? (
+              <span className="text-xs text-gray-500">Calendar ID: {googleCalendarId}</span>
+            ) : null}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="submit"
+              disabled={savingCalendar}
+              className="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              {savingCalendar ? 'Salvando...' : 'Salvar link'}
+            </button>
+            <button
+              type="button"
+              onClick={handleConnectGoogle}
+              className="px-4 py-2 rounded-lg text-sm bg-brand-600 text-white hover:bg-brand-700"
+            >
+              Conectar Google Calendar
+            </button>
+          </div>
+          {calendarMessage && <p className="text-xs text-gray-600">{calendarMessage}</p>}
         </form>
       </div>
 

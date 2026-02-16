@@ -21,6 +21,10 @@ export type ScheduleEvent = {
   meeting_url?: string | null;
   status: ScheduleStatus;
   recurrence_rule?: string | null;
+  google_event_id?: string | null;
+  google_etag?: string | null;
+  google_calendar_id?: string | null;
+  external_origin?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
 };
@@ -61,6 +65,26 @@ export type ScheduleNotification = {
 
 export type ScheduleEventWithAttendees = ScheduleEvent & {
   attendees: ScheduleEventAttendee[];
+};
+
+export type ScheduleExternalBlock = {
+  id: string;
+  clinic_id: string;
+  consultant_id: string;
+  start_at: string;
+  end_at: string;
+  all_day: boolean;
+  summary?: string | null;
+  status: 'confirmed' | 'cancelled';
+  google_event_id: string;
+  google_updated?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type ScheduleAdminEvent = ScheduleEventWithAttendees & {
+  is_external?: boolean;
+  external_block?: ScheduleExternalBlock;
 };
 
 export type ScheduleEventForClinic = ScheduleEvent & {

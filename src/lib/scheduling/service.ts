@@ -2,12 +2,14 @@ import { supabase } from '../../../lib/supabase';
 import type {
   ScheduleEvent,
   ScheduleEventAttendee,
+  ScheduleAdminEvent,
   ScheduleEventWithAttendees,
   ScheduleEventForClinic,
   ScheduleChangeRequest,
   SuggestedSlot,
   WorkingHoursRule,
   ScheduleStatus,
+  ScheduleExternalBlock,
 } from './types';
 
 const getWebhookUrl = () => {
@@ -27,6 +29,16 @@ const fireWebhook = async (type: string, payload: Record<string, any>) => {
   } catch {
     // silencioso para MVP
   }
+};
+
+const emitEventWebhook = async (action: 'create' | 'update' | 'cancel', event: ScheduleEvent, clinicIds: string[] = []) => {
+  await fireWebhook('schedule_event', {
+    action,
+    schedule_event_id: event.id,
+    consultor_id: event.consultant_id,
+    clinica_id: clinicIds[0] || null,
+    clinic_ids: clinicIds,
+  });
 };
 
 const toIso = (value: Date | string) => (value instanceof Date ? value.toISOString() : value);
@@ -53,14 +65,24 @@ const hasOverlap = async (params: {
 
   const { data, error } = await query;
   if (error) throw error;
-  return (data || []).length > 0;
+  if ((data || []).length > 0) return true;
+
+  const { data: external, error: externalError } = await sb
+    .from('schedule_external_blocks')
+    .select('id')
+    .eq('consultant_id', params.consultantId)
+    .neq('status', 'cancelled')
+    .lt('start_at', params.endAt)
+    .gt('end_at', params.startAt);
+  if (externalError) throw externalError;
+  return (external || []).length > 0;
 };
 
 export const listEventsForAdmin = async (params: {
   consultantId?: string | null;
   rangeStart?: Date | string;
   rangeEnd?: Date | string;
-}) => {
+}): Promise<ScheduleAdminEvent[]> => {
   let query = sb
     .from('schedule_events')
     .select('*, schedule_event_attendees (clinic_id, confirm_status, confirmed_by, confirmed_at, clinics (id, name))')
@@ -74,7 +96,7 @@ export const listEventsForAdmin = async (params: {
 
   const { data, error } = await query;
   if (error) throw error;
-  return (data || []).map((row: any) => ({
+  const events = (data || []).map((row: any) => ({
     ...(row as ScheduleEvent),
     attendees: (row.schedule_event_attendees || []).map((att: any) => ({
       event_id: row.id,
@@ -85,6 +107,40 @@ export const listEventsForAdmin = async (params: {
       clinic: att.clinics ? { id: att.clinics.id, name: att.clinics.name } : undefined,
     })) as ScheduleEventAttendee[],
   })) as ScheduleEventWithAttendees[];
+
+  if (!params.consultantId) return events as ScheduleAdminEvent[];
+
+  let blockQuery = sb
+    .from('schedule_external_blocks')
+    .select('*')
+    .eq('consultant_id', params.consultantId)
+    .neq('status', 'cancelled');
+  if (params.rangeStart) blockQuery = blockQuery.gte('end_at', toIso(params.rangeStart));
+  if (params.rangeEnd) blockQuery = blockQuery.lte('start_at', toIso(params.rangeEnd));
+
+  const { data: blocks, error: blockError } = await blockQuery;
+  if (blockError) throw blockError;
+
+  const mappedBlocks = (blocks || []).map((block: ScheduleExternalBlock) => ({
+    id: block.id,
+    consultant_id: block.consultant_id,
+    title: block.summary || 'Ocupado',
+    description: null,
+    start_at: block.start_at,
+    end_at: block.end_at,
+    timezone: 'America/Sao_Paulo',
+    location: null,
+    meeting_url: null,
+    status: 'confirmed' as ScheduleStatus,
+    recurrence_rule: null,
+    attendees: [],
+    is_external: true,
+    external_block: block,
+  })) as ScheduleAdminEvent[];
+
+  const combined = [...events, ...mappedBlocks] as ScheduleAdminEvent[];
+  combined.sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
+  return combined;
 };
 
 export const listEventsForClinic = async (params: {
@@ -171,7 +227,7 @@ export const createEvent = async (payload: {
     await sb.from('notifications').insert(notificationsPayload);
   }
 
-  await fireWebhook('event_created', { event_id: createdEvent.id, clinic_ids: clinicIds });
+  await emitEventWebhook('create', createdEvent, clinicIds);
   return createdEvent;
 };
 
@@ -225,11 +281,18 @@ export const updateEvent = async (payload: {
     }
   }
 
-  await fireWebhook('event_updated', { event_id: eventId });
+  await emitEventWebhook('update', data as ScheduleEvent, clinicIds || []);
   return data as ScheduleEvent;
 };
 
 export const cancelEvent = async (eventId: string, clinicIds: string[]) => {
+  const { data: current, error: currentError } = await sb
+    .from('schedule_events')
+    .select('id, consultant_id, start_at, end_at, title, timezone')
+    .eq('id', eventId)
+    .single();
+  if (currentError) throw currentError;
+
   const { error } = await sb
     .from('schedule_events')
     .update({ status: 'cancelled' })
@@ -244,7 +307,7 @@ export const cancelEvent = async (eventId: string, clinicIds: string[]) => {
     }));
     await sb.from('notifications').insert(notificationsPayload);
   }
-  await fireWebhook('event_cancelled', { event_id: eventId });
+  await emitEventWebhook('cancel', current as ScheduleEvent, clinicIds);
 };
 
 export const confirmEventAttendance = async (eventId: string, clinicId: string) => {
@@ -299,6 +362,15 @@ export const suggestTimeSlots = async (params: {
     .lte('end_at', params.dateRangeEnd.toISOString());
   if (error) throw error;
 
+  const { data: externalBlocks, error: externalError } = await sb
+    .from('schedule_external_blocks')
+    .select('start_at, end_at, status')
+    .eq('consultant_id', params.consultantId)
+    .neq('status', 'cancelled')
+    .gte('start_at', params.dateRangeStart.toISOString())
+    .lte('end_at', params.dateRangeEnd.toISOString());
+  if (externalError) throw externalError;
+
   const busyRanges: Array<{ start: Date; end: Date }> = (data || []).map((row: any) => {
     const start = new Date(row.start_at);
     const end = new Date(row.end_at);
@@ -306,6 +378,14 @@ export const suggestTimeSlots = async (params: {
       start: new Date(start.getTime() - params.bufferMinutes * 60000),
       end: new Date(end.getTime() + params.bufferMinutes * 60000),
     };
+  });
+  (externalBlocks || []).forEach((row: any) => {
+    const start = new Date(row.start_at);
+    const end = new Date(row.end_at);
+    busyRanges.push({
+      start: new Date(start.getTime() - params.bufferMinutes * 60000),
+      end: new Date(end.getTime() + params.bufferMinutes * 60000),
+    });
   });
 
   const slots: SuggestedSlot[] = [];

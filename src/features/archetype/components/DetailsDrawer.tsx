@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import ResultChart from './ResultChart';
 import type { ArchetypeRespondentRow } from '../types';
@@ -28,6 +28,8 @@ interface DetailsDrawerProps {
 }
 
 const DetailsDrawer: React.FC<DetailsDrawerProps> = ({ open, loading, onClose, respondent }) => {
+  const [isExporting, setIsExporting] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
   useModalControls({ isOpen: open, onClose });
 
   if (!open) return null;
@@ -55,43 +57,18 @@ const DetailsDrawer: React.FC<DetailsDrawerProps> = ({ open, loading, onClose, r
       ? 'Empate técnico'
       : PROFILE_LABELS[respondent?.top_profile || ''] || respondent?.top_profile || '-';
 
-  const handleDownloadPdf = async () => {
-    if (!respondent) return;
-    const session = await supabase.auth.getSession();
-    const token = session.data.session?.access_token;
-    if (!token) {
-      alert('Sessão inválida.');
-      return;
-    }
-    const response = await fetch(`/api/internal/archetype-result-pdf?respondentId=${respondent.id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      alert(body?.error || 'Não foi possível gerar o PDF.');
-      return;
-    }
-    const blob = await response.blob();
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `resultado-perfil-${respondent.name || 'respondente'}.pdf`;
-    link.click();
-    URL.revokeObjectURL(link.href);
-  };
-
-  const handleResendPdf = async () => {
-    if (!respondent) return;
-    if (!respondent.email) {
+  const sendPdfByEmail = async (skipConfirm?: boolean) => {
+    if (!respondent?.email) {
       alert('Respondente sem e-mail cadastrado.');
-      return;
+      return false;
     }
+    if (!skipConfirm && !confirm(`Reenviar resultado para ${respondent.email}?`)) return false;
     const session = await supabase.auth.getSession();
     const token = session.data.session?.access_token;
     if (!token) {
       alert('Sessão inválida.');
-      return;
+      return false;
     }
-    if (!confirm(`Reenviar resultado para ${respondent.email}?`)) return;
     const response = await fetch('/api/internal/send-archetype-result', {
       method: 'POST',
       headers: {
@@ -103,9 +80,57 @@ const DetailsDrawer: React.FC<DetailsDrawerProps> = ({ open, loading, onClose, r
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
       alert(body?.error || 'Não foi possível reenviar o resultado.');
-      return;
+      return false;
     }
-    alert('Resultado reenviado com sucesso.');
+    return true;
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!respondent || !printRef.current) return;
+    setIsExporting(true);
+    try {
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ]);
+      const canvas = await html2canvas(printRef.current, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        ignoreElements: (element) => element.getAttribute('data-pdf-ignore') === 'true',
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'pt', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgHeight = (canvas.height * pageWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
+      pdf.addImage(imgData, 'PNG', 0, position, pageWidth, imgHeight);
+      heightLeft -= pageHeight;
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, pageWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+      pdf.save(`resultado-perfil-${respondent.name || 'respondente'}.pdf`);
+    } catch (err) {
+      console.error('Erro ao gerar PDF', err);
+      const sent = await sendPdfByEmail(true);
+      if (sent) {
+        alert('Não foi possível gerar o PDF. Enviamos o arquivo por e-mail.');
+      } else {
+        alert('Não foi possível gerar o PDF.');
+      }
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleResendPdf = async () => {
+    const sent = await sendPdfByEmail();
+    if (sent) alert('Resultado reenviado com sucesso.');
   };
 
   return (
@@ -119,7 +144,7 @@ const DetailsDrawer: React.FC<DetailsDrawerProps> = ({ open, loading, onClose, r
         >
           <X size={18} />
         </button>
-        <div className="space-y-6">
+        <div className="space-y-6" ref={printRef}>
           <div>
             <h3 className="text-xl font-semibold text-gray-800">Detalhes do respondente</h3>
             <p className="text-sm text-gray-500">Resultados individuais do teste.</p>
@@ -145,7 +170,7 @@ const DetailsDrawer: React.FC<DetailsDrawerProps> = ({ open, loading, onClose, r
                   <p className="text-sm font-semibold text-gray-800">{winnerLabel}</p>
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2" data-pdf-ignore="true">
                 <button
                   type="button"
                   onClick={handleResendPdf}
@@ -157,9 +182,10 @@ const DetailsDrawer: React.FC<DetailsDrawerProps> = ({ open, loading, onClose, r
                 <button
                   type="button"
                   onClick={handleDownloadPdf}
-                  className="px-3 py-2 rounded-lg text-sm bg-brand-600 text-white hover:bg-brand-700"
+                  disabled={isExporting}
+                  className="px-3 py-2 rounded-lg text-sm bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-60"
                 >
-                  Baixar em PDF
+                  {isExporting ? 'Gerando PDF...' : 'Baixar em PDF'}
                 </button>
               </div>
               <div className="bg-white border border-gray-100 rounded-xl p-4 space-y-3">

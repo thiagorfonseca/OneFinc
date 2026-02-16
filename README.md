@@ -50,6 +50,15 @@ Opcional (modo hibrido de IA):
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL`
 
+Integração Google Calendar (agenda):
+
+- `APP_URL` (ex: https://app.suaempresa.com.br)
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GOOGLE_TOKEN_SECRET` (segredo para criptografar tokens)
+- `WEBHOOK_PUBLIC_URL` (URL pública para receber webhooks do Google)
+- `VITE_SCHEDULING_WEBHOOK_URL` (ex: https://app.suaempresa.com.br/api/gcal/app-webhook)
+
 3) Aplique as migrations no Supabase:
 
 ```bash

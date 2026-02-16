@@ -19,7 +19,7 @@ import {
   listEventsForAdmin,
   suggestTimeSlots,
   updateEvent,
-  type ScheduleEventWithAttendees,
+  type ScheduleAdminEvent,
   type SuggestedSlot,
 } from '../src/lib/scheduling';
 import { supabase } from '../lib/supabase';
@@ -53,7 +53,7 @@ const AdminAgenda: React.FC = () => {
   const calendarRef = useRef<FullCalendar | null>(null);
   const { toasts, push, dismiss } = useToast();
   const [loading, setLoading] = useState(true);
-  const [events, setEvents] = useState<ScheduleEventWithAttendees[]>([]);
+  const [events, setEvents] = useState<ScheduleAdminEvent[]>([]);
   const [clinics, setClinics] = useState<Array<{ id: string; name: string }>>([]);
   const [view, setView] = useState<'timeGridDay' | 'timeGridWeek' | 'dayGridMonth'>('dayGridMonth');
   const [range, setRange] = useState<{ start: Date; end: Date } | null>(null);
@@ -68,7 +68,7 @@ const AdminAgenda: React.FC = () => {
   const [suggesting, setSuggesting] = useState(false);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<ScheduleEventWithAttendees | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<ScheduleAdminEvent | null>(null);
   const [changeRequests, setChangeRequests] = useState<any[]>([]);
 
   const [rescheduleRequests, setRescheduleRequests] = useState<any[]>([]);
@@ -174,22 +174,30 @@ const AdminAgenda: React.FC = () => {
   }, [isSystemAdmin, loadRescheduleRequests, loadHelperRequests]);
 
   const calendarEvents = useMemo(() => {
-    return events.map((event) => ({
-      id: event.id,
-      title: event.title,
-      start: event.start_at,
-      end: event.end_at,
-      backgroundColor:
-        event.status === 'cancelled'
+    return events.map((event) => {
+      const isExternal = Boolean(event.is_external);
+      const backgroundColor = isExternal
+        ? '#e2e8f0'
+        : event.status === 'cancelled'
           ? '#e5e7eb'
           : event.status === 'reschedule_requested'
             ? '#fef3c7'
             : event.status === 'confirmed'
               ? '#d1fae5'
-              : '#dbeafe',
-      borderColor: event.status === 'cancelled' ? '#e5e7eb' : '#93c5fd',
-      textColor: '#111827',
-    }));
+              : '#dbeafe';
+      const borderColor = isExternal ? '#94a3b8' : event.status === 'cancelled' ? '#e5e7eb' : '#93c5fd';
+      return {
+        id: event.id,
+        title: event.title,
+        start: event.start_at,
+        end: event.end_at,
+        backgroundColor,
+        borderColor,
+        textColor: '#111827',
+        editable: !isExternal,
+        extendedProps: { isExternal },
+      };
+    });
   }, [events]);
 
   const openCreate = (start?: Date, end?: Date) => {
@@ -205,7 +213,8 @@ const AdminAgenda: React.FC = () => {
     setModalOpen(true);
   };
 
-  const openEdit = (event: ScheduleEventWithAttendees) => {
+  const openEdit = (event: ScheduleAdminEvent) => {
+    if (event.is_external) return;
     setModalMode('edit');
     setForm({
       title: event.title,
@@ -350,6 +359,10 @@ const AdminAgenda: React.FC = () => {
   const handleEventClick = async (arg: EventClickArg) => {
     const event = events.find((e) => e.id === arg.event.id);
     if (!event) return;
+    if (event.is_external) {
+      push({ title: 'Compromisso externo', description: 'Este bloqueio veio do Google Calendar.', variant: 'info' });
+      return;
+    }
     setSelectedEvent(event);
     setDrawerOpen(true);
     try {
@@ -383,8 +396,13 @@ const AdminAgenda: React.FC = () => {
   };
 
   const handleEventDrop = async (info: EventDropArg) => {
+    if (info.event.extendedProps?.isExternal) {
+      info.revert();
+      push({ title: 'Compromisso externo', description: 'Edite este horário no Google Calendar.', variant: 'info' });
+      return;
+    }
     const schedule = events.find((event) => event.id === info.event.id);
-    if (!schedule || !info.event.start || !info.event.end) {
+    if (!schedule || schedule.is_external || !info.event.start || !info.event.end) {
       info.revert();
       return;
     }
@@ -414,8 +432,13 @@ const AdminAgenda: React.FC = () => {
   };
 
   const handleEventResize = async (info: EventResizeDoneArg) => {
+    if (info.event.extendedProps?.isExternal) {
+      info.revert();
+      push({ title: 'Compromisso externo', description: 'Edite este horário no Google Calendar.', variant: 'info' });
+      return;
+    }
     const schedule = events.find((event) => event.id === info.event.id);
-    if (!schedule || !info.event.start || !info.event.end) {
+    if (!schedule || schedule.is_external || !info.event.start || !info.event.end) {
       info.revert();
       return;
     }
@@ -471,7 +494,7 @@ const AdminAgenda: React.FC = () => {
     } else {
       setSelectedClinics(clinicIds);
     }
-    setSelectedEvent(targetEvent as ScheduleEventWithAttendees);
+    setSelectedEvent(targetEvent as ScheduleAdminEvent);
     setModalMode('edit');
     setForm({
       title: targetEvent.title,

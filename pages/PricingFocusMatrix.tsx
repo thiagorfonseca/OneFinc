@@ -13,6 +13,9 @@ const PricingFocusMatrix: React.FC = () => {
   const [procedureUsage, setProcedureUsage] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'mapa' | 'analise'>('mapa');
+  const [dateStart, setDateStart] = useState('');
+  const [dateEnd, setDateEnd] = useState('');
+  const [showLogicModal, setShowLogicModal] = useState(false);
 
   const [hoursAvailableInput] = useState('120');
   const [occupancyInput] = useState('50');
@@ -52,6 +55,14 @@ const PricingFocusMatrix: React.FC = () => {
           procQuery = procQuery.eq('clinic_id', clinicId);
           usageQuery = usageQuery.eq('revenues.clinic_id', clinicId);
         }
+        if (dateStart) {
+          const startIso = new Date(`${dateStart}T00:00:00`).toISOString();
+          usageQuery = usageQuery.gte('revenues.created_at', startIso);
+        }
+        if (dateEnd) {
+          const endIso = new Date(`${dateEnd}T23:59:59`).toISOString();
+          usageQuery = usageQuery.lte('revenues.created_at', endIso);
+        }
         const [{ data: expData }, { data: procData }, { data: usageData }] = await Promise.all([
           expQuery,
           procQuery,
@@ -65,7 +76,7 @@ const PricingFocusMatrix: React.FC = () => {
       }
     };
     load();
-  }, [clinicId]);
+  }, [clinicId, dateStart, dateEnd]);
 
   const totalCosts = useMemo(() => {
     return expenses.reduce((acc, item) => {
@@ -193,6 +204,10 @@ const PricingFocusMatrix: React.FC = () => {
   const chartModalControls = useModalControls({
     isOpen: isChartExpanded,
     onClose: () => setIsChartExpanded(false),
+  });
+  const logicModalControls = useModalControls({
+    isOpen: showLogicModal,
+    onClose: () => setShowLogicModal(false),
   });
 
   useEffect(() => {
@@ -530,14 +545,36 @@ const PricingFocusMatrix: React.FC = () => {
 
       {tab === 'analise' && (
         <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-          <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 className="text-lg font-semibold text-gray-800">Rentabilidade X Realizado</h2>
               <p className="text-sm text-gray-500">
                 Cruzamento entre o que é mais rentável e o que a clínica executa no dia a dia.
               </p>
             </div>
-            <div className="flex items-center gap-3 text-xs text-gray-400">
+            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400">
+              <button
+                type="button"
+                onClick={() => setShowLogicModal(true)}
+                className="px-3 py-2 text-xs rounded-lg text-white bg-blue-600 hover:bg-blue-700"
+              >
+                Como funciona
+              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="date"
+                  value={dateStart}
+                  onChange={(e) => setDateStart(e.target.value)}
+                  className="px-2 py-2 text-xs border border-gray-200 rounded-lg text-gray-700"
+                />
+                <span className="text-gray-400">até</span>
+                <input
+                  type="date"
+                  value={dateEnd}
+                  onChange={(e) => setDateEnd(e.target.value)}
+                  className="px-2 py-2 text-xs border border-gray-200 rounded-lg text-gray-700"
+                />
+              </div>
               <span>{loading ? 'Atualizando dados...' : `${realizedTotals.total} procedimentos realizados`}</span>
               <button
                 type="button"
@@ -639,6 +676,49 @@ const PricingFocusMatrix: React.FC = () => {
               </div>
               <div className="rounded-lg border border-gray-100 p-3">
                 Ajustar agenda e fluxo operacional para aumentar o volume de estrelas sem sacrificar a qualidade.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showLogicModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 p-4 sm:p-6" onClick={logicModalControls.onBackdropClick}>
+          <div
+            className="bg-white rounded-2xl shadow-xl p-5 sm:p-6 max-w-2xl w-full mx-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800">Como calculamos a eficiência</h3>
+                <p className="text-sm text-gray-500">
+                  A análise cruza o volume realizado com a rentabilidade de cada procedimento.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowLogicModal(false)}
+                className="px-3 py-2 text-xs border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50"
+              >
+                Fechar
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3 text-sm text-gray-600">
+              <div>
+                1. Calculamos a rentabilidade de cada procedimento com base no custo hora, insumos e preço cobrado.
+              </div>
+              <div>
+                2. Classificamos em Estrela, Vaca leiteira ou Abacaxi conforme a rentabilidade por hora.
+              </div>
+              <div>
+                3. Somamos o volume realizado por categoria no período filtrado.
+              </div>
+              <div>
+                4. O índice de eficiência dá mais peso para estrelas, penaliza abacaxis e considera volume de vacas.
+              </div>
+              <div>
+                5. Oportunidades mostram estrelas com baixa execução e pontos de atenção mostram vacas/abacaxis com alta execução.
               </div>
             </div>
           </div>
