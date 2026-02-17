@@ -17,6 +17,7 @@ const Reconciliation = lazy(() => import('./pages/Reconciliation'));
 const Login = lazy(() => import('./pages/Login'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const TermsOfService = lazy(() => import('./pages/TermsOfService'));
+const HomePublic = lazy(() => import('./pages/HomePublic'));
 const BankAccounts = lazy(() => import('./pages/BankAccounts'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Admin = lazy(() => import('./pages/Admin'));
@@ -94,6 +95,7 @@ function App() {
         >
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/home" element={<HomePublic />} />
             <Route path="/politica-de-privacidade" element={<PrivacyPolicy />} />
             <Route path="/termos-de-servico" element={<TermsOfService />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
