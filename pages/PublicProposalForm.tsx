@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, Loader2 } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 
@@ -33,6 +33,7 @@ const initialForm = {
 
 const PublicProposalForm: React.FC = () => {
   const { token } = useParams();
+  const navigate = useNavigate();
   const [proposal, setProposal] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -45,7 +46,7 @@ const PublicProposalForm: React.FC = () => {
   const [cepError, setCepError] = useState('');
   const [lastCep, setLastCep] = useState('');
   const [restored, setRestored] = useState(false);
-  const [draftLoaded, setDraftLoaded] = useState(false);
+  const [serverLoaded, setServerLoaded] = useState(false);
 
   const trimValue = (value: string) => value.trim();
   const digitsOnly = (value: string) => value.replace(/\D/g, '');
@@ -115,18 +116,36 @@ const PublicProposalForm: React.FC = () => {
         }
         const data = await res.json();
         setProposal(data.proposal);
+        const proposalStatus = data?.proposal?.status || '';
+        const requiresSignature = Boolean(data?.proposal?.requires_signature);
+        if (proposalStatus) {
+          const paymentRoute = `/pagamento/${token}`;
+          const signatureReturnRoute = `/assinatura/retorno?token=${token}`;
+          if (['payment_created', 'paid'].includes(proposalStatus)) {
+            navigate(paymentRoute, { replace: true });
+            return;
+          }
+          if (['signature_sent', 'signed', 'form_filled'].includes(proposalStatus)) {
+            if (requiresSignature) {
+              navigate(signatureReturnRoute, { replace: true });
+              return;
+            }
+            navigate(paymentRoute, { replace: true });
+            return;
+          }
+        }
         if (data?.draft?.payload) {
           setForm(data.draft.payload);
           if (data.draft.step) setStep(data.draft.step);
           if (data.draft.meta?.personType) setPersonType(data.draft.meta.personType);
           if (typeof data.draft.meta?.sameAsCompany === 'boolean') setSameAsCompany(data.draft.meta.sameAsCompany);
-          setDraftLoaded(true);
           setRestored(true);
         }
       } catch {
         setError('Erro ao carregar proposta.');
       } finally {
         setLoading(false);
+        setServerLoaded(true);
       }
     };
     if (token) load();
@@ -137,7 +156,7 @@ const PublicProposalForm: React.FC = () => {
   }, [form]);
 
   useEffect(() => {
-    if (!token || restored || draftLoaded) return;
+    if (!token || restored || !serverLoaded || error) return;
     try {
       const raw = window.localStorage.getItem(`od:proposal-form:${token}`);
       if (!raw) {
@@ -154,10 +173,10 @@ const PublicProposalForm: React.FC = () => {
     } finally {
       setRestored(true);
     }
-  }, [token, restored, draftLoaded]);
+  }, [token, restored, serverLoaded, error]);
 
   useEffect(() => {
-    if (!token || !restored) return;
+    if (!token || !restored || !serverLoaded) return;
     try {
       window.localStorage.setItem(
         `od:proposal-form:${token}`,
@@ -171,10 +190,10 @@ const PublicProposalForm: React.FC = () => {
     } catch {
       // ignore
     }
-  }, [token, form, step, personType, sameAsCompany, restored]);
+  }, [token, form, step, personType, sameAsCompany, restored, serverLoaded]);
 
   useEffect(() => {
-    if (!token || !restored) return;
+    if (!token || !restored || !serverLoaded) return;
     const timeout = setTimeout(() => {
       fetch(`/api/public/proposals/${token}/draft`, {
         method: 'POST',
@@ -187,7 +206,7 @@ const PublicProposalForm: React.FC = () => {
       }).catch(() => undefined);
     }, 800);
     return () => clearTimeout(timeout);
-  }, [token, form, step, personType, sameAsCompany, restored]);
+  }, [token, form, step, personType, sameAsCompany, restored, serverLoaded]);
 
   useEffect(() => {
     if (personType === 'pj') return;
