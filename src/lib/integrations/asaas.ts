@@ -35,15 +35,15 @@ export type AsaasConfig = {
 };
 
 const baseUrl = (env: 'sandbox' | 'prod') =>
-  env === 'prod' ? 'https://www.asaas.com/api/v3' : 'https://sandbox.asaas.com/api/v3';
+  env === 'prod' ? 'https://api.asaas.com/v3' : 'https://api-sandbox.asaas.com/v3';
 
 const request = async (config: AsaasConfig, path: string, options: RequestInit = {}) => {
   const res = await fetch(`${baseUrl(config.env || 'sandbox')}${path}`, {
     ...options,
     headers: {
+      ...(options.headers || {}),
       'Content-Type': 'application/json',
       access_token: config.apiKey,
-      ...(options.headers || {}),
     },
   });
   const data = await res.json().catch(() => ({}));
