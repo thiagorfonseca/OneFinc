@@ -79,6 +79,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const resolveMembershipFromServer = async (): Promise<ClinicUserRow | null> => {
+    try {
+      const { data } = await supabase.auth.getSession();
+      const accessToken = data.session?.access_token;
+      if (!accessToken) return null;
+      const response = await fetch('/api/public/resolve-clinic-membership', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({}),
+      });
+      if (!response.ok) return null;
+      const body = await response.json().catch(() => ({}));
+      return (body?.membership as ClinicUserRow) || null;
+    } catch {
+      return null;
+    }
+  };
+
   const fetchProfile = async (u: User | null) => {
     if (!u) {
       setProfile(null);
@@ -129,6 +151,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!linkError) {
           resolved = { ...byEmail, user_id: u.id };
         }
+      }
+    }
+
+    // Resolve membership via endpoint (aceita convite ou vincula por e-mail com service role).
+    if (!resolved) {
+      const resolvedByServer = await resolveMembershipFromServer();
+      if (resolvedByServer) {
+        resolved = resolvedByServer;
       }
     }
 

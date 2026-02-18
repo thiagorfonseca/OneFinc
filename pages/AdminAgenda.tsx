@@ -13,10 +13,13 @@ import { ToastStack } from '../components/Toast';
 import { useToast } from '../hooks/useToast';
 import { useModalControls } from '../hooks/useModalControls';
 import {
+  buildRecurrenceRule,
   cancelEvent,
   createEvent,
+  expandRecurringOccurrences,
   listChangeRequests,
   listEventsForAdmin,
+  resolveRecurrenceOption,
   suggestTimeSlots,
   updateEvent,
   type ScheduleAdminEvent,
@@ -32,6 +35,7 @@ const emptyForm: EventFormState = {
   timezone: 'America/Sao_Paulo',
   location: '',
   meeting_url: '',
+  recurrence: 'none',
 };
 
 const toLocalInput = (value: string | Date) => {
@@ -46,6 +50,14 @@ const formatDateTime = (value?: string | null) =>
 const formatMonthYear = (value: Date) => {
   const label = value.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
   return label.charAt(0).toUpperCase() + label.slice(1);
+};
+
+const overlapsRange = (startAt: string, endAt: string, range?: { start: Date; end: Date } | null) => {
+  if (!range) return true;
+  const start = new Date(startAt);
+  const end = new Date(endAt);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return false;
+  return end > range.start && start < range.end;
 };
 
 const AdminAgenda: React.FC = () => {
@@ -142,13 +154,13 @@ const AdminAgenda: React.FC = () => {
     [consultants, selectedConsultantId],
   );
 
-  const fetchEvents = async (start?: Date, end?: Date) => {
+  const fetchEvents = async (end?: Date) => {
     if (!selectedConsultantId) return;
     setLoading(true);
     try {
       const data = await listEventsForAdmin({
         consultantId: selectedConsultantId,
-        rangeStart: start,
+        rangeStart: undefined,
         rangeEnd: end,
       });
       setEvents(data);
@@ -161,7 +173,7 @@ const AdminAgenda: React.FC = () => {
 
   useEffect(() => {
     if (!range) return;
-    fetchEvents(range.start, range.end);
+    fetchEvents(range.end);
   }, [range?.start?.toISOString(), range?.end?.toISOString(), selectedConsultantId]);
 
   const loadRescheduleRequests = useCallback(async () => {
@@ -219,7 +231,8 @@ const AdminAgenda: React.FC = () => {
   }, [isSystemAdmin, loadRescheduleRequests, loadHelperRequests]);
 
   const calendarEvents = useMemo(() => {
-    return events.map((event) => {
+    const calendarRange = range;
+    return events.flatMap((event) => {
       const isExternal = Boolean(event.is_external);
       const backgroundColor = isExternal
         ? '#e2e8f0'
@@ -231,19 +244,54 @@ const AdminAgenda: React.FC = () => {
               ? '#d1fae5'
               : '#dbeafe';
       const borderColor = isExternal ? '#94a3b8' : event.status === 'cancelled' ? '#e5e7eb' : '#93c5fd';
-      return {
-        id: event.id,
+      const baseProps = {
         title: event.title,
-        start: event.start_at,
-        end: event.end_at,
         backgroundColor,
         borderColor,
         textColor: '#111827',
-        editable: !isExternal,
-        extendedProps: { isExternal },
       };
+
+      if (!event.recurrence_rule || isExternal) {
+        if (!overlapsRange(event.start_at, event.end_at, calendarRange)) return [];
+        return [{
+          id: event.id,
+          ...baseProps,
+          start: event.start_at,
+          end: event.end_at,
+          editable: !isExternal,
+          extendedProps: { isExternal },
+        }];
+      }
+
+      if (!calendarRange) {
+        return [{
+          id: event.id,
+          ...baseProps,
+          start: event.start_at,
+          end: event.end_at,
+          editable: false,
+          extendedProps: { isExternal: false, recurringInstance: true, baseEventId: event.id },
+        }];
+      }
+
+      const occurrences = expandRecurringOccurrences({
+        recurrenceRule: event.recurrence_rule,
+        startAt: event.start_at,
+        endAt: event.end_at,
+        rangeStart: calendarRange.start,
+        rangeEnd: calendarRange.end,
+      });
+
+      return occurrences.map((occ) => ({
+        id: `${event.id}::${occ.key}`,
+        ...baseProps,
+        start: occ.start_at,
+        end: occ.end_at,
+        editable: false,
+        extendedProps: { isExternal: false, recurringInstance: true, baseEventId: event.id },
+      }));
     });
-  }, [events]);
+  }, [events, range]);
 
   const openCreate = (start?: Date, end?: Date) => {
     setModalMode('create');
@@ -269,6 +317,7 @@ const AdminAgenda: React.FC = () => {
       timezone: event.timezone || 'America/Sao_Paulo',
       location: event.location || '',
       meeting_url: event.meeting_url || '',
+      recurrence: resolveRecurrenceOption(event.recurrence_rule),
     });
     setSelectedClinics(event.attendees.map((att) => att.clinic_id));
     setSuggestions([]);
@@ -292,17 +341,19 @@ const AdminAgenda: React.FC = () => {
     }
     setSaving(true);
     try {
+      const startAt = new Date(form.start).toISOString();
+      const endAt = new Date(form.end).toISOString();
       const eventPayload = {
         consultant_id: selectedConsultantId,
         title: form.title.trim(),
         description: form.description.trim() || null,
-        start_at: new Date(form.start).toISOString(),
-        end_at: new Date(form.end).toISOString(),
+        start_at: startAt,
+        end_at: endAt,
         timezone: form.timezone || 'America/Sao_Paulo',
         location: form.location.trim() || null,
         meeting_url: form.meeting_url.trim() || null,
         status: modalMode === 'create' ? 'pending_confirmation' : (selectedEvent?.status || 'pending_confirmation'),
-        recurrence_rule: null,
+        recurrence_rule: buildRecurrenceRule(form.recurrence, startAt),
       } as const;
 
       if (modalMode === 'create') {
@@ -323,6 +374,7 @@ const AdminAgenda: React.FC = () => {
             timezone: eventPayload.timezone,
             location: eventPayload.location,
             meeting_url: eventPayload.meeting_url,
+            recurrence_rule: eventPayload.recurrence_rule,
             status: nextStatus,
           },
           clinicIds: selectedClinics,
@@ -359,7 +411,7 @@ const AdminAgenda: React.FC = () => {
         push({ title: 'Agendamento atualizado.', variant: 'success' });
       }
       setModalOpen(false);
-      if (range) await fetchEvents(range.start, range.end);
+      if (range) await fetchEvents(range.end);
     } catch (err: any) {
       const isOverlap =
         err?.code === '23P01' ||
@@ -406,7 +458,8 @@ const AdminAgenda: React.FC = () => {
   };
 
   const handleEventClick = async (arg: EventClickArg) => {
-    const event = events.find((e) => e.id === arg.event.id);
+    const baseEventId = (arg.event.extendedProps?.baseEventId as string | undefined) || arg.event.id;
+    const event = events.find((e) => e.id === baseEventId);
     if (!event) return;
     if (event.is_external) {
       setSelectedEvent(event);
@@ -431,7 +484,7 @@ const AdminAgenda: React.FC = () => {
       await cancelEvent(selectedEvent.id, selectedEvent.attendees.map((a) => a.clinic_id));
       push({ title: 'Agendamento cancelado.', variant: 'success' });
       setDrawerOpen(false);
-      if (range) await fetchEvents(range.start, range.end);
+      if (range) await fetchEvents(range.end);
     } catch (err: any) {
       push({ title: 'Erro ao cancelar agendamento.', description: err?.message, variant: 'error' });
     }
@@ -452,9 +505,15 @@ const AdminAgenda: React.FC = () => {
       push({ title: 'Compromisso externo', description: 'Edite este horário no Google Calendar.', variant: 'info' });
       return;
     }
-    const schedule = events.find((event) => event.id === info.event.id);
+    const baseEventId = (info.event.extendedProps?.baseEventId as string | undefined) || info.event.id;
+    const schedule = events.find((event) => event.id === baseEventId);
     if (!schedule || schedule.is_external || !info.event.start || !info.event.end) {
       info.revert();
+      return;
+    }
+    if (schedule.recurrence_rule) {
+      info.revert();
+      push({ title: 'Série recorrente', description: 'Edite a série pelo formulário do agendamento.', variant: 'info' });
       return;
     }
     try {
@@ -469,7 +528,7 @@ const AdminAgenda: React.FC = () => {
         forceStatus: nextStatus,
       });
       push({ title: 'Horário atualizado.', variant: 'success' });
-      if (range) await fetchEvents(range.start, range.end);
+      if (range) await fetchEvents(range.end);
     } catch (err: any) {
       info.revert();
       const isOverlap =
@@ -488,9 +547,15 @@ const AdminAgenda: React.FC = () => {
       push({ title: 'Compromisso externo', description: 'Edite este horário no Google Calendar.', variant: 'info' });
       return;
     }
-    const schedule = events.find((event) => event.id === info.event.id);
+    const baseEventId = (info.event.extendedProps?.baseEventId as string | undefined) || info.event.id;
+    const schedule = events.find((event) => event.id === baseEventId);
     if (!schedule || schedule.is_external || !info.event.start || !info.event.end) {
       info.revert();
+      return;
+    }
+    if (schedule.recurrence_rule) {
+      info.revert();
+      push({ title: 'Série recorrente', description: 'Edite a série pelo formulário do agendamento.', variant: 'info' });
       return;
     }
     try {
@@ -505,7 +570,7 @@ const AdminAgenda: React.FC = () => {
         forceStatus: nextStatus,
       });
       push({ title: 'Duração atualizada.', variant: 'success' });
-      if (range) await fetchEvents(range.start, range.end);
+      if (range) await fetchEvents(range.end);
     } catch (err: any) {
       info.revert();
       const isOverlap =
@@ -522,9 +587,15 @@ const AdminAgenda: React.FC = () => {
     if (!selectedConsultantId) return;
     setSyncingGoogle(true);
     try {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+      if (!token) throw new Error('Sessão inválida. Faça login novamente.');
       const response = await fetch('/api/gcal/sync/pull', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ consultor_id: selectedConsultantId }),
       });
       if (!response.ok) {
@@ -532,7 +603,7 @@ const AdminAgenda: React.FC = () => {
         throw new Error(body?.error || 'Falha ao sincronizar.');
       }
       push({ title: 'Sincronização concluída.', variant: 'success' });
-      if (range) await fetchEvents(range.start, range.end);
+      if (range) await fetchEvents(range.end);
     } catch (err: any) {
       push({ title: 'Erro ao sincronizar.', description: err?.message, variant: 'error' });
     } finally {
@@ -577,6 +648,7 @@ const AdminAgenda: React.FC = () => {
       timezone: targetEvent.timezone || 'America/Sao_Paulo',
       location: targetEvent.location || '',
       meeting_url: targetEvent.meeting_url || '',
+      recurrence: resolveRecurrenceOption(targetEvent.recurrence_rule),
     });
     setPendingRescheduleRequest(req);
     setRescheduleModalOpen(false);
@@ -626,7 +698,7 @@ const AdminAgenda: React.FC = () => {
 
       push({ title: 'Solicitação marcada como não reagendada.', variant: 'success' });
       await loadRescheduleRequests();
-      if (range) await fetchEvents(range.start, range.end);
+      if (range) await fetchEvents(range.end);
     } catch (err: any) {
       push({ title: 'Não foi possível atualizar a solicitação.', description: err?.message, variant: 'error' });
     }

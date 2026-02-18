@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Users, Building2, Wallet, RefreshCw, Plus, Loader2, CheckSquare, LayoutGrid, List } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { buildPublicUrl, formatDate } from '../lib/utils';
+import { formatDate } from '../lib/utils';
 import { useAuth } from '../src/auth/AuthProvider';
 import { useModalControls } from '../hooks/useModalControls';
 
@@ -135,7 +135,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
   const [selectedClinics, setSelectedClinics] = useState<string[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'todas' | 'ativas' | 'inativas'>('todas');
-  const [clinicViewMode, setClinicViewMode] = useState<'list' | 'boxes'>('list');
+  const [clinicViewMode, setClinicViewMode] = useState<'list' | 'boxes'>('boxes');
   const [clinicUsers, setClinicUsers] = useState<any[]>([]);
   const [internalUsers, setInternalUsers] = useState<any[]>([]);
   const [contractProductInput, setContractProductInput] = useState('');
@@ -158,7 +158,6 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
   const [inviteForm, setInviteForm] = useState({ clinic_id: '', email: '', role: 'user' });
   const [sendingInvite, setSendingInvite] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const callbackUrl = buildPublicUrl('/auth/callback');
   const tabRoutes: Record<'overview' | 'clinics' | 'users', string> = {
     overview: '/admin/dashboard',
     clinics: '/admin/clinics',
@@ -197,6 +196,74 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
       .in('role', ['system_owner', 'super_admin', 'one_doctor_admin', 'one_doctor_sales'])
       .order('full_name', { ascending: true });
     setInternalUsers((data || []) as any[]);
+  };
+
+  const refreshUsersAndInvites = async () => {
+    const { data: usersData } = await supabase
+      .from('clinic_users')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (usersData) setClinicUsers(usersData as any[]);
+
+    if (!invitesEnabled) return;
+    const { data: invitesData, error: invitesError } = await (supabase as any)
+      .from('clinic_invites')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (invitesError) {
+      console.warn('Convites indisponíveis (tabela ausente?):', invitesError.message);
+      setInvitesEnabled(false);
+      return;
+    }
+    const linkedByEmailAndClinic = new Set(
+      ((usersData || []) as any[])
+        .filter((u: any) => u?.user_id && u?.email)
+        .map((u: any) => `${String(u.email).trim().toLowerCase()}::${u.clinic_id || ''}`)
+    );
+
+    const visibleInvites = ((invitesData || []) as any[]).filter((invite: any) => {
+      const key = `${String(invite?.email || '').trim().toLowerCase()}::${invite?.clinic_id || ''}`;
+      return !linkedByEmailAndClinic.has(key);
+    });
+
+    setInvites(visibleInvites);
+  };
+
+  const sendClinicAccessEmail = async (params: {
+    email: string;
+    inviteToken?: string;
+    clinicName?: string;
+  }) => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) {
+      throw new Error('Sessão inválida. Faça login novamente.');
+    }
+
+    const response = await fetch('/api/internal/send-clinic-access-email', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(params),
+    });
+    if (response.status === 429) {
+      throw new Error('Bloqueio de segurança do Vercel (HTTP 429). Desative o Security Checkpoint para /api.');
+    }
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const fallback = body?.error || body?.details;
+      if (fallback) throw new Error(fallback);
+      const text = await response.text().catch(() => '');
+      throw new Error(text ? `Falha no envio: ${text}` : 'Não foi possível enviar o acesso.');
+    }
+    return body as {
+      sentEmail?: boolean;
+      actionLink?: string;
+      loginFallback?: string;
+    };
   };
 
   const fetchClinicPackages = async () => {
@@ -600,15 +667,18 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
             console.warn('Erro ao criar usuário da clínica:', userError.message);
             alert(`Clínica criada, mas não foi possível criar o usuário automaticamente: ${userError.message}`);
           } else {
-            const redirectTo = callbackUrl ? `${callbackUrl}?redirectTo=${encodeURIComponent('/')}` : undefined;
-            const otpOptions: { emailRedirectTo?: string; shouldCreateUser: boolean } = { shouldCreateUser: true };
-            if (redirectTo) otpOptions.emailRedirectTo = redirectTo;
-            const { error: otpError } = await supabase.auth.signInWithOtp({
-              email: contactEmail,
-              options: otpOptions,
-            });
-            if (otpError) {
-              alert(`Usuário criado, mas não foi possível enviar o e-mail de acesso: ${otpError.message}`);
+            try {
+              const emailResult = await sendClinicAccessEmail({
+                email: contactEmail,
+                clinicName: createdClinic.name || clinicForm.name || undefined,
+              });
+              if (!emailResult.sentEmail) {
+                alert(
+                  `Usuário criado. Copie e envie manualmente o link de acesso: ${emailResult.actionLink || emailResult.loginFallback || '/login'}`
+                );
+              }
+            } catch (emailErr: any) {
+              alert(`Usuário criado, mas não foi possível enviar o e-mail de acesso: ${emailErr.message}`);
             }
           }
         }
@@ -722,15 +792,15 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
         return;
       }
       if (!confirm(`Reenviar acesso para ${targetEmail}?`)) return;
-      const redirectTo = callbackUrl ? `${callbackUrl}?redirectTo=${encodeURIComponent('/')}` : undefined;
-      const otpOptions: { emailRedirectTo?: string; shouldCreateUser: boolean } = { shouldCreateUser: true };
-      if (redirectTo) otpOptions.emailRedirectTo = redirectTo;
-      const { error } = await supabase.auth.signInWithOtp({
+      const emailResult = await sendClinicAccessEmail({
         email: targetEmail,
-        options: otpOptions,
+        clinicName: clinic.name || undefined,
       });
-      if (error) throw error;
-      alert(`Acesso reenviado para ${targetEmail}.`);
+      if (emailResult.sentEmail) {
+        alert(`Acesso reenviado para ${targetEmail}.`);
+      } else {
+        alert(`Copie e envie manualmente o link de acesso: ${emailResult.actionLink || emailResult.loginFallback || '/login'}`);
+      }
     } catch (err: any) {
       alert('Não foi possível reenviar o acesso: ' + err.message);
     } finally {
@@ -770,15 +840,19 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
         .insert([{ ...userForm, email: normalizedEmail, paginas_liberadas: packagePages }]);
       if (error) throw error;
       if (normalizedEmail) {
-        const redirectTo = callbackUrl ? `${callbackUrl}?redirectTo=${encodeURIComponent('/')}` : undefined;
-        const otpOptions: { emailRedirectTo?: string; shouldCreateUser: boolean } = { shouldCreateUser: true };
-        if (redirectTo) otpOptions.emailRedirectTo = redirectTo;
-        const { error: otpError } = await supabase.auth.signInWithOtp({
-          email: normalizedEmail,
-          options: otpOptions,
-        });
-        if (otpError) {
-          alert('Usuário criado, mas não foi possível enviar o email de acesso: ' + otpError.message);
+        try {
+          const selectedClinic = clinics.find((item) => item.id === clinicId);
+          const emailResult = await sendClinicAccessEmail({
+            email: normalizedEmail,
+            clinicName: selectedClinic?.name || undefined,
+          });
+          if (!emailResult.sentEmail) {
+            alert(
+              `Usuário criado. Copie e envie manualmente o link de acesso: ${emailResult.actionLink || emailResult.loginFallback || '/login'}`
+            );
+          }
+        } catch (emailErr: any) {
+          alert('Usuário criado, mas não foi possível enviar o email de acesso: ' + emailErr.message);
         }
       }
       const { data } = await supabase.from('clinic_users').select('*').order('created_at', { ascending: false });
@@ -828,22 +902,36 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
         .select()
         .single();
       if (error) throw error;
-      const redirectTo = callbackUrl
-        ? `${callbackUrl}?redirectTo=${encodeURIComponent(`/accept-invite?token=${data.token}`)}`
-        : undefined;
-      const otpOptions: { emailRedirectTo?: string; shouldCreateUser: boolean } = { shouldCreateUser: true };
-      if (redirectTo) otpOptions.emailRedirectTo = redirectTo;
-      const { error: inviteEmailError } = await supabase.auth.signInWithOtp({
-        email: inviteEmail,
-        options: otpOptions,
-      });
-      if (inviteEmailError) {
-        alert(`Convite gerado, mas não foi possível enviar o email: ${inviteEmailError.message}. Link: /accept-invite?token=${data.token}`);
-      } else {
-        alert(`Convite enviado por email. Se necessário, use o link /accept-invite?token=${data.token}`);
+      try {
+        const selectedClinic = clinics.find((item) => item.id === inviteForm.clinic_id);
+        const emailResult = await sendClinicAccessEmail({
+          email: inviteEmail,
+          inviteToken: data.token,
+          clinicName: selectedClinic?.name || undefined,
+        });
+        if (!emailResult.sentEmail) {
+          alert(
+            `Convite gerado. Copie e envie manualmente o link: ${emailResult.actionLink || emailResult.loginFallback || `/login?redirectTo=${encodeURIComponent(`/accept-invite?token=${data.token}`)}`}`
+          );
+        } else {
+          alert('Convite enviado por email.');
+        }
+      } catch (emailErr: any) {
+        alert(`Convite gerado, mas não foi possível enviar o email: ${emailErr.message}. Link: /login?redirectTo=${encodeURIComponent(`/accept-invite?token=${data.token}`)}`);
       }
       const { data: inv } = await (supabase as any).from('clinic_invites').select('*').order('created_at', { ascending: false });
-      if (inv) setInvites(inv as any[]);
+      if (inv) {
+        const linkedByEmailAndClinic = new Set(
+          (clinicUsers || [])
+            .filter((u: any) => u?.user_id && u?.email)
+            .map((u: any) => `${String(u.email).trim().toLowerCase()}::${u.clinic_id || ''}`)
+        );
+        const visibleInvites = (inv as any[]).filter((invite: any) => {
+          const key = `${String(invite?.email || '').trim().toLowerCase()}::${invite?.clinic_id || ''}`;
+          return !linkedByEmailAndClinic.has(key);
+        });
+        setInvites(visibleInvites as any[]);
+      }
       setInviteForm({ clinic_id: '', email: '', role: 'user' });
       setShowInviteModal(false);
     } catch (err: any) {
@@ -925,19 +1013,21 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     fetchPackages();
     fetchClinicPackages();
     fetchInternalUsers();
-    supabase.from('clinic_users').select('*').order('created_at', { ascending: false }).then(({ data }) => {
-      if (data) setClinicUsers(data as any[]);
-    });
-    (supabase as any).from('clinic_invites').select('*').order('created_at', { ascending: false }).then(({ data, error }: any) => {
-      if (error) {
-        console.warn('Convites indisponíveis (tabela ausente?):', error.message);
-        setInvitesEnabled(false);
-        return;
-      }
-      setInvites(data as any[] || []);
-    });
+    refreshUsersAndInvites();
     supabase.auth.getSession().then(({ data }) => setCurrentUserId(data.session?.user.id || null));
   }, []);
+
+  useEffect(() => {
+    if (tab !== 'users') return;
+    refreshUsersAndInvites();
+    const onFocus = () => refreshUsersAndInvites();
+    window.addEventListener('focus', onFocus);
+    const intervalId = window.setInterval(() => refreshUsersAndInvites(), 10000);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      window.clearInterval(intervalId);
+    };
+  }, [tab, invitesEnabled]);
 
   useEffect(() => {
     return () => {
@@ -1016,7 +1106,10 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
             Usuários
           </button>
           <button
-            onClick={fetchClinics}
+            onClick={() => {
+              fetchClinics();
+              if (tab === 'users') refreshUsersAndInvites();
+            }}
             className="px-4 py-2 bg-white border border-gray-200 rounded-lg flex items-center gap-2 text-sm text-gray-700 hover:bg-gray-50"
           >
             <RefreshCw size={16} /> Atualizar

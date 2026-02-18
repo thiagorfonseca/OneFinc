@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { acceptInvite } from '../lib/organization';
 
 const AcceptInvite: React.FC = () => {
   const [params] = useSearchParams();
@@ -24,7 +23,19 @@ const AcceptInvite: React.FC = () => {
         return;
       }
       try {
-        await acceptInvite(token, session.user.id);
+        const response = await fetch('/api/public/resolve-clinic-membership', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ inviteToken: token }),
+        });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(body?.error || body?.details || 'Erro ao aceitar convite.');
+        }
         setStatus('success');
         setMessage('Convite aceito com sucesso! Redirecionando...');
         setTimeout(() => setRedirect(true), 1200);

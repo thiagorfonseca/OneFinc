@@ -51,7 +51,8 @@ const uploadProfileAvatar = async (userId: string, file: File) => {
 };
 
 const Profile: React.FC = () => {
-  const { user, profile, clinicUser, refresh } = useAuth();
+  const { user, profile, clinicUser, refresh, isSystemAdmin, isOneDoctorInternal } = useAuth();
+  const canSyncGoogleCalendar = isSystemAdmin || isOneDoctorInternal;
   const [fullName, setFullName] = useState(profile?.full_name || '');
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
@@ -216,6 +217,10 @@ const Profile: React.FC = () => {
   const handleSaveCalendar = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!user) return;
+    if (!canSyncGoogleCalendar) {
+      setCalendarMessage('Sincronização com Google Calendar disponível apenas para o time One Doctor.');
+      return;
+    }
     if (calendarLinkError) {
       setCalendarMessage(calendarLinkError);
       return;
@@ -239,6 +244,10 @@ const Profile: React.FC = () => {
 
   const handleConnectGoogle = async () => {
     if (!user?.id) return;
+    if (!canSyncGoogleCalendar) {
+      setCalendarMessage('Sincronização com Google Calendar disponível apenas para o time One Doctor.');
+      return;
+    }
     if (calendarLinkError) {
       setCalendarMessage(calendarLinkError);
       return;
@@ -405,57 +414,66 @@ const Profile: React.FC = () => {
           </button>
         </form>
 
-        <form onSubmit={handleSaveCalendar} className="bg-white border border-gray-100 rounded-xl p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-gray-800">Google Calendar</h2>
-          <p className="text-sm text-gray-500">
-            Conecte seu calendário para sincronizar a agenda do consultor.
-          </p>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Link do Google Calendar</label>
-            <input
-              type="text"
-              value={googleCalendarLink}
-              onChange={(e) => setGoogleCalendarLink(e.target.value)}
-              placeholder="Cole o link compartilhado do Google Calendar"
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500"
-            />
-            <p className="mt-2 text-xs text-gray-500">
-              Aceita: link de embed com `src=`, link com `cid=` ou o e-mail do calendário.
+        {canSyncGoogleCalendar ? (
+          <form onSubmit={handleSaveCalendar} className="bg-white border border-gray-100 rounded-xl p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-gray-800">Google Calendar</h2>
+            <p className="text-sm text-gray-500">
+              Conecte seu calendário para sincronizar a agenda do consultor.
             </p>
-            {calendarLinkPreviewId && (
-              <p className="mt-1 text-xs text-gray-600">Calendar ID detectado: {calendarLinkPreviewId}</p>
-            )}
-            {calendarLinkError && (
-              <p className="mt-1 text-xs text-red-600">{calendarLinkError}</p>
-            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Link do Google Calendar</label>
+              <input
+                type="text"
+                value={googleCalendarLink}
+                onChange={(e) => setGoogleCalendarLink(e.target.value)}
+                placeholder="Cole o link compartilhado do Google Calendar"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500"
+              />
+              <p className="mt-2 text-xs text-gray-500">
+                Aceita: link de embed com `src=`, link com `cid=` ou o e-mail do calendário.
+              </p>
+              {calendarLinkPreviewId && (
+                <p className="mt-1 text-xs text-gray-600">Calendar ID detectado: {calendarLinkPreviewId}</p>
+              )}
+              {calendarLinkError && (
+                <p className="mt-1 text-xs text-red-600">{calendarLinkError}</p>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span className={`px-2 py-1 rounded-full text-xs ${googleConnected ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                {googleConnected ? 'Conectado' : 'Não conectado'}
+              </span>
+              {googleCalendarId ? (
+                <span className="text-xs text-gray-500">Calendar ID: {googleCalendarId}</span>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="submit"
+                disabled={savingCalendar || !!calendarLinkError}
+                className="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                {savingCalendar ? 'Salvando...' : 'Salvar link'}
+              </button>
+              <button
+                type="button"
+                onClick={handleConnectGoogle}
+                disabled={!!calendarLinkError}
+                className="px-4 py-2 rounded-lg text-sm bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-60"
+              >
+                Conectar Google Calendar
+              </button>
+            </div>
+            {calendarMessage && <p className="text-xs text-gray-600">{calendarMessage}</p>}
+          </form>
+        ) : (
+          <div className="bg-white border border-gray-100 rounded-xl p-6 space-y-2">
+            <h2 className="text-lg font-semibold text-gray-800">Google Calendar</h2>
+            <p className="text-sm text-gray-500">
+              A sincronização com Google Calendar está disponível apenas para o time One Doctor.
+            </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span className={`px-2 py-1 rounded-full text-xs ${googleConnected ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-              {googleConnected ? 'Conectado' : 'Não conectado'}
-            </span>
-            {googleCalendarId ? (
-              <span className="text-xs text-gray-500">Calendar ID: {googleCalendarId}</span>
-            ) : null}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="submit"
-              disabled={savingCalendar || !!calendarLinkError}
-              className="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-            >
-              {savingCalendar ? 'Salvando...' : 'Salvar link'}
-            </button>
-            <button
-              type="button"
-              onClick={handleConnectGoogle}
-              disabled={!!calendarLinkError}
-              className="px-4 py-2 rounded-lg text-sm bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-60"
-            >
-              Conectar Google Calendar
-            </button>
-          </div>
-          {calendarMessage && <p className="text-xs text-gray-600">{calendarMessage}</p>}
-        </form>
+        )}
       </div>
 
       <div className="bg-white border border-gray-100 rounded-xl p-6 space-y-3">

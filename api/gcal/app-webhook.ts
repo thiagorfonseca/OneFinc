@@ -3,6 +3,13 @@ import { readJson } from '../_utils/http.js';
 import { getCalendarClientForConsultant, loadConsultantProfile } from '../_utils/gcal.js';
 import { supabaseAdmin } from '../_utils/supabase.js';
 
+const toGoogleRecurrence = (rule?: string | null) => {
+  const trimmed = (rule || '').trim();
+  if (!trimmed) return null;
+  const normalized = trimmed.toUpperCase().startsWith('RRULE:') ? trimmed : `RRULE:${trimmed}`;
+  return [normalized];
+};
+
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST']);
 
@@ -39,6 +46,7 @@ export default async function handler(req: any, res: any) {
     const descriptionParts = [scheduleEvent.description, scheduleEvent.meeting_url ? `Meeting: ${scheduleEvent.meeting_url}` : null]
       .filter(Boolean)
       .join('\n');
+    const recurrence = toGoogleRecurrence(scheduleEvent.recurrence_rule);
 
     const googleEventPayload = {
       summary: scheduleEvent.title,
@@ -57,7 +65,12 @@ export default async function handler(req: any, res: any) {
           appEventId: scheduleEvent.id,
         },
       },
+      recurrence: recurrence || undefined,
     } as any;
+
+    if (action === 'update' && !recurrence) {
+      googleEventPayload.recurrence = [];
+    }
 
     let googleEventId = scheduleEvent.google_event_id || null;
     let googleEtag = scheduleEvent.google_etag || null;

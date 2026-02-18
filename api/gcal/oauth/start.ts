@@ -1,6 +1,6 @@
 import { badRequest, json, methodNotAllowed, unauthorized } from '../../_utils/http.js';
 import { buildAuthUrl, loadConsultantProfile, signState } from '../../_utils/gcal.js';
-import { resolveAuthUser, requireInternalUser } from '../../_utils/auth.js';
+import { isInternalRole, requireInternalUser } from '../../_utils/auth.js';
 
 const getQueryValue = (value?: string | string[]) => (Array.isArray(value) ? value[0] : value) || '';
 
@@ -11,14 +11,13 @@ export default async function handler(req: any, res: any) {
   const returnTo = getQueryValue(req.query?.return_to || req.query?.redirect_to);
   if (!consultorId) return badRequest(res, 'Informe consultor_id.');
 
-  const auth = await resolveAuthUser(req);
-  if (!auth) return unauthorized(res, 'Acesso não autorizado.');
-  if (auth.userId !== consultorId) {
-    const internal = await requireInternalUser(req);
-    if (!internal) return unauthorized(res, 'Acesso não autorizado.');
-  }
+  const internal = await requireInternalUser(req);
+  if (!internal) return unauthorized(res, 'Acesso restrito ao time One Doctor.');
 
   const profile = await loadConsultantProfile(consultorId);
+  if (!profile || !isInternalRole(profile.role)) {
+    return unauthorized(res, 'Somente usuários do time One Doctor podem conectar o Google Calendar.');
+  }
   const safeReturnTo = returnTo && returnTo.startsWith('/') ? returnTo : '';
   const state = signState({
     consultor_id: consultorId,

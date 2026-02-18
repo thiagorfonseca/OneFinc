@@ -1,6 +1,7 @@
 import React from 'react';
 import { CalendarClock, Link as LinkIcon, MapPin, Sparkles } from 'lucide-react';
 import { useModalControls } from '../../hooks/useModalControls';
+import { describeRecurrenceOption, type RecurrenceOption } from '../../src/lib/scheduling/recurrence';
 import type { SuggestedSlot } from '../../src/lib/scheduling/types';
 
 export type EventFormState = {
@@ -11,6 +12,7 @@ export type EventFormState = {
   timezone: string;
   location: string;
   meeting_url: string;
+  recurrence: RecurrenceOption;
 };
 
 type ClinicOption = {
@@ -105,6 +107,21 @@ const EventModal: React.FC<EventModalProps> = ({
               onChange={(e) => onChange({ end: e.target.value })}
               className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg"
             />
+          </div>
+          <div className="md:col-span-2">
+            <label className="text-sm font-medium text-gray-700">Repetição</label>
+            <select
+              value={form.recurrence}
+              onChange={(e) => onChange({ recurrence: e.target.value as RecurrenceOption })}
+              className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg bg-white"
+            >
+              <option value="none">{describeRecurrenceOption('none', form.start || undefined)}</option>
+              <option value="daily">{describeRecurrenceOption('daily', form.start || undefined)}</option>
+              <option value="weekly">{describeRecurrenceOption('weekly', form.start || undefined)}</option>
+              <option value="monthly">{describeRecurrenceOption('monthly', form.start || undefined)}</option>
+              <option value="yearly">{describeRecurrenceOption('yearly', form.start || undefined)}</option>
+              <option value="weekdays">{describeRecurrenceOption('weekdays', form.start || undefined)}</option>
+            </select>
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700">Fuso horário</label>

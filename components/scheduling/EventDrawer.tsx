@@ -1,6 +1,7 @@
 import React from 'react';
 import { Calendar, Link as LinkIcon, MapPin, Users } from 'lucide-react';
 import { useModalControls } from '../../hooks/useModalControls';
+import { describeRecurrenceRule } from '../../src/lib/scheduling/recurrence';
 import type { ScheduleChangeRequest, ScheduleEventAttendee, ScheduleEventForClinic, ScheduleEventWithAttendees } from '../../src/lib/scheduling/types';
 
 type EventDrawerProps = {
@@ -96,6 +97,11 @@ const EventDrawer: React.FC<EventDrawerProps> = ({
             <div>
               <p>{startLabel}</p>
               <p className="text-xs text-gray-500">Até {endLabel}</p>
+              {event.recurrence_rule && (
+                <p className="text-xs text-brand-700 mt-1">
+                  {describeRecurrenceRule(event.recurrence_rule, event.start_at)}
+                </p>
+              )}
             </div>
           </div>
           {event.location && (

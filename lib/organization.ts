@@ -36,7 +36,7 @@ export async function revokeMember(id: string) {
   if (error) throw error;
 }
 
-export async function acceptInvite(token: string, _user_id: string) {
+export async function acceptInvite(token: string, user: { id: string; email?: string | null }) {
   const { data: invite, error } = await (supabase as any)
     .from('clinic_invites')
     .select('*')
@@ -47,15 +47,44 @@ export async function acceptInvite(token: string, _user_id: string) {
   if (!invite) throw new Error('Convite inválido ou expirado');
 
   const inviteEmail = (invite as any).email?.trim().toLowerCase();
-  const { error: joinError } = await supabase.from('clinic_users').insert({
+  if (!inviteEmail) {
+    throw new Error('Convite inválido: e-mail do convite não encontrado.');
+  }
+  const authEmail = user.email?.trim().toLowerCase();
+  if (authEmail && inviteEmail && authEmail !== inviteEmail) {
+    throw new Error('Este convite foi enviado para outro e-mail. Faça login com o e-mail convidado.');
+  }
+
+  const { data: existingByEmail } = await supabase
+    .from('clinic_users')
+    .select('*')
+    .eq('email', inviteEmail)
+    .maybeSingle();
+
+  const payload = {
     clinic_id: (invite as any).clinic_id,
-    email: inviteEmail,
-    name: inviteEmail?.split('@')[0] || 'Usuário',
     role: (invite as any).role,
     ativo: true,
-    user_id: _user_id,
-  });
-  if (joinError) throw joinError;
+    user_id: user.id,
+  };
+
+  if (existingByEmail) {
+    const { error: updateError } = await supabase
+      .from('clinic_users')
+      .update({
+        ...payload,
+        name: existingByEmail.name || inviteEmail?.split('@')[0] || 'Usuário',
+      })
+      .eq('id', existingByEmail.id);
+    if (updateError) throw updateError;
+  } else {
+    const { error: joinError } = await supabase.from('clinic_users').insert({
+      ...payload,
+      email: inviteEmail,
+      name: inviteEmail?.split('@')[0] || 'Usuário',
+    });
+    if (joinError) throw joinError;
+  }
 
   await (supabase as any).from('clinic_invites').delete().eq('id', (invite as any).id);
   return invite;

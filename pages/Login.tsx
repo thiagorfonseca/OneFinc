@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { buildPublicUrl } from '../lib/utils';
 
 const Login: React.FC = () => {
@@ -10,7 +10,14 @@ const Login: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSignUp, setIsSignUp] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const callbackUrl = buildPublicUrl('/auth/callback');
+  const redirectToParam = new URLSearchParams(location.search).get('redirectTo') || '/';
+  const safeRedirectTo =
+    redirectToParam.startsWith('/') && !redirectToParam.startsWith('//') ? redirectToParam : '/';
+  const callbackUrlWithRedirect = callbackUrl
+    ? `${callbackUrl}?redirectTo=${encodeURIComponent(safeRedirectTo)}`
+    : undefined;
   const resetRedirectUrl = buildPublicUrl('/auth/reset');
   const trimmedEmail = email.trim();
   const canUseEmail = trimmedEmail.length > 0;
@@ -27,7 +34,7 @@ const Login: React.FC = () => {
           email: trimmedEmail,
           password,
           options: {
-            emailRedirectTo: callbackUrl,
+            emailRedirectTo: callbackUrlWithRedirect || callbackUrl,
           },
         });
         if (error) throw error;
@@ -62,7 +69,7 @@ const Login: React.FC = () => {
           password,
         });
         if (error) throw error;
-        navigate('/');
+        navigate(safeRedirectTo);
       }
     } catch (err: any) {
       setError(err.message);
@@ -78,7 +85,7 @@ const Login: React.FC = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: callbackUrl,
+          redirectTo: callbackUrlWithRedirect || callbackUrl,
           queryParams: { prompt: 'consent' },
         }
       });
@@ -96,7 +103,10 @@ const Login: React.FC = () => {
       setError(null);
       const { error } = await supabase.auth.signInWithOtp({
         email: trimmedEmail,
-        options: { emailRedirectTo: callbackUrl, shouldCreateUser: true }
+        options: {
+          emailRedirectTo: callbackUrlWithRedirect || callbackUrl,
+          shouldCreateUser: true,
+        }
       });
       if (error) setError('Erro ao enviar magic link: ' + error.message);
       else alert('Enviamos um link de acesso para o seu email.');

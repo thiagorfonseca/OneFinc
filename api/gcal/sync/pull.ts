@@ -1,10 +1,13 @@
-import { badRequest, methodNotAllowed, serverError } from '../../_utils/http.js';
+import { badRequest, methodNotAllowed, serverError, unauthorized } from '../../_utils/http.js';
 import { readJson } from '../../_utils/http.js';
 import { findSyncStateByChannel, getCalendarClientForConsultant, syncGoogleEvents, updateSyncState } from '../../_utils/gcal.js';
+import { isInternalRole, requireInternalUser } from '../../_utils/auth.js';
 import { supabaseAdmin } from '../../_utils/supabase.js';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST']);
+  const internal = await requireInternalUser(req);
+  if (!internal) return unauthorized(res, 'Acesso restrito ao time One Doctor.');
 
   try {
     const body = await readJson<any>(req);
@@ -25,6 +28,14 @@ export default async function handler(req: any, res: any) {
     }
 
     if (!syncState) return badRequest(res, 'Sync state não encontrado.');
+    const { data: consultantProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('role')
+      .eq('id', syncState.consultor_id)
+      .maybeSingle();
+    if (!isInternalRole(consultantProfile?.role)) {
+      return unauthorized(res, 'Sincronização Google permitida apenas para usuários One Doctor.');
+    }
 
     const { calendar } = await getCalendarClientForConsultant(syncState.consultor_id);
     const calendarId = syncState.google_calendar_id || null;

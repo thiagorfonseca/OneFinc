@@ -1,5 +1,6 @@
 import { badRequest, methodNotAllowed, serverError } from '../../_utils/http.js';
 import { APP_URL } from '../../_utils/env.js';
+import { isInternalRole } from '../../_utils/auth.js';
 import {
   extractCalendarId,
   getCalendarClientForConsultant,
@@ -41,6 +42,9 @@ export default async function handler(req: any, res: any) {
     const { calendar } = await getCalendarClientForConsultant(consultorId);
 
     const profile = await loadConsultantProfile(consultorId);
+    if (!profile || !isInternalRole(profile.role)) {
+      return badRequest(res, 'Conexão Google permitida apenas para o time One Doctor.');
+    }
     const candidate = extractCalendarId(profile?.google_calendar_link || profile?.google_calendar_id || null);
     const calendarId = await resolveCalendarId(calendar, candidate);
 

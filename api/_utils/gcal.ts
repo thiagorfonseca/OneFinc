@@ -135,7 +135,7 @@ export const extractCalendarId = (link?: string | null) => {
 export const loadConsultantProfile = async (consultorId: string) => {
   const { data } = await supabaseAdmin
     .from('profiles')
-    .select('id, clinic_id, google_calendar_link, google_calendar_id, google_connected')
+    .select('id, role, clinic_id, google_calendar_link, google_calendar_id, google_connected')
     .eq('id', consultorId)
     .maybeSingle();
   return data || null;

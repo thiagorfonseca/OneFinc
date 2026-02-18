@@ -2,6 +2,8 @@ import { supabaseAdmin } from './supabase.js';
 
 const INTERNAL_ROLES = new Set(['system_owner', 'super_admin', 'one_doctor_admin', 'one_doctor_sales']);
 
+export const isInternalRole = (role?: string | null) => Boolean(role && INTERNAL_ROLES.has(role));
+
 const parseBearerToken = (req: any) => {
   const authHeader = req.headers?.authorization || req.headers?.Authorization || '';
   if (!authHeader.toString().startsWith('Bearer ')) return null;
@@ -28,7 +30,7 @@ export const requireInternalUser = async (req: any) => {
     .maybeSingle();
 
   const role = profile?.role || null;
-  if (!role || !INTERNAL_ROLES.has(role)) return null;
+  if (!isInternalRole(role)) return null;
   return { userId, role };
 };
 
@@ -44,7 +46,7 @@ export const requireClinicAccess = async (req: any, clinicId: string) => {
     .maybeSingle();
 
   const role = profile?.role || null;
-  if (role && INTERNAL_ROLES.has(role)) {
+  if (isInternalRole(role)) {
     return { userId: auth.userId, role, clinicId: profile?.clinic_id || null, isInternal: true };
   }
 
