@@ -36,6 +36,10 @@ const parseSplit = () => {
 };
 
 const buildDueDate = () => new Date().toISOString().split('T')[0];
+const isOwnWalletSplitError = (err: any) => {
+  const message = String(err?.message || '').toLowerCase();
+  return message.includes('split') && message.includes('carteira') && (message.includes('própria') || message.includes('propria'));
+};
 
 const loadLatestPayload = async (proposalId: string) => {
   const { data } = await supabaseAdmin
@@ -85,19 +89,32 @@ const ensurePaymentForProposal = async (proposal: any) => {
 
   const billingType = pickBillingType(proposal.payment_methods);
 
-  const payment = await createPayment(
-    { apiKey: ASAAS_API_KEY, env: ASAAS_ENV },
-    {
-      customerId: customer.id,
-      billingType: billingType as any,
-      value: (proposal.amount_cents || 0) / 100,
-      dueDate: buildDueDate(),
-      installmentCount: billingType === 'CREDIT_CARD' ? proposal.installments || 1 : undefined,
-      split: parseSplit(),
-      description: proposal.title || 'Proposta OneDoctor',
-      externalReference: proposal.id,
-    }
-  );
+  const split = parseSplit();
+  const paymentPayload = {
+    customerId: customer.id,
+    billingType: billingType as any,
+    value: (proposal.amount_cents || 0) / 100,
+    dueDate: buildDueDate(),
+    installmentCount: billingType === 'CREDIT_CARD' ? proposal.installments || 1 : undefined,
+    description: proposal.title || 'Proposta OneDoctor',
+    externalReference: proposal.id,
+  };
+  let payment;
+  try {
+    payment = await createPayment(
+      { apiKey: ASAAS_API_KEY, env: ASAAS_ENV },
+      {
+        ...paymentPayload,
+        ...(split.length ? { split } : {}),
+      }
+    );
+  } catch (err) {
+    if (!split.length || !isOwnWalletSplitError(err)) throw err;
+    payment = await createPayment(
+      { apiKey: ASAAS_API_KEY, env: ASAAS_ENV },
+      paymentPayload
+    );
+  }
 
   const invoiceUrl = payment?.invoiceUrl || payment?.invoice_url || payment?.bankSlipUrl || null;
 
