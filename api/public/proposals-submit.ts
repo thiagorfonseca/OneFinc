@@ -64,6 +64,8 @@ const parseSplit = () => {
   }
 };
 
+const buildDueDate = () => new Date().toISOString().split('T')[0];
+
 const getContractHtml = async (contractTemplateId: string | null, fallback: string) => {
   if (!contractTemplateId) return fallback;
   const { data } = await supabaseAdmin
@@ -241,6 +243,7 @@ const ensurePayment = async (proposal: any, payload: any) => {
       customerId: customer.id,
       billingType: billingType as any,
       value: (proposal.amount_cents || 0) / 100,
+      dueDate: buildDueDate(),
       installmentCount: billingType === 'CREDIT_CARD' ? proposal.installments || 1 : undefined,
       split: parseSplit(),
       description: proposal.title || 'Proposta OneDoctor',

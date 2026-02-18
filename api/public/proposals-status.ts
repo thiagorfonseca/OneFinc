@@ -35,6 +35,8 @@ const parseSplit = () => {
   }
 };
 
+const buildDueDate = () => new Date().toISOString().split('T')[0];
+
 const loadLatestPayload = async (proposalId: string) => {
   const { data } = await supabaseAdmin
     .from('od_proposal_form_submissions')
@@ -89,6 +91,7 @@ const ensurePaymentForProposal = async (proposal: any) => {
       customerId: customer.id,
       billingType: billingType as any,
       value: (proposal.amount_cents || 0) / 100,
+      dueDate: buildDueDate(),
       installmentCount: billingType === 'CREDIT_CARD' ? proposal.installments || 1 : undefined,
       split: parseSplit(),
       description: proposal.title || 'Proposta OneDoctor',
