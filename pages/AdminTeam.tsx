@@ -117,11 +117,27 @@ const AdminTeam: React.FC = () => {
   const callbackUrl = buildPublicUrl('/auth/callback');
   const adminPagesRef = useRef<HTMLDetailsElement | null>(null);
 
+  const hydrateAvatars = async (rows: any[]) => {
+    const ids = rows.map((row) => row.id).filter(Boolean);
+    if (!ids.length) return rows;
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, avatar_url')
+      .in('id', ids);
+    if (!data || !data.length) return rows;
+    const avatarMap = new Map(data.map((item: any) => [item.id, item.avatar_url]));
+    return rows.map((row) => ({
+      ...row,
+      avatar_url: avatarMap.get(row.id) || row.avatar_url || null,
+    }));
+  };
+
   const fetchMembers = async () => {
     const { data, error: membersError } = await (supabase as any)
       .rpc('list_system_admins');
     if (!membersError && data) {
-      setMembers(data as any[]);
+      const hydrated = await hydrateAvatars(data as any[]);
+      setMembers(hydrated as any[]);
       return;
     }
     const { data: fallback, error: fallbackError } = await supabase
