@@ -50,10 +50,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     },
     {
       name: 'Financeiro',
-      href: '/',
+      href: '/app',
       icon: Wallet,
       children: [
-        { name: 'Dash Financeiro', href: '/', icon: LayoutDashboard },
+        { name: 'Dash Financeiro', href: '/app', icon: LayoutDashboard },
         { name: 'Relatório de Atendimento', href: '/reports/attendance', icon: ClipboardList },
         { name: 'Receitas', href: '/incomes', icon: TrendingUp },
         { name: 'Despesas', href: '/expenses', icon: TrendingDown },
@@ -236,7 +236,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <div className="h-full flex flex-col">
           <div className="sticky top-0 z-10 relative h-20 flex items-center px-6 border-b border-gray-100 bg-white">
             <Link
-              to="/"
+              to="/app"
               className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 text-brand-600 font-bold text-xl"
               aria-label="Ir para a página inicial"
             >

@@ -47,7 +47,7 @@ const AcceptInvite: React.FC = () => {
     run();
   }, [token]);
 
-  if (redirect) return <Navigate to="/" replace />;
+  if (redirect) return <Navigate to="/app" replace />;
 
   if (status === 'need-auth') {
     return (

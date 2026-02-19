@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Plus, Loader2, X, Package as PackageIcon } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { formatCurrency } from '../lib/utils';
 import { useModalControls } from '../hooks/useModalControls';
 
 type PackageForm = {
   name: string;
   description: string;
+  price: string;
   pages: string[];
   courseIds: string[];
   trainingIds: string[];
@@ -52,6 +54,7 @@ const PAGE_OPTIONS = [
 const emptyForm: PackageForm = {
   name: '',
   description: '',
+  price: '',
   pages: [],
   courseIds: [],
   trainingIds: [],
@@ -85,6 +88,19 @@ const AdminPackages: React.FC = () => {
   const [savingClinicPackages, setSavingClinicPackages] = useState(false);
 
   const pageLabelMap = useMemo(() => Object.fromEntries(PAGE_OPTIONS.map((p) => [p.value, p.label])), []);
+
+  const parseAmountToCents = (value: string) => {
+    if (!value) return null;
+    const normalized = value.replace(/\./g, '').replace(',', '.');
+    const num = Number(normalized);
+    if (Number.isNaN(num)) return null;
+    return Math.round(num * 100);
+  };
+
+  const formatCentsToInput = (value?: number | null) => {
+    if (!value && value !== 0) return '';
+    return (value / 100).toFixed(2).replace('.', ',');
+  };
 
   const loadPackages = async () => {
     const { data, error: loadError } = await (supabase as any)
@@ -188,6 +204,7 @@ const AdminPackages: React.FC = () => {
     setForm({
       name: pkg.name || '',
       description: pkg.description || '',
+      price: formatCentsToInput(pkg.price_cents),
       pages: pkg.pages || [],
       courseIds: [],
       trainingIds: [],
@@ -225,6 +242,7 @@ const AdminPackages: React.FC = () => {
       const payload = {
         name: form.name.trim(),
         description: form.description.trim(),
+        price_cents: parseAmountToCents(form.price),
         pages: form.pages,
       };
       let packageId = editingPackageId;
@@ -395,6 +413,11 @@ const AdminPackages: React.FC = () => {
                 <div>
                   <h3 className="text-lg font-semibold text-gray-800">{pkg.name}</h3>
                   {pkg.description && <p className="text-sm text-gray-500">{pkg.description}</p>}
+                  <p className="text-sm text-gray-700 mt-2">
+                    {pkg.price_cents !== null && pkg.price_cents !== undefined
+                      ? formatCurrency(pkg.price_cents / 100)
+                      : 'Sob consulta'}
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button onClick={() => handleEditPackage(pkg)} className="text-sm text-brand-600">Editar</button>
@@ -449,6 +472,15 @@ const AdminPackages: React.FC = () => {
                   onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
                   rows={3}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Preço mensal (R$)</label>
+                <input
+                  value={form.price}
+                  onChange={(e) => setForm((prev) => ({ ...prev, price: e.target.value }))}
+                  placeholder="0,00"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
                 />
               </div>
               <div>

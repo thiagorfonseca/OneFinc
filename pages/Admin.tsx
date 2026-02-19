@@ -1328,7 +1328,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
                         <button
                           onClick={() => {
                             setSelectedClinicId(clinic.id);
-                            navigate('/');
+                            navigate('/app');
                           }}
                           className="text-sm text-emerald-600"
                         >
@@ -1414,7 +1414,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
                         <button
                           onClick={() => {
                             setSelectedClinicId(clinic.id);
-                            navigate('/');
+                            navigate('/app');
                           }}
                           className="text-sm text-emerald-600"
                         >

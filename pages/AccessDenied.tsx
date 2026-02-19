@@ -8,7 +8,7 @@ const AccessDenied: React.FC = () => {
         <h1 className="text-2xl font-bold text-gray-800">Acesso negado</h1>
         <p className="text-gray-600">Você não tem permissão para acessar esta página.</p>
         <div className="flex justify-center gap-3 text-sm">
-          <Link to="/" className="px-4 py-2 rounded-lg bg-brand-600 text-white hover:bg-brand-700">Ir para o início</Link>
+          <Link to="/app" className="px-4 py-2 rounded-lg bg-brand-600 text-white hover:bg-brand-700">Ir para o início</Link>
           <Link to="/login" className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50">Login</Link>
         </div>
       </div>

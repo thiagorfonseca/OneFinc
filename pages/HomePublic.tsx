@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import PublicHeader from '../components/public/PublicHeader';
 
 const HomePublic: React.FC = () => {
   return (
@@ -8,18 +9,7 @@ const HomePublic: React.FC = () => {
         <div className="absolute -top-32 -right-32 h-80 w-80 rounded-full bg-amber-200/40 blur-3xl" />
         <div className="absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-slate-200/60 blur-3xl" />
         <div className="max-w-6xl mx-auto px-6 py-14">
-          <header className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <img
-                src="/controle-clinic-logo-pto.png"
-                alt="Controle Clinic"
-                className="w-[200px] h-auto object-contain"
-              />
-            </div>
-            <Link to="/login" className="text-sm text-slate-600 underline">
-              Acessar conta
-            </Link>
-          </header>
+          <PublicHeader />
 
           <main className="mt-12 grid gap-10 lg:grid-cols-[1.2fr_0.8fr] items-center">
             <div style={{ fontFamily: 'Manrope, ui-sans-serif, system-ui, sans-serif' }}>
@@ -31,18 +21,24 @@ const HomePublic: React.FC = () => {
                 Tudo em um só painel, com integrações e automações para reduzir retrabalho.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <Link
-                  to="/login"
+                <a
+                  href="https://app.controleclinic.com.br/login"
                   className="px-5 py-3 rounded-xl bg-slate-900 text-white text-sm font-semibold"
                 >
-                  Entrar na plataforma
-                </Link>
+                  Acessar a plataforma
+                </a>
                 <a
                   href="mailto:suporte@controleclinic.com.br"
                   className="px-5 py-3 rounded-xl border border-slate-300 text-sm font-semibold text-slate-700"
                 >
                   Falar com suporte
                 </a>
+                <Link
+                  to="/precos"
+                  className="px-5 py-3 rounded-xl border border-slate-300 text-sm font-semibold text-slate-700"
+                >
+                  Ver preços e planos
+                </Link>
               </div>
             </div>
 
@@ -68,6 +64,36 @@ const HomePublic: React.FC = () => {
               </div>
             </div>
           </main>
+
+          <section className="mt-16 grid gap-6 md:grid-cols-3">
+            {[
+              {
+                title: 'Solução completa',
+                description: 'Fluxos integrados de agenda, cobrança, contratos e desempenho em um só lugar.',
+                link: '/solucao',
+              },
+              {
+                title: 'Planos flexíveis',
+                description: 'Escolha o pacote ideal para o estágio da sua clínica e evolua quando quiser.',
+                link: '/precos',
+              },
+              {
+                title: 'Conteúdos estratégicos',
+                description: 'Materiais gratuitos e blog com insights para gestão e crescimento.',
+                link: '/conteudos',
+              },
+            ].map((card) => (
+              <Link
+                key={card.title}
+                to={card.link}
+                className="group rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm hover:shadow-md transition"
+              >
+                <h4 className="text-base font-semibold text-slate-900 group-hover:text-brand-700">{card.title}</h4>
+                <p className="mt-2 text-sm text-slate-600">{card.description}</p>
+                <span className="mt-4 inline-flex text-sm text-brand-600">Saiba mais</span>
+              </Link>
+            ))}
+          </section>
 
           <section className="mt-14 grid gap-6 md:grid-cols-3 text-sm text-slate-600">
             <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">

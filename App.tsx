@@ -18,6 +18,9 @@ const Login = lazy(() => import('./pages/Login'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const TermsOfService = lazy(() => import('./pages/TermsOfService'));
 const HomePublic = lazy(() => import('./pages/HomePublic'));
+const PublicSolution = lazy(() => import('./pages/PublicSolution'));
+const PublicPricing = lazy(() => import('./pages/PublicPricing'));
+const PublicContents = lazy(() => import('./pages/PublicContents'));
 const BankAccounts = lazy(() => import('./pages/BankAccounts'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Admin = lazy(() => import('./pages/Admin'));
@@ -96,6 +99,9 @@ function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/home" element={<HomePublic />} />
+            <Route path="/solucao" element={<PublicSolution />} />
+            <Route path="/precos" element={<PublicPricing />} />
+            <Route path="/conteudos" element={<PublicContents />} />
             <Route path="/politica-de-privacidade" element={<PrivacyPolicy />} />
             <Route path="/termos-de-servico" element={<TermsOfService />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
@@ -110,7 +116,9 @@ function App() {
             <Route path="/pagamento/sucesso" element={<PublicPaymentSuccess />} />
             <Route path="/pagamento/erro" element={<PublicPaymentError />} />
 
-            <Route path="/" element={
+            <Route path="/" element={<HomePublic />} />
+
+            <Route path="/app" element={
               <ProtectedRoute page="/">
                 <Dashboard />
               </ProtectedRoute>

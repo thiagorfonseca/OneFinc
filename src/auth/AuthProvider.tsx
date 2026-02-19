@@ -298,6 +298,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleaned = trimmed === '/' ? '/' : trimmed.replace(/\/+$/, '');
     const withSlash = cleaned.startsWith('/') ? cleaned : `/${cleaned}`;
     switch (withSlash) {
+      case '/app':
       case '/dashboard':
         return '/';
       case '/receitas':
