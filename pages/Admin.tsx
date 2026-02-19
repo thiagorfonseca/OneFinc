@@ -67,6 +67,9 @@ const getClinicInitials = (name: string) => {
 
 const onlyDigits = (value: string) => value.replace(/\D/g, '');
 
+const INTERNAL_TEAM_ROLES = new Set(['one_doctor_admin', 'one_doctor_sales', 'system_owner', 'super_admin']);
+const isInternalTeamRole = (role?: string | null) => (role ? INTERNAL_TEAM_ROLES.has(role) : false);
+
 const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
   const navigate = useNavigate();
   const { isSystemAdmin, selectedClinicId, setSelectedClinicId } = useAuth();
@@ -315,6 +318,22 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
   const applyPackagePagesToClinicUsers = async (clinicId: string, packageId: string) => {
     const pages = resolvePackagePages(packageId);
     await supabase.from('clinic_users').update({ paginas_liberadas: pages }).eq('clinic_id', clinicId);
+  };
+
+  const hasEmailConflict = async (email: string, opts?: { ignoreUserId?: string | null; targetRole?: string | null }) => {
+    const { data } = await supabase
+      .from('clinic_users')
+      .select('id, role')
+      .eq('email', email);
+    if (!data || data.length === 0) return false;
+    const targetIsInternal = isInternalTeamRole(opts?.targetRole);
+    return data.some((row: any) => {
+      if (opts?.ignoreUserId && row.id === opts.ignoreUserId) return false;
+      if (targetIsInternal) {
+        return !isInternalTeamRole(row.role);
+      }
+      return true;
+    });
   };
 
   const loadClinicContract = async (clinicId: string) => {
@@ -629,12 +648,8 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
       };
       const contactEmail = payloadWithPlan.email_contato?.trim().toLowerCase();
       if (contactEmail) {
-        const { data: existingUser } = await supabase
-          .from('clinic_users')
-          .select('id, clinic_id')
-          .eq('email', contactEmail)
-          .maybeSingle();
-        if (existingUser) {
+        const conflict = await hasEmailConflict(contactEmail, { targetRole: 'owner' });
+        if (conflict) {
           alert('Já existe um usuário com este e-mail em outra clínica. Use um e-mail diferente.');
           return;
         }
@@ -823,12 +838,8 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
         alert('Informe um e-mail válido.');
         return;
       }
-      const { data: existingUser } = await supabase
-        .from('clinic_users')
-        .select('id')
-        .eq('email', normalizedEmail)
-        .maybeSingle();
-      if (existingUser) {
+      const conflict = await hasEmailConflict(normalizedEmail, { targetRole: userForm.role });
+      if (conflict) {
         alert('Já existe um usuário com este e-mail em outra clínica. Use um e-mail diferente.');
         return;
       }
@@ -883,15 +894,11 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
       return;
     }
     const inviteEmail = inviteForm.email.trim().toLowerCase();
-    const { data: existingInviteUser } = await supabase
-      .from('clinic_users')
-      .select('id')
-      .eq('email', inviteEmail)
-      .maybeSingle();
-    if (existingInviteUser) {
-      alert('Já existe um usuário com este e-mail em outra clínica. Use um e-mail diferente.');
-      return;
-    }
+      const conflict = await hasEmailConflict(inviteEmail, { targetRole: inviteForm.role });
+      if (conflict) {
+        alert('Já existe um usuário com este e-mail em outra clínica. Use um e-mail diferente.');
+        return;
+      }
     setSendingInvite(true);
     try {
       const token = crypto.randomUUID();
@@ -958,12 +965,8 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
         alert('Informe um e-mail válido.');
         return;
       }
-      const { data: existingUser } = await supabase
-        .from('clinic_users')
-        .select('id')
-        .eq('email', normalizedEmail)
-        .maybeSingle();
-      if (existingUser && existingUser.id !== editingUserId) {
+      const conflict = await hasEmailConflict(normalizedEmail, { ignoreUserId: editingUserId, targetRole: editUserForm.role });
+      if (conflict) {
         alert('Já existe um usuário com este e-mail em outra clínica. Use um e-mail diferente.');
         return;
       }
