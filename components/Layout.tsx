@@ -241,7 +241,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               aria-label="Ir para a página inicial"
             >
               <img
-                src="/onefinc_azul.png"
+                src="/controle-clinic-logo.png"
                 alt="Controle Clinic"
                 className={`object-contain ${isCollapsed ? 'w-7 h-7' : 'w-8 h-8'}`}
               />
