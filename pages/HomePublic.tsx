@@ -10,9 +10,11 @@ const HomePublic: React.FC = () => {
         <div className="max-w-6xl mx-auto px-6 py-14">
           <header className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-slate-900 text-white flex items-center justify-center text-lg font-semibold">
-                OF
-              </div>
+              <img
+                src="/controle-clinic-logo-pto.png"
+                alt="Controle Clinic"
+                className="h-10 w-10 object-contain"
+              />
               <div>
                 <p className="text-sm uppercase tracking-[0.2em] text-slate-500">Plataforma</p>
                 <h1 className="text-2xl font-semibold">Controle Clinic</h1>
