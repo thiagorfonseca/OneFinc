@@ -243,7 +243,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <img
                 src="/controle-clinic-logo.png"
                 alt="Controle Clinic"
-                className={`object-contain ${isCollapsed ? 'w-7 h-7' : 'w-[100px] h-auto'}`}
+                className={`object-contain ${isCollapsed ? 'w-7 h-7' : 'w-[200px] h-auto'}`}
               />
             </Link>
             <button

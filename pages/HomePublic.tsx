@@ -13,7 +13,7 @@ const HomePublic: React.FC = () => {
               <img
                 src="/controle-clinic-logo-pto.png"
                 alt="Controle Clinic"
-                className="w-[100px] h-auto object-contain"
+                className="w-[200px] h-auto object-contain"
               />
               <div>
                 <p className="text-sm uppercase tracking-[0.2em] text-slate-500">Plataforma</p>
