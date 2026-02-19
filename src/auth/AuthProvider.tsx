@@ -368,6 +368,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [clinicUser?.paginas_liberadas, clinicPackagePages]);
 
   const hasPageAccess = (page: string) => {
+    if (isSystemAdmin) return true;
     if (!hasPageRules) return true;
     const normalized = normalizePage(page);
     if (!normalized) return false;
