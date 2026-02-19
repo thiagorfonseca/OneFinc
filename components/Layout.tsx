@@ -243,9 +243,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <img
                 src="/controle-clinic-logo.png"
                 alt="Controle Clinic"
-                className={`object-contain ${isCollapsed ? 'w-7 h-7' : 'w-8 h-8'}`}
+                className={`object-contain ${isCollapsed ? 'w-7 h-7' : 'w-10 h-10'}`}
               />
-              {!isCollapsed && 'Controle Clinic'}
             </Link>
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
