@@ -15,10 +15,6 @@ const HomePublic: React.FC = () => {
                 alt="Controle Clinic"
                 className="w-[200px] h-auto object-contain"
               />
-              <div>
-                <p className="text-sm uppercase tracking-[0.2em] text-slate-500">Plataforma</p>
-                <h1 className="text-2xl font-semibold">Controle Clinic</h1>
-              </div>
             </div>
             <Link to="/login" className="text-sm text-slate-600 underline">
               Acessar conta
