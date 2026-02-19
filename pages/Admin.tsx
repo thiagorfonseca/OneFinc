@@ -129,7 +129,6 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
   const [statusFilter, setStatusFilter] = useState<'todas' | 'ativas' | 'inativas'>('todas');
   const [clinicViewMode, setClinicViewMode] = useState<'list' | 'boxes'>('boxes');
   const [clinicUsers, setClinicUsers] = useState<any[]>([]);
-  const [internalUsers, setInternalUsers] = useState<any[]>([]);
   const [userForm, setUserForm] = useState({ clinic_id: '', name: '', email: '', role: 'user', ativo: true, paginas_liberadas: [] as string[] });
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [showUserModal, setShowUserModal] = useState(false);
@@ -177,15 +176,6 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
       .select('*')
       .order('created_at', { ascending: false });
     if (!error) setPackages((data || []) as any[]);
-  };
-
-  const fetchInternalUsers = async () => {
-    const { data } = await (supabase as any)
-      .from('profiles')
-      .select('id, full_name, role')
-      .in('role', ['system_owner', 'super_admin', 'one_doctor_admin', 'one_doctor_sales'])
-      .order('full_name', { ascending: true });
-    setInternalUsers((data || []) as any[]);
   };
 
   const refreshUsersAndInvites = async () => {
@@ -333,7 +323,6 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     setClinicLogoFile(null);
     setClinicLogoPreview(null);
     setClinicLogoError(null);
-    setContractProductInput('');
   };
 
   const resetEditClinicForm = () => {
@@ -361,7 +350,6 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     setEditClinicLogoFile(null);
     setEditClinicLogoPreview(null);
     setEditClinicLogoError(null);
-    setEditContractProductInput('');
   };
 
   const closeClinicModal = () => {
@@ -910,7 +898,6 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     fetchClinics();
     fetchPackages();
     fetchClinicPackages();
-    fetchInternalUsers();
     refreshUsersAndInvites();
     supabase.auth.getSession().then(({ data }) => setCurrentUserId(data.session?.user.id || null));
   }, []);
