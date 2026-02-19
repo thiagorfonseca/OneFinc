@@ -19,7 +19,7 @@ const PrivacyPolicy: React.FC = () => {
           <section className="space-y-2">
             <h2 className="text-lg font-semibold text-gray-800">1. Quem somos</h2>
             <p>
-              A OneDoctor (OnePay) oferece soluções digitais para gestão de clínicas. Esta Política explica como
+              A Controle Clinic oferece soluções digitais para gestão de clínicas. Esta Política explica como
               coletamos, usamos e protegemos informações pessoais quando você usa nossa plataforma e serviços.
             </p>
           </section>
@@ -94,7 +94,7 @@ const PrivacyPolicy: React.FC = () => {
           <section className="space-y-2">
             <h2 className="text-lg font-semibold text-gray-800">10. Contato</h2>
             <p>
-              Para dúvidas ou solicitações, entre em contato pelo e-mail suporte@onedoctor.com.br.
+              Para dúvidas ou solicitações, entre em contato pelo e-mail suporte@controleclinic.com.br.
             </p>
           </section>
 

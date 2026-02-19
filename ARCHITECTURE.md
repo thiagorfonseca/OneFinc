@@ -1,6 +1,6 @@
-# OneFinc — Arquitetura, Segurança e Multiusuário
+# Controle Clinic — Arquitetura, Segurança e Multiusuário
 
-Este documento define as **decisões arquiteturais oficiais** do projeto OneFinc.  
+Este documento define as **decisões arquiteturais oficiais** do projeto Controle Clinic.  
 Ele é a **fonte única de verdade** sobre autenticação, autorização, multiusuário e segurança.
 
 ⚠️ As regras aqui descritas **não são sugestões**.  
@@ -10,7 +10,7 @@ São **contratos arquiteturais obrigatórios**, para humanos e agentes de IA.
 
 ## Visão Geral
 
-O OneFinc é um sistema **multi-tenant (multi-clínica)** construído com Supabase (Auth + Postgres + RLS) e front-end em React/Vite/TypeScript.
+O Controle Clinic é um sistema **multi-tenant (multi-clínica)** construído com Supabase (Auth + Postgres + RLS) e front-end em React/Vite/TypeScript.
 
 Cada usuário pode pertencer a uma ou mais clínicas, porém **só pode acessar dados das clínicas às quais está vinculado**.
 
@@ -123,7 +123,7 @@ Este documento governa decisões arquiteturais e de segurança do projeto.
 
 ## Resumo Executivo
 
-- OneFinc é multi-tenant
+- Controle Clinic é multi-tenant
 - Segurança baseada em `auth.uid()`
 - `clinic_users.user_id` é a chave do sistema
 - E-mail nunca participa de autorização

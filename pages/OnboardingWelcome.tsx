@@ -31,7 +31,7 @@ const OnboardingWelcome: React.FC = () => {
           <CheckCircle className="text-emerald-500" size={28} />
           <div>
             <h1 className="text-2xl font-bold text-gray-800">Tudo certo, acesso liberado!</h1>
-            <p className="text-gray-500">Seu ambiente OnePay já está pronto.</p>
+            <p className="text-gray-500">Seu ambiente Controle Clinic já está pronto.</p>
           </div>
         </div>
 

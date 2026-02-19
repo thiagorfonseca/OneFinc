@@ -117,7 +117,7 @@ const ensureSignature = async (proposal: any, payload: any) => {
         }
       : null;
 
-  const fallbackHtml = `<h2>Contrato OneDoctor</h2><p>Cliente: {{razao_social}}</p><p>Produto: {{produto_nome}}</p>`;
+  const fallbackHtml = `<h2>Contrato Controle Clinic</h2><p>Cliente: {{razao_social}}</p><p>Produto: {{produto_nome}}</p>`;
   const html = await getContractHtml(proposal.contract_template_id || null, fallbackHtml);
 
   const filledHtml = applyContractTags(html, {
@@ -143,7 +143,7 @@ const ensureSignature = async (proposal: any, payload: any) => {
   const base64Pdf = await buildPdfFromHtml(filledHtml);
 
   const document = await createDocumentFromBase64(ZAPSIGN_API_TOKEN, {
-    name: proposal.title || 'Contrato OneDoctor',
+    name: proposal.title || 'Contrato Controle Clinic',
     base64_pdf: base64Pdf,
     signers: [
       {
@@ -248,7 +248,7 @@ const ensurePayment = async (proposal: any, payload: any) => {
     value: (proposal.amount_cents || 0) / 100,
     dueDate: buildDueDate(),
     installmentCount: billingType === 'CREDIT_CARD' ? proposal.installments || 1 : undefined,
-    description: proposal.title || 'Proposta OneDoctor',
+    description: proposal.title || 'Proposta Controle Clinic',
     externalReference: proposal.id,
   };
   let payment;

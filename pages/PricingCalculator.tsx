@@ -256,7 +256,7 @@ const PricingCalculator: React.FC = () => {
     win.document.write(`
       <html>
       <head>
-        <title>OneFinc • Calculadora de Precificação</title>
+        <title>Controle Clinic • Calculadora de Precificação</title>
         <style>
           body { font-family: Arial, sans-serif; color: #111827; padding: 24px; }
           .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
@@ -271,7 +271,7 @@ const PricingCalculator: React.FC = () => {
       <body>
         <div class="brand">
           <div>
-            <h1>OneFinc</h1>
+            <h1>Controle Clinic</h1>
             <p>Precificação • Calculadora</p>
           </div>
         </div>

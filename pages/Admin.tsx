@@ -71,7 +71,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
   const { isSystemAdmin, selectedClinicId, setSelectedClinicId } = useAuth();
   
   const COMMERCIAL_PRODUCT_OPTIONS = [
-    'Plataforma OnePay',
+    'Plataforma Controle Clinic',
     'Cursos',
     'Consultoria',
     'Mentoria',

@@ -19,7 +19,7 @@ const TermsOfService: React.FC = () => {
           <section className="space-y-2">
             <h2 className="text-lg font-semibold text-gray-800">1. Aceitação</h2>
             <p>
-              Ao acessar ou usar a plataforma OneDoctor (OnePay), você concorda com estes Termos e com a Política
+              Ao acessar ou usar a plataforma Controle Clinic, você concorda com estes Termos e com a Política
               de Privacidade.
             </p>
           </section>
@@ -45,14 +45,14 @@ const TermsOfService: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-800">4. Planos, pagamentos e cancelamento</h2>
             <p>
               Planos, preços e condições podem variar. Cancelamentos ou suspensões seguem as regras do seu contrato
-              comercial com a OneDoctor.
+              comercial com a Controle Clinic.
             </p>
           </section>
 
           <section className="space-y-2">
             <h2 className="text-lg font-semibold text-gray-800">5. Propriedade intelectual</h2>
             <p>
-              Todo o conteúdo, marca e tecnologia da plataforma são de propriedade da OneDoctor ou licenciados.
+              Todo o conteúdo, marca e tecnologia da plataforma são de propriedade da Controle Clinic ou licenciados.
             </p>
           </section>
 
@@ -75,7 +75,7 @@ const TermsOfService: React.FC = () => {
           <section className="space-y-2">
             <h2 className="text-lg font-semibold text-gray-800">8. Contato</h2>
             <p>
-              Dúvidas sobre estes Termos podem ser enviadas para suporte@onedoctor.com.br.
+              Dúvidas sobre estes Termos podem ser enviadas para suporte@controleclinic.com.br.
             </p>
           </section>
         </div>

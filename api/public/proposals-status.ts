@@ -96,7 +96,7 @@ const ensurePaymentForProposal = async (proposal: any) => {
     value: (proposal.amount_cents || 0) / 100,
     dueDate: buildDueDate(),
     installmentCount: billingType === 'CREDIT_CARD' ? proposal.installments || 1 : undefined,
-    description: proposal.title || 'Proposta OneDoctor',
+    description: proposal.title || 'Proposta Controle Clinic',
     externalReference: proposal.id,
   };
   let payment;

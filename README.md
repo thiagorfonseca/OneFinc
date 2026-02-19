@@ -1,8 +1,8 @@
 <div align="center">
-  <img width="1200" height="675" alt="OneFinc" src="public/onefinc-banner.svg" />
+  <img width="1200" height="675" alt="Controle Clinic" src="public/onefinc-banner.svg" />
 </div>
 
-# OneFinc
+# Controle Clinic
 
 Plataforma web para gestao financeira de clinicas medicas. Centraliza receitas, despesas, fluxo de caixa, DRE e indicadores para tomada de decisao com dados em tempo real.
 

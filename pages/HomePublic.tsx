@@ -15,7 +15,7 @@ const HomePublic: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm uppercase tracking-[0.2em] text-slate-500">Plataforma</p>
-                <h1 className="text-2xl font-semibold">One finc</h1>
+                <h1 className="text-2xl font-semibold">Controle Clinic</h1>
               </div>
             </div>
             <Link to="/login" className="text-sm text-slate-600 underline">
@@ -29,7 +29,7 @@ const HomePublic: React.FC = () => {
                 Gestão financeira e operacional para clínicas que querem previsibilidade.
               </h2>
               <p className="mt-4 text-lg text-slate-600">
-                O One finc centraliza agenda, contratos, pagamentos e indicadores para clínicas e consultores.
+                O Controle Clinic centraliza agenda, contratos, pagamentos e indicadores para clínicas e consultores.
                 Tudo em um só painel, com integrações e automações para reduzir retrabalho.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
@@ -40,7 +40,7 @@ const HomePublic: React.FC = () => {
                   Entrar na plataforma
                 </Link>
                 <a
-                  href="mailto:suporte@onedoctor.com.br"
+                  href="mailto:suporte@controleclinic.com.br"
                   className="px-5 py-3 rounded-xl border border-slate-300 text-sm font-semibold text-slate-700"
                 >
                   Falar com suporte
@@ -49,7 +49,7 @@ const HomePublic: React.FC = () => {
             </div>
 
             <div className="bg-white/80 backdrop-blur border border-slate-200 rounded-2xl p-6 shadow-xl">
-              <h3 className="text-lg font-semibold text-slate-900">O que o One finc entrega</h3>
+              <h3 className="text-lg font-semibold text-slate-900">O que o Controle Clinic entrega</h3>
               <div className="mt-4 space-y-3 text-sm text-slate-600">
                 <div className="flex items-start gap-3">
                   <span className="mt-1 h-2 w-2 rounded-full bg-amber-500" />
@@ -93,7 +93,7 @@ const HomePublic: React.FC = () => {
           </section>
 
           <footer className="mt-14 border-t border-slate-200 pt-6 text-xs text-slate-500 flex flex-wrap items-center gap-3 justify-between">
-            <span>One finc • OneDoctor</span>
+            <span>Controle Clinic</span>
             <div className="flex flex-wrap gap-4">
               <Link to="/politica-de-privacidade" className="underline">
                 Política de Privacidade

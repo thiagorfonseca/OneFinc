@@ -20,7 +20,7 @@ const allowedOrigins = (() => {
       "http://localhost:5173",
       "http://127.0.0.1:5173",
       "http://127.0.0.1:3000",
-      "https://app.odeducacao.com.br",
+      "https://app.controleclinic.com.br",
     ];
   }
   return list;

@@ -242,10 +242,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             >
               <img
                 src="/onefinc_azul.png"
-                alt="OneFinc"
+                alt="Controle Clinic"
                 className={`object-contain ${isCollapsed ? 'w-7 h-7' : 'w-8 h-8'}`}
               />
-              {!isCollapsed && 'OneFinc'}
+              {!isCollapsed && 'Controle Clinic'}
             </Link>
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
@@ -395,7 +395,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <main className={`flex-1 overflow-auto ${isCollapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6 lg:hidden">
           <div className="w-8"></div> {/* Spacer for menu button */}
-          <span className="font-semibold text-gray-700">OneFinc</span>
+          <span className="font-semibold text-gray-700">Controle Clinic</span>
         </header>
         <div className="pt-20 lg:pt-6 pb-4 md:pb-8 px-4 md:px-6 max-w-screen-2xl mx-auto space-y-3">
           {isSystemAdmin && (

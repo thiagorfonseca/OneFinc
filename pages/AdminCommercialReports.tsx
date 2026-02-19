@@ -63,7 +63,7 @@ interface LeadRow {
 }
 
 const DEFAULT_PRODUCTS = [
-  'Plataforma OnePay',
+  'Plataforma Controle Clinic',
   'Cursos',
   'Consultoria',
   'Mentoria',

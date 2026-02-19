@@ -506,8 +506,8 @@ const AttendanceReport: React.FC = () => {
               <div class="meta">Comissão: ${commissionRate ? `${commissionRate}%` : '0%'}</div>
             </div>
             <div class="logos">
-              ${logoPrimary ? `<img src="${logoPrimary}" alt="OneFinc" />` : ''}
-              ${logoSecondary ? `<img src="${logoSecondary}" alt="OneFinc" />` : ''}
+              ${logoPrimary ? `<img src="${logoPrimary}" alt="Controle Clinic" />` : ''}
+              ${logoSecondary ? `<img src="${logoSecondary}" alt="Controle Clinic" />` : ''}
             </div>
           </div>
           <table>

@@ -226,7 +226,7 @@ const AdminODProposalForm: React.FC = () => {
               value={form.title}
               onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg"
-              placeholder="Ex: Plano OneDoctor Premium"
+              placeholder="Ex: Plano Controle Clinic Premium"
             />
           </label>
 

@@ -44,10 +44,10 @@ export default async function handler(req: any, res: any) {
       body: JSON.stringify({
         from: RESEND_FROM,
         to: [to],
-        subject: proposal.title || 'Proposta OneDoctor',
+        subject: proposal.title || 'Proposta Controle Clinic',
         html: `
           <div style="font-family:Arial,sans-serif;line-height:1.5">
-            <h2>Proposta OneDoctor</h2>
+            <h2>Proposta Controle Clinic</h2>
             <p>Olá! Para concluir o cadastro, acesse o link abaixo:</p>
             <p><a href="${link}">${link}</a></p>
           </div>

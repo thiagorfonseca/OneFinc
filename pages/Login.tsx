@@ -132,12 +132,12 @@ const Login: React.FC = () => {
     <div className="auth-shell">
       <div className="auth-card">
         <div className="auth-icon">
-          <img src="/logo-onefinc.png" alt="OneFinc" className="h-8 w-8 object-contain" />
+          <img src="/logo-onefinc.png" alt="Controle Clinic" className="h-8 w-8 object-contain" />
         </div>
 
         <div className="auth-header">
           <h1>Entrar ou cadastrar-se</h1>
-          <p>{isSignUp ? 'Crie sua conta para começar com a OneFinc.' : 'Escolha seu método de acesso para continuar.'}</p>
+          <p>{isSignUp ? 'Crie sua conta para começar com a Controle Clinic.' : 'Escolha seu método de acesso para continuar.'}</p>
         </div>
 
         <div className="auth-socials">

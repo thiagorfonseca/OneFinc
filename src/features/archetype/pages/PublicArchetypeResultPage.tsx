@@ -189,9 +189,9 @@ const PublicArchetypeResultPage: React.FC = () => {
         </head>
         <body>
           <div class="header">
-            <img src="${logoUrl}" alt="OneFinc" class="logo" />
+            <img src="${logoUrl}" alt="Controle Clinic" class="logo" />
             <div class="brand">
-              <h1>OneFinc</h1>
+              <h1>Controle Clinic</h1>
               <p>Resultado do Teste de Perfil</p>
             </div>
           </div>

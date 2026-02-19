@@ -344,7 +344,7 @@ const PricingFocusMatrix: React.FC = () => {
           </style>
         </head>
         <body>
-          <div class="brand">OneDoctor • OnePay</div>
+          <div class="brand">Controle Clinic</div>
           <div class="brand-sub">Relatório automático do sistema</div>
           <div class="brand-sub">Gerado em ${generatedAt}</div>
 
@@ -386,7 +386,7 @@ const PricingFocusMatrix: React.FC = () => {
             <li>Ajustar agenda para aumentar volume de estrelas sem sacrificar qualidade.</li>
           </ul>
 
-          <div class="footer">OneDoctor • OnePay</div>
+          <div class="footer">Controle Clinic</div>
         </body>
       </html>
     `);

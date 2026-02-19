@@ -83,7 +83,7 @@ const AdminODClients: React.FC = () => {
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-bold text-gray-800">Clientes</h1>
-        <p className="text-gray-500">Centralize o cadastro de clientes OneDoctor.</p>
+        <p className="text-gray-500">Centralize o cadastro de clientes Controle Clinic.</p>
       </div>
 
       <div className="bg-white border border-gray-100 rounded-xl p-4 space-y-3">
