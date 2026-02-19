@@ -14,9 +14,6 @@ const PublicHeader: React.FC = () => {
       </div>
 
       <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
-        <a href={`${appUrl}/login`} className="underline">
-          Acessar conta
-        </a>
         <nav className="hidden md:flex items-center gap-4">
           <Link to="/solucao" className="hover:text-slate-900">
             Solução
