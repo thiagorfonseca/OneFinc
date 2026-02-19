@@ -217,6 +217,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return clinicUser?.clinic_id || profile?.clinic_id || null;
   }, [clinicUser?.clinic_id, profile?.clinic_id]);
 
+  const isAdmin = role === 'admin' || role === 'owner';
+  const isSystemAdmin = systemRole !== null;
+  const packageClinicId = useMemo(
+    () => (isSystemAdmin ? selectedClinicId ?? null : clinicId),
+    [isSystemAdmin, selectedClinicId, clinicId]
+  );
+
   useEffect(() => {
     let active = true;
     const loadClinic = async () => {
@@ -245,7 +252,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let active = true;
     const loadPackages = async () => {
-      if (!clinicId) {
+      if (!packageClinicId) {
         if (active) {
           setClinicPackageIds([]);
           setClinicPackagePages([]);
@@ -256,7 +263,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { data, error } = await (supabase as any)
           .from('clinic_packages')
           .select('package_id, content_packages (pages)')
-          .eq('clinic_id', clinicId);
+          .eq('clinic_id', packageClinicId);
         if (!active) return;
         if (error) {
           setClinicPackageIds([]);
@@ -287,10 +294,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       active = false;
     };
-  }, [clinicId]);
-
-  const isAdmin = role === 'admin' || role === 'owner';
-  const isSystemAdmin = systemRole !== null;
+  }, [packageClinicId]);
 
   const normalizePage = (page: string) => {
     const trimmed = page.trim();

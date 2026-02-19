@@ -104,6 +104,30 @@ const AdminPackages: React.FC = () => {
     return (value / 100).toFixed(2).replace('.', ',');
   };
 
+  const resolvePackagePages = (packageId: string) => {
+    if (!packageId) return [];
+    const pkg = packages.find((item) => item.id === packageId);
+    if (!pkg?.pages || !Array.isArray(pkg.pages)) return [];
+    return pkg.pages.map((page: string) => page.trim()).filter(Boolean);
+  };
+
+  const applyPackagePagesToClinicUsers = async (clinicId: string, packageId: string) => {
+    const pages = resolvePackagePages(packageId);
+    await supabase.from('clinic_users').update({ paginas_liberadas: pages }).eq('clinic_id', clinicId);
+  };
+
+  const syncPackagePagesToClinics = async (packageId: string, pages: string[]) => {
+    if (!packageId) return;
+    const { data, error } = await (supabase as any)
+      .from('clinic_packages')
+      .select('clinic_id')
+      .eq('package_id', packageId);
+    if (error) return;
+    const clinicIds = Array.from(new Set((data || []).map((row: any) => row.clinic_id).filter(Boolean)));
+    if (!clinicIds.length) return;
+    await (supabase as any).from('clinic_users').update({ paginas_liberadas: pages }).in('clinic_id', clinicIds);
+  };
+
   const loadPackages = async () => {
     const { data, error: loadError } = await (supabase as any)
       .from('content_packages')
@@ -274,6 +298,7 @@ const AdminPackages: React.FC = () => {
           const { error: itemError } = await (supabase as any).from('content_package_items').insert(rows);
           if (itemError) throw itemError;
         }
+        await syncPackagePagesToClinics(packageId, payload.pages);
       }
 
       setShowModal(false);
@@ -311,6 +336,7 @@ const AdminPackages: React.FC = () => {
         ]);
         if (error) throw error;
       }
+      await applyPackagePagesToClinicUsers(selectedClinicId, clinicPackageId);
       alert('Pacotes atualizados para a clínica.');
     } catch (err: any) {
       setError(err.message || 'Erro ao salvar pacotes da clínica.');

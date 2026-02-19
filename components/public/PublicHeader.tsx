@@ -6,13 +6,13 @@ const PublicHeader: React.FC = () => {
   const appUrl = getAppUrl();
   return (
     <header className="flex flex-wrap items-center justify-between gap-4">
-      <div className="flex items-center gap-3">
+      <Link to="/" className="flex items-center gap-3">
         <img
           src="/controle-clinic-logo-pto.png"
           alt="Controle Clinic"
           className="w-[200px] h-auto object-contain"
         />
-      </div>
+      </Link>
 
       <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
         <nav className="hidden md:flex items-center gap-4">
