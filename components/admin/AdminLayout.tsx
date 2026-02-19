@@ -15,6 +15,8 @@ import {
   ClipboardList,
   Briefcase,
   BarChart3,
+  ChevronsLeft,
+  ChevronsRight,
   ChevronDown,
   ChevronRight,
 } from 'lucide-react';
@@ -24,6 +26,7 @@ import { useAuth } from '../../src/auth/AuthProvider';
 const AdminLayout: React.FC = () => {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>({ Comercial: false });
   const { hasAdminPageAccess } = useAuth();
 
@@ -82,15 +85,23 @@ const AdminLayout: React.FC = () => {
           fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 transform transition-transform duration-200 ease-in-out
           ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
           lg:translate-x-0 lg:block
+          ${isCollapsed ? 'lg:w-20' : 'lg:w-64'}
         `}
         aria-hidden={!isMobileMenuOpen && typeof window !== 'undefined' && window.innerWidth < 1024}
       >
         <div className="h-full flex flex-col">
-          <div className="h-16 flex items-center px-4 border-b border-gray-100">
-            <div className="flex items-center gap-2 text-brand-600 font-bold text-xl">
+          <div className="relative h-16 flex items-center px-4 border-b border-gray-100">
+            <div className={`flex items-center gap-2 text-brand-600 font-bold text-xl ${isCollapsed ? 'justify-center w-full' : ''}`}>
               <Shield size={20} />
-              Admin
+              {!isCollapsed && 'Admin'}
             </div>
+            <button
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="hidden lg:inline-flex absolute right-4 text-gray-400 hover:text-gray-600"
+              aria-label={isCollapsed ? 'Expandir menu' : 'Recolher menu'}
+            >
+              {isCollapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
+            </button>
           </div>
 
           <nav className="flex-1 px-4 py-6 space-y-1">
@@ -106,33 +117,33 @@ const AdminLayout: React.FC = () => {
                       <Link
                         to={firstChild?.href || '/admin/clientes'}
                         className={`
-                          w-full flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors
+                          w-full flex items-center gap-3 ${isCollapsed ? 'justify-center px-2' : 'justify-between px-4'} py-3 text-sm font-medium rounded-lg transition-colors
                           ${isChildActive ? 'bg-brand-50 text-brand-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}
                         `}
                       >
-                        <span className="flex items-center gap-3">
+                        <span className={`flex items-center gap-3 ${isCollapsed ? 'justify-center w-full' : ''}`}>
                           <item.icon size={18} />
-                          {item.name}
+                          {!isCollapsed && item.name}
                         </span>
-                        {isGroupOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                        {!isCollapsed && (isGroupOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />)}
                       </Link>
                     ) : (
                       <button
                         type="button"
                         onClick={() => toggleGroup(item.name)}
                         className={`
-                          w-full flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors
+                          w-full flex items-center gap-3 ${isCollapsed ? 'justify-center px-2' : 'justify-between px-4'} py-3 text-sm font-medium rounded-lg transition-colors
                           ${isChildActive ? 'bg-brand-50 text-brand-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}
                         `}
                       >
-                        <span className="flex items-center gap-3">
+                        <span className={`flex items-center gap-3 ${isCollapsed ? 'justify-center w-full' : ''}`}>
                           <item.icon size={18} />
-                          {item.name}
+                          {!isCollapsed && item.name}
                         </span>
-                        {isGroupOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                        {!isCollapsed && (isGroupOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />)}
                       </button>
                     )}
-                    {isGroupOpen ? (
+                    {!isCollapsed && isGroupOpen ? (
                       <div className="pl-6 space-y-1">
                         {item.children.map((child: any) => (
                           <Link
@@ -160,7 +171,7 @@ const AdminLayout: React.FC = () => {
                   key={item.name}
                   to={item.href}
                   className={`
-                    flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors
+                    flex items-center gap-3 ${isCollapsed ? 'justify-center px-2' : 'px-4'} py-3 text-sm font-medium rounded-lg transition-colors
                     ${item.highlight
                       ? (isActive(item.href)
                         ? 'bg-amber-700 text-white'
@@ -171,7 +182,7 @@ const AdminLayout: React.FC = () => {
                   `}
                 >
                   <item.icon size={18} />
-                  {item.name}
+                  {!isCollapsed && item.name}
                 </Link>
               );
             })}
@@ -183,16 +194,16 @@ const AdminLayout: React.FC = () => {
                 await supabase.auth.signOut();
                 window.location.href = '/login';
               }}
-              className="w-full text-left flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-600 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors"
+              className={`w-full text-left flex items-center gap-3 ${isCollapsed ? 'justify-center px-2' : 'px-4'} py-3 text-sm font-medium text-gray-600 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors`}
             >
               <LogOut size={18} />
-              Sair
+              {!isCollapsed && 'Sair'}
             </button>
           </div>
         </div>
       </aside>
 
-      <main className="flex-1 overflow-auto lg:ml-64">
+      <main className={`flex-1 overflow-auto ${isCollapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6 lg:hidden">
           <div className="w-8"></div>
           <span className="font-semibold text-gray-700">Admin</span>
