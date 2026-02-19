@@ -1,8 +1,11 @@
 import React from 'react';
 import { BookOpen, FileText, Sparkles } from 'lucide-react';
 import PublicHeader from '../components/public/PublicHeader';
+import PublicFooter from '../components/public/PublicFooter';
+import { getAppUrl } from '../lib/utils';
 
 const PublicContents: React.FC = () => {
+  const appUrl = getAppUrl();
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-slate-50 to-amber-50 text-slate-900">
       <div className="max-w-6xl mx-auto px-6 py-14">
@@ -27,7 +30,7 @@ const PublicContents: React.FC = () => {
               <li>Roteiro para estruturar um time de atendimento.</li>
             </ul>
             <a
-              href="https://app.controleclinic.com.br/login"
+              href={`${appUrl}/login`}
               className="mt-6 inline-flex px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-semibold"
             >
               Acessar a plataforma
@@ -63,12 +66,14 @@ const PublicContents: React.FC = () => {
             <p className="mt-2 text-sm text-slate-300">Fale com a equipe e receba um diagnóstico inicial.</p>
           </div>
           <a
-            href="https://app.controleclinic.com.br/login"
+            href={`${appUrl}/login`}
             className="px-5 py-3 rounded-xl bg-white text-slate-900 text-sm font-semibold"
           >
             Acessar a plataforma
           </a>
         </section>
+
+        <PublicFooter />
       </div>
     </div>
   );

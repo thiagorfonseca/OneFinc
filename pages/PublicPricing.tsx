@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCircle2, Loader2 } from 'lucide-react';
-import { formatCurrency } from '../lib/utils';
+import { formatCurrency, getAppUrl } from '../lib/utils';
 import PublicHeader from '../components/public/PublicHeader';
+import PublicFooter from '../components/public/PublicFooter';
 
 const PublicPricing: React.FC = () => {
   const [packages, setPackages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const appUrl = getAppUrl();
 
   useEffect(() => {
     const load = async () => {
@@ -67,7 +69,7 @@ const PublicPricing: React.FC = () => {
                   ))}
                 </ul>
                 <a
-                  href="https://app.controleclinic.com.br/login"
+                  href={`${appUrl}/login`}
                   className="mt-6 px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-semibold text-center"
                 >
                   Acessar a plataforma
@@ -79,6 +81,8 @@ const PublicPricing: React.FC = () => {
             )}
           </div>
         )}
+
+        <PublicFooter />
       </div>
     </div>
   );

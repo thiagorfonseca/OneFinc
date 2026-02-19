@@ -441,11 +441,11 @@ const AdminPackages: React.FC = () => {
 
       {showModal && (
         <div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 overflow-y-auto px-4 py-6"
           onClick={modalControls.onBackdropClick}
         >
           <div
-            className="bg-white rounded-xl shadow-xl p-6 w-full max-w-2xl space-y-4"
+            className="bg-white rounded-xl shadow-xl p-6 w-full max-w-2xl space-y-4 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">

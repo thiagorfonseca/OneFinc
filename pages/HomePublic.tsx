@@ -1,8 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import PublicHeader from '../components/public/PublicHeader';
+import PublicFooter from '../components/public/PublicFooter';
+import { getAppUrl } from '../lib/utils';
 
 const HomePublic: React.FC = () => {
+  const appUrl = getAppUrl();
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-slate-100 text-slate-900">
       <div className="relative overflow-hidden">
@@ -22,7 +25,7 @@ const HomePublic: React.FC = () => {
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <a
-                  href="https://app.controleclinic.com.br/login"
+                  href={`${appUrl}/login`}
                   className="px-5 py-3 rounded-xl bg-slate-900 text-white text-sm font-semibold"
                 >
                   Acessar a plataforma
@@ -116,17 +119,7 @@ const HomePublic: React.FC = () => {
             </div>
           </section>
 
-          <footer className="mt-14 border-t border-slate-200 pt-6 text-xs text-slate-500 flex flex-wrap items-center gap-3 justify-between">
-            <span>Controle Clinic</span>
-            <div className="flex flex-wrap gap-4">
-              <Link to="/politica-de-privacidade" className="underline">
-                Política de Privacidade
-              </Link>
-              <Link to="/termos-de-servico" className="underline">
-                Termos de Serviço
-              </Link>
-            </div>
-          </footer>
+          <PublicFooter />
         </div>
       </div>
     </div>

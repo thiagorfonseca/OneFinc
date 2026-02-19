@@ -2,6 +2,8 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { BarChart3, Calendar, CheckCircle2, ClipboardList } from 'lucide-react';
 import PublicHeader from '../components/public/PublicHeader';
+import PublicFooter from '../components/public/PublicFooter';
+import { getAppUrl } from '../lib/utils';
 
 const SolutionMetric = ({ label, value }: { label: string; value: string }) => (
   <div className="rounded-2xl bg-white border border-slate-200 p-4 shadow-sm">
@@ -11,6 +13,7 @@ const SolutionMetric = ({ label, value }: { label: string; value: string }) => (
 );
 
 const PublicSolution: React.FC = () => {
+  const appUrl = getAppUrl();
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-amber-50 text-slate-900">
       <div className="relative overflow-hidden">
@@ -29,7 +32,7 @@ const PublicSolution: React.FC = () => {
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <a
-                  href="https://app.controleclinic.com.br/login"
+                  href={`${appUrl}/login`}
                   className="px-5 py-3 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700"
                 >
                   Acessar a plataforma
@@ -99,6 +102,8 @@ const PublicSolution: React.FC = () => {
               </div>
             ))}
           </section>
+
+          <PublicFooter />
         </div>
       </div>
     </div>

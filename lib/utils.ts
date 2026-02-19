@@ -31,6 +31,24 @@ export const getPublicSiteUrl = () => {
   return raw ? raw.replace(/\/+$/, '') : '';
 };
 
+export const getAppUrl = () => {
+  const envUrl =
+    (import.meta as any).env?.VITE_APP_URL ||
+    (import.meta as any).env?.VITE_APP_BASE_URL ||
+    (import.meta as any).env?.VITE_APP_SITE_URL ||
+    '';
+  const fallback = typeof window !== 'undefined' ? window.location.origin : '';
+  const raw = (envUrl || '').trim();
+  if (raw) {
+    return raw.replace(/\/+$/, '');
+  }
+  const isLocalhost =
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const base = isLocalhost && fallback ? fallback : 'https://app.controleclinic.com.br';
+  return base.replace(/\/+$/, '');
+};
+
 export const buildPublicUrl = (path: string) => {
   const base = getPublicSiteUrl();
   if (!base) return '';

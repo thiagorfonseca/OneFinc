@@ -1,8 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { getAppUrl } from '../../lib/utils';
 
 const PublicHeader: React.FC = () => {
-  const appUrl = 'https://app.controleclinic.com.br';
+  const appUrl = getAppUrl();
   return (
     <header className="flex flex-wrap items-center justify-between gap-4">
       <div className="flex items-center gap-3">
