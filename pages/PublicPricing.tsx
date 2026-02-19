@@ -16,7 +16,7 @@ const PublicPricing: React.FC = () => {
       setLoading(true);
       setError('');
       try {
-        const { data, error } = await supabasePublic
+        const { data, error } = await (supabasePublic as any)
           .from('content_packages')
           .select('id, name, description, price_cents, created_at')
           .eq('show_on_public', true)
