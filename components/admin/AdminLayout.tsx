@@ -108,14 +108,14 @@ const AdminLayout: React.FC = () => {
             {visibleNavigation.map((item: any) => {
               if (item.children) {
                 const isChildActive = item.children.some((child: any) => isActive(child.href));
-                const isComercial = item.name === 'Comercial';
-                const isGroupOpen = isComercial ? isChildActive : (openGroups[item.name] ?? false);
+                const isGroupOpen = openGroups[item.name] ?? isChildActive;
                 const firstChild = item.children[0];
                 return (
                   <div key={item.name} className="space-y-1">
-                    {isComercial ? (
-                      <Link
-                        to={firstChild?.href || '/admin/clientes'}
+                    {item.name === 'Comercial' ? (
+                      <button
+                        type="button"
+                        onClick={() => toggleGroup(item.name)}
                         className={`
                           w-full flex items-center gap-3 ${isCollapsed ? 'justify-center px-2' : 'justify-between px-4'} py-3 text-sm font-medium rounded-lg transition-colors
                           ${isChildActive ? 'bg-brand-50 text-brand-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}
@@ -126,7 +126,7 @@ const AdminLayout: React.FC = () => {
                           {!isCollapsed && item.name}
                         </span>
                         {!isCollapsed && (isGroupOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />)}
-                      </Link>
+                      </button>
                     ) : (
                       <button
                         type="button"
