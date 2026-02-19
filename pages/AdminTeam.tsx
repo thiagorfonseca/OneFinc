@@ -438,11 +438,11 @@ const AdminTeam: React.FC = () => {
               <div key={member.id} className="p-3 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="h-12 w-12 rounded-full border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden text-xs font-semibold text-gray-500">
-                    {member.avatar_url ? (
-                      <img src={member.avatar_url} alt={`Foto de ${member.full_name || 'admin'}`} className="h-full w-full object-cover object-center" />
-                    ) : (
-                      <span>{getMemberInitials(member.full_name || '', member.email || '')}</span>
-                    )}
+                    <img
+                      src={member.avatar_url || '/default-avatar.svg'}
+                      alt={`Foto de ${member.full_name || 'admin'}`}
+                      className="h-full w-full object-cover object-center"
+                    />
                   </div>
                   <div>
                     <p className="font-semibold text-gray-800">{member.full_name || 'Sem nome'}</p>
@@ -486,11 +486,11 @@ const AdminTeam: React.FC = () => {
               <div key={member.id} className="border border-gray-100 rounded-lg p-4 bg-white flex flex-col gap-3 shadow-sm">
                 <div className="flex items-start gap-3">
                   <div className="h-14 w-14 rounded-full border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden text-xs font-semibold text-gray-500">
-                    {member.avatar_url ? (
-                      <img src={member.avatar_url} alt={`Foto de ${member.full_name || 'admin'}`} className="h-full w-full object-cover object-center" />
-                    ) : (
-                      <span>{getMemberInitials(member.full_name || '', member.email || '')}</span>
-                    )}
+                    <img
+                      src={member.avatar_url || '/default-avatar.svg'}
+                      alt={`Foto de ${member.full_name || 'admin'}`}
+                      className="h-full w-full object-cover object-center"
+                    />
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-gray-800 truncate">{member.full_name || 'Sem nome'}</p>
