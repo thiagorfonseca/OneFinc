@@ -132,7 +132,6 @@ const AdminLayout: React.FC = () => {
               if (item.children) {
                 const isChildActive = item.children.some((child: any) => isActive(child.href));
                 const isGroupOpen = openGroups[item.name] ?? isChildActive;
-                const firstChild = item.children[0];
                 return (
                   <div key={item.name} className="space-y-1">
                     {item.name === 'Comercial' ? (
