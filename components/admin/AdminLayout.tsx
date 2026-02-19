@@ -28,7 +28,7 @@ const AdminLayout: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>({ Comercial: false });
-  const { hasAdminPageAccess } = useAuth();
+  const { hasAdminPageAccess, user, profile, clinicUser } = useAuth();
 
   const navigation = [
     { name: 'Agenda', href: '/admin/agenda', icon: Calendar, highlight: true },
@@ -66,6 +66,29 @@ const AdminLayout: React.FC = () => {
   const toggleGroup = (name: string) => {
     setOpenGroups((prev) => ({ ...prev, [name]: !prev[name] }));
   };
+
+  const formatDisplayName = (fullName: string) => {
+    const cleaned = fullName.trim().replace(/\s+/g, ' ');
+    if (!cleaned) return '';
+    const parts = cleaned.split(' ');
+    if (parts.length === 1) return parts[0];
+    if (parts.length === 2 && cleaned.length <= 20) return cleaned;
+    const initials = parts
+      .slice(1)
+      .map((part) => part[0]?.toUpperCase())
+      .filter(Boolean)
+      .join('.');
+    return initials ? `${parts[0]} ${initials}.` : parts[0];
+  };
+
+  const rawDisplayName =
+    profile?.full_name?.trim() ||
+    clinicUser?.name?.trim() ||
+    (typeof user?.user_metadata?.full_name === 'string' ? user.user_metadata.full_name.trim() : '') ||
+    (typeof user?.user_metadata?.name === 'string' ? user.user_metadata.name.trim() : '') ||
+    '';
+  const displayName = formatDisplayName(rawDisplayName) || (user?.email ? user.email.split('@')[0] : '');
+  const displayEmail = user?.email || clinicUser?.email || '';
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -189,6 +212,16 @@ const AdminLayout: React.FC = () => {
           </nav>
 
           <div className="p-4 border-t border-gray-100">
+            {!isCollapsed && (displayName || displayEmail) && (
+              <div className="px-4 pb-3 text-xs text-gray-500">
+                {displayName && (
+                  <div className="text-sm font-medium text-gray-700 leading-tight">{displayName}</div>
+                )}
+                {displayEmail && (
+                  <div className="text-xs text-gray-500 break-all leading-tight">{displayEmail}</div>
+                )}
+              </div>
+            )}
             <button
               onClick={async () => {
                 await supabase.auth.signOut();
