@@ -10,8 +10,8 @@ const PrivacyPolicy: React.FC = () => {
             <h1 className="text-3xl font-semibold text-gray-800">Política de Privacidade</h1>
             <p className="text-sm text-gray-500">Última atualização: 16 de fevereiro de 2026</p>
           </div>
-          <Link to="/login" className="text-sm text-gray-500 underline">
-            Voltar para o login
+          <Link to="/" className="text-sm text-gray-500 underline">
+            Voltar para a home
           </Link>
         </div>
 

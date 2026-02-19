@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCircle2, Loader2 } from 'lucide-react';
 import { formatCurrency, getAppUrl } from '../lib/utils';
+import { supabasePublic } from '../lib/supabase';
 import PublicHeader from '../components/public/PublicHeader';
 import PublicFooter from '../components/public/PublicFooter';
 
@@ -15,14 +16,16 @@ const PublicPricing: React.FC = () => {
       setLoading(true);
       setError('');
       try {
-        const res = await fetch('/api/public/pricing-packages');
-        const contentType = res.headers.get('content-type') || '';
-        if (!res.ok || !contentType.includes('application/json')) {
+        const { data, error } = await supabasePublic
+          .from('content_packages')
+          .select('id, name, description, price_cents, created_at')
+          .eq('show_on_public', true)
+          .order('created_at', { ascending: false });
+        if (error) {
           setError('Não foi possível carregar os planos.');
           return;
         }
-        const data = await res.json();
-        setPackages(data?.packages || []);
+        setPackages(data || []);
       } catch {
         setError('Não foi possível carregar os planos.');
       } finally {

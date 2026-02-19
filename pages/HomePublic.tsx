@@ -26,6 +26,8 @@ const HomePublic: React.FC = () => {
               <div className="mt-6 flex flex-wrap gap-3">
                 <a
                   href={`${appUrl}/login`}
+                  target="_blank"
+                  rel="noreferrer"
                   className="px-5 py-3 rounded-xl bg-slate-900 text-white text-sm font-semibold"
                 >
                   Acessar a plataforma

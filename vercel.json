@@ -1,4 +1,48 @@
 {
+  "redirects": [
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "app.controleclinic.com.br" }],
+      "destination": "/app",
+      "permanent": true
+    },
+    {
+      "source": "/home",
+      "has": [{ "type": "host", "value": "app.controleclinic.com.br" }],
+      "destination": "/app",
+      "permanent": true
+    },
+    {
+      "source": "/solucao",
+      "has": [{ "type": "host", "value": "app.controleclinic.com.br" }],
+      "destination": "/app",
+      "permanent": true
+    },
+    {
+      "source": "/precos",
+      "has": [{ "type": "host", "value": "app.controleclinic.com.br" }],
+      "destination": "/app",
+      "permanent": true
+    },
+    {
+      "source": "/conteudos",
+      "has": [{ "type": "host", "value": "app.controleclinic.com.br" }],
+      "destination": "/app",
+      "permanent": true
+    },
+    {
+      "source": "/politica-de-privacidade",
+      "has": [{ "type": "host", "value": "app.controleclinic.com.br" }],
+      "destination": "/app",
+      "permanent": true
+    },
+    {
+      "source": "/termos-de-servico",
+      "has": [{ "type": "host", "value": "app.controleclinic.com.br" }],
+      "destination": "/app",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/",
