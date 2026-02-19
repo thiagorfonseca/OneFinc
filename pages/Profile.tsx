@@ -51,8 +51,8 @@ const uploadProfileAvatar = async (userId: string, file: File) => {
 };
 
 const Profile: React.FC = () => {
-  const { user, profile, clinicUser, refresh, isSystemAdmin, isOneDoctorInternal } = useAuth();
-  const canSyncGoogleCalendar = isSystemAdmin || isOneDoctorInternal;
+  const { user, profile, clinicUser, refresh, isOneDoctorInternal } = useAuth();
+  const canSyncGoogleCalendar = isOneDoctorInternal;
   const [fullName, setFullName] = useState(profile?.full_name || '');
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
@@ -466,14 +466,7 @@ const Profile: React.FC = () => {
             </div>
             {calendarMessage && <p className="text-xs text-gray-600">{calendarMessage}</p>}
           </form>
-        ) : (
-          <div className="bg-white border border-gray-100 rounded-xl p-6 space-y-2">
-            <h2 className="text-lg font-semibold text-gray-800">Google Calendar</h2>
-            <p className="text-sm text-gray-500">
-              A sincronização com Google Calendar está disponível apenas para o time One Doctor.
-            </p>
-          </div>
-        )}
+        ) : null}
       </div>
 
       <div className="bg-white border border-gray-100 rounded-xl p-6 space-y-3">

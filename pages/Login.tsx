@@ -132,7 +132,7 @@ const Login: React.FC = () => {
     <div className="auth-shell">
       <div className="auth-card">
         <div className="auth-icon">
-          <img src="/logo_controle_clinic.png" alt="Controle Clinic" className="h-8 w-8 object-contain" />
+          <img src="/logo_clinic.png" alt="Controle Clinic" className="h-8 w-8 object-contain" />
         </div>
 
         <div className="auth-header">

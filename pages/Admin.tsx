@@ -39,7 +39,6 @@ const validateSquareImage = async (file: File) => {
   if (!file.type.startsWith('image/')) return 'Envie um arquivo de imagem.';
   try {
     const { width, height } = await readImageDimensions(file);
-    if (width !== height) return 'A imagem precisa ser quadrada.';
     if (width > MAX_AVATAR_DIMENSION || height > MAX_AVATAR_DIMENSION) {
       return `A imagem deve ter no máximo ${MAX_AVATAR_DIMENSION} x ${MAX_AVATAR_DIMENSION}px.`;
     }
@@ -66,6 +65,8 @@ const getClinicInitials = (name: string) => {
   return `${parts[0][0] || ''}${parts[parts.length - 1][0] || ''}`.toUpperCase();
 };
 
+const onlyDigits = (value: string) => value.replace(/\D/g, '');
+
 const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
   const navigate = useNavigate();
   const { isSystemAdmin, selectedClinicId, setSelectedClinicId } = useAuth();
@@ -85,6 +86,13 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     ativo: true,
     logo_url: null as string | null,
     helper_agenda_quota: 0,
+    address_cep: '',
+    address_logradouro: '',
+    address_numero: '',
+    address_complemento: '',
+    address_bairro: '',
+    address_cidade: '',
+    address_uf: '',
     commercial_products: [] as string[],
     commercial_package_id: '',
     commercial_amount: '',
@@ -113,6 +121,13 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     ativo: true,
     logo_url: null as string | null,
     helper_agenda_quota: 0,
+    address_cep: '',
+    address_logradouro: '',
+    address_numero: '',
+    address_complemento: '',
+    address_bairro: '',
+    address_cidade: '',
+    address_uf: '',
     commercial_products: [] as string[],
     commercial_package_id: '',
     commercial_amount: '',
@@ -129,6 +144,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
   const [statusFilter, setStatusFilter] = useState<'todas' | 'ativas' | 'inativas'>('todas');
   const [clinicViewMode, setClinicViewMode] = useState<'list' | 'boxes'>('boxes');
   const [clinicUsers, setClinicUsers] = useState<any[]>([]);
+  const [internalUsers, setInternalUsers] = useState<any[]>([]);
   const [userForm, setUserForm] = useState({ clinic_id: '', name: '', email: '', role: 'user', ativo: true, paginas_liberadas: [] as string[] });
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [showUserModal, setShowUserModal] = useState(false);
@@ -147,6 +163,10 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
   const [inviteForm, setInviteForm] = useState({ clinic_id: '', email: '', role: 'user' });
   const [sendingInvite, setSendingInvite] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [cepLoading, setCepLoading] = useState(false);
+  const [cepError, setCepError] = useState('');
+  const [editCepLoading, setEditCepLoading] = useState(false);
+  const [editCepError, setEditCepError] = useState('');
   const tabRoutes: Record<'overview' | 'clinics' | 'users', string> = {
     overview: '/admin/dashboard',
     clinics: '/admin/clinics',
@@ -176,6 +196,15 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
       .select('*')
       .order('created_at', { ascending: false });
     if (!error) setPackages((data || []) as any[]);
+  };
+
+  const fetchInternalUsers = async () => {
+    const { data } = await (supabase as any)
+      .from('profiles')
+      .select('id, full_name, role')
+      .in('role', ['system_owner', 'super_admin', 'one_doctor_admin', 'one_doctor_sales'])
+      .order('full_name', { ascending: true });
+    setInternalUsers((data || []) as any[]);
   };
 
   const refreshUsersAndInvites = async () => {
@@ -288,6 +317,72 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     await supabase.from('clinic_users').update({ paginas_liberadas: pages }).eq('clinic_id', clinicId);
   };
 
+  const loadClinicContract = async (clinicId: string) => {
+    if (!clinicId) return;
+    const { data } = await (supabase as any)
+      .from('commercial_contracts')
+      .select('start_date, end_date, owner_user_id')
+      .eq('clinic_id', clinicId)
+      .maybeSingle();
+    if (!data) return;
+    setEditClinicForm((prev) => ({
+      ...prev,
+      commercial_start_date: data.start_date || '',
+      commercial_end_date: data.end_date || '',
+      commercial_owner_user_id: data.owner_user_id || '',
+    }));
+  };
+
+  const persistClinicContract = async (clinicId: string, form: typeof clinicForm) => {
+    if (!clinicId) return;
+    const hasData = form.commercial_start_date || form.commercial_end_date || form.commercial_owner_user_id;
+    if (!hasData) {
+      await (supabase as any).from('commercial_contracts').delete().eq('clinic_id', clinicId);
+      return;
+    }
+    const payload = {
+      clinic_id: clinicId,
+      start_date: form.commercial_start_date || null,
+      end_date: form.commercial_end_date || null,
+      owner_user_id: form.commercial_owner_user_id || null,
+    };
+    await (supabase as any).from('commercial_contracts').upsert(payload, { onConflict: 'clinic_id' });
+  };
+
+  const handleCepLookup = async (target: 'create' | 'edit') => {
+    const currentCep = target === 'create' ? clinicForm.address_cep : editClinicForm.address_cep;
+    const cepDigits = onlyDigits(currentCep || '');
+    if (!cepDigits) return;
+    const setLoading = target === 'create' ? setCepLoading : setEditCepLoading;
+    const setError = target === 'create' ? setCepError : setEditCepError;
+    const setForm = target === 'create' ? setClinicForm : setEditClinicForm;
+    if (cepDigits.length !== 8) {
+      setError('CEP inválido.');
+      return;
+    }
+    setError('');
+    setLoading(true);
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${cepDigits}/json/`);
+      const data = await res.json();
+      if (data?.erro) {
+        setError('CEP não encontrado.');
+        return;
+      }
+      setForm((prev) => ({
+        ...prev,
+        address_logradouro: data.logradouro || prev.address_logradouro,
+        address_bairro: data.bairro || prev.address_bairro,
+        address_cidade: data.localidade || prev.address_cidade,
+        address_uf: data.uf || prev.address_uf,
+      }));
+    } catch {
+      setError('Não foi possível buscar o CEP.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleToggleClinics = async (ids: string[], ativo: boolean) => {
     if (!ids.length) return;
     const { error } = await supabase.from('clinics').update({ ativo }).in('id', ids);
@@ -312,6 +407,13 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
       ativo: true,
       logo_url: null,
       helper_agenda_quota: 0,
+      address_cep: '',
+      address_logradouro: '',
+      address_numero: '',
+      address_complemento: '',
+      address_bairro: '',
+      address_cidade: '',
+      address_uf: '',
       commercial_products: [],
       commercial_package_id: '',
       commercial_amount: '',
@@ -323,6 +425,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     setClinicLogoFile(null);
     setClinicLogoPreview(null);
     setClinicLogoError(null);
+    setCepError('');
   };
 
   const resetEditClinicForm = () => {
@@ -339,6 +442,13 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
       ativo: true,
       logo_url: null,
       helper_agenda_quota: 0,
+      address_cep: '',
+      address_logradouro: '',
+      address_numero: '',
+      address_complemento: '',
+      address_bairro: '',
+      address_cidade: '',
+      address_uf: '',
       commercial_products: [],
       commercial_package_id: '',
       commercial_amount: '',
@@ -350,6 +460,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     setEditClinicLogoFile(null);
     setEditClinicLogoPreview(null);
     setEditClinicLogoError(null);
+    setEditCepError('');
   };
 
   const closeClinicModal = () => {
@@ -443,6 +554,13 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
       ativo: clinic.ativo ?? true,
       logo_url: clinic.logo_url || null,
       helper_agenda_quota: Number(clinic.helper_agenda_quota ?? 0),
+      address_cep: clinic.address_cep || '',
+      address_logradouro: clinic.address_logradouro || '',
+      address_numero: clinic.address_numero || '',
+      address_complemento: clinic.address_complemento || '',
+      address_bairro: clinic.address_bairro || '',
+      address_cidade: clinic.address_cidade || '',
+      address_uf: clinic.address_uf || '',
       commercial_products: [],
       commercial_package_id: '',
       commercial_amount: '',
@@ -454,6 +572,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     setEditClinicLogoFile(null);
     setEditClinicLogoPreview(null);
     setEditClinicLogoError(null);
+    loadClinicContract(clinic.id);
     setShowClinicModal(true);
   };
 
@@ -573,6 +692,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
       }
       if (createdClinic?.id) {
         await saveClinicPackages(createdClinic.id, package_id || '');
+        await persistClinicContract(createdClinic.id, clinicForm);
       }
       resetClinicForm();
       setShowCreateClinicModal(false);
@@ -618,6 +738,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
         .eq('id', editingClinicId);
       if (error) throw error;
       await saveClinicPackages(editingClinicId, package_id || '');
+      await persistClinicContract(editingClinicId, editClinicForm);
       setShowClinicModal(false);
       resetEditClinicForm();
       fetchClinics();
@@ -899,6 +1020,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
     fetchPackages();
     fetchClinicPackages();
     refreshUsersAndInvites();
+    fetchInternalUsers();
     supabase.auth.getSession().then(({ data }) => setCurrentUserId(data.session?.user.id || null));
   }, []);
 
@@ -1391,7 +1513,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
                           }}
                         />
                       </label>
-                      <span className="text-xs text-gray-500">Quadrada até 350 x 350.</span>
+                      <span className="text-xs text-gray-500">Máximo 350 x 350.</span>
                     </div>
                     {editClinicLogoError && <p className="text-xs text-red-600 mt-1">{editClinicLogoError}</p>}
                     </div>
@@ -1428,6 +1550,69 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
                     />
                     </div>
                     <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">CEP</label>
+                    <input
+                      value={editClinicForm.address_cep}
+                      onChange={(e) => {
+                        setEditClinicForm(prev => ({ ...prev, address_cep: e.target.value }));
+                        setEditCepError('');
+                      }}
+                      onBlur={() => handleCepLookup('edit')}
+                      placeholder="00000-000"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                    />
+                    {editCepLoading && <p className="text-xs text-gray-400 mt-1">Buscando CEP...</p>}
+                    {editCepError && <p className="text-xs text-red-600 mt-1">{editCepError}</p>}
+                    </div>
+                    <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Logradouro</label>
+                    <input
+                      value={editClinicForm.address_logradouro}
+                      onChange={e => setEditClinicForm(prev => ({ ...prev, address_logradouro: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                    />
+                    </div>
+                    <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Número</label>
+                    <input
+                      value={editClinicForm.address_numero}
+                      onChange={e => setEditClinicForm(prev => ({ ...prev, address_numero: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                    />
+                    </div>
+                    <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Complemento</label>
+                    <input
+                      value={editClinicForm.address_complemento}
+                      onChange={e => setEditClinicForm(prev => ({ ...prev, address_complemento: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                    />
+                    </div>
+                    <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Bairro</label>
+                    <input
+                      value={editClinicForm.address_bairro}
+                      onChange={e => setEditClinicForm(prev => ({ ...prev, address_bairro: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                    />
+                    </div>
+                    <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Cidade</label>
+                    <input
+                      value={editClinicForm.address_cidade}
+                      onChange={e => setEditClinicForm(prev => ({ ...prev, address_cidade: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                    />
+                    </div>
+                    <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">UF</label>
+                    <input
+                      value={editClinicForm.address_uf}
+                      onChange={e => setEditClinicForm(prev => ({ ...prev, address_uf: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                    />
+                    </div>
+                    <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Pacote</label>
                     <select
                       value={editClinicForm.package_id}
@@ -1452,6 +1637,47 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
                     />
+                    </div>
+                    <div className="md:col-span-3 border-t border-gray-100 pt-4">
+                      <div className="flex flex-col gap-1 mb-3">
+                        <h3 className="text-sm font-semibold text-gray-800">Contrato</h3>
+                        <p className="text-xs text-gray-500">Informações internas para acompanhamento.</p>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Responsável Guide (interno)</label>
+                          <select
+                            value={editClinicForm.commercial_owner_user_id}
+                            onChange={(e) => setEditClinicForm((prev) => ({ ...prev, commercial_owner_user_id: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none bg-white"
+                          >
+                            <option value="">Selecione...</option>
+                            {internalUsers.map((user) => (
+                              <option key={user.id} value={user.id}>
+                                {user.full_name || user.id}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Início do contrato</label>
+                          <input
+                            type="date"
+                            value={editClinicForm.commercial_start_date}
+                            onChange={(e) => setEditClinicForm((prev) => ({ ...prev, commercial_start_date: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Término do contrato</label>
+                          <input
+                            type="date"
+                            value={editClinicForm.commercial_end_date}
+                            onChange={(e) => setEditClinicForm((prev) => ({ ...prev, commercial_end_date: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center justify-end gap-2 w-full">
@@ -1543,7 +1769,7 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
                           }}
                         />
                       </label>
-                      <span className="text-xs text-gray-500">Quadrada até 350 x 350.</span>
+                      <span className="text-xs text-gray-500">Máximo 350 x 350.</span>
                     </div>
                     {clinicLogoError && <p className="text-xs text-red-600 mt-1">{clinicLogoError}</p>}
                   </div>
@@ -1580,6 +1806,69 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
                     />
                   </div>
                   <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">CEP</label>
+                    <input
+                      value={clinicForm.address_cep}
+                      onChange={(e) => {
+                        setClinicForm(prev => ({ ...prev, address_cep: e.target.value }));
+                        setCepError('');
+                      }}
+                      onBlur={() => handleCepLookup('create')}
+                      placeholder="00000-000"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                    />
+                    {cepLoading ? <p className="text-xs text-gray-400 mt-1">Buscando CEP...</p> : null}
+                    {cepError ? <p className="text-xs text-red-600 mt-1">{cepError}</p> : null}
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Logradouro</label>
+                    <input
+                      value={clinicForm.address_logradouro}
+                      onChange={e => setClinicForm(prev => ({ ...prev, address_logradouro: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Número</label>
+                    <input
+                      value={clinicForm.address_numero}
+                      onChange={e => setClinicForm(prev => ({ ...prev, address_numero: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Complemento</label>
+                    <input
+                      value={clinicForm.address_complemento}
+                      onChange={e => setClinicForm(prev => ({ ...prev, address_complemento: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Bairro</label>
+                    <input
+                      value={clinicForm.address_bairro}
+                      onChange={e => setClinicForm(prev => ({ ...prev, address_bairro: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Cidade</label>
+                    <input
+                      value={clinicForm.address_cidade}
+                      onChange={e => setClinicForm(prev => ({ ...prev, address_cidade: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">UF</label>
+                    <input
+                      value={clinicForm.address_uf}
+                      onChange={e => setClinicForm(prev => ({ ...prev, address_uf: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                    />
+                  </div>
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Pacote</label>
                     <select
                       value={clinicForm.package_id}
@@ -1604,6 +1893,47 @@ const Admin: React.FC<AdminProps> = ({ initialTab = 'overview' }) => {
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
                     />
+                  </div>
+                  <div className="md:col-span-3 border-t border-gray-100 pt-4">
+                    <div className="flex flex-col gap-1 mb-3">
+                      <h3 className="text-sm font-semibold text-gray-800">Contrato</h3>
+                      <p className="text-xs text-gray-500">Informações internas para acompanhamento.</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Responsável Guide (interno)</label>
+                        <select
+                          value={clinicForm.commercial_owner_user_id}
+                          onChange={(e) => setClinicForm((prev) => ({ ...prev, commercial_owner_user_id: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none bg-white"
+                        >
+                          <option value="">Selecione...</option>
+                          {internalUsers.map((user) => (
+                            <option key={user.id} value={user.id}>
+                              {user.full_name || user.id}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Início do contrato</label>
+                        <input
+                          type="date"
+                          value={clinicForm.commercial_start_date}
+                          onChange={(e) => setClinicForm((prev) => ({ ...prev, commercial_start_date: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Término do contrato</label>
+                        <input
+                          type="date"
+                          value={clinicForm.commercial_end_date}
+                          onChange={(e) => setClinicForm((prev) => ({ ...prev, commercial_end_date: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                        />
+                      </div>
+                    </div>
                   </div>
                   <div className="flex items-end justify-between gap-3 md:col-span-3">
                     <label className="flex items-center gap-2 text-sm text-gray-700">

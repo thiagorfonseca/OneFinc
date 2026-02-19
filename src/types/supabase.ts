@@ -507,6 +507,13 @@ export type Database = {
       clinics: {
         Row: {
           ativo: boolean | null
+          address_bairro: string | null
+          address_cep: string | null
+          address_cidade: string | null
+          address_complemento: string | null
+          address_logradouro: string | null
+          address_numero: string | null
+          address_uf: string | null
           created_at: string | null
           documento: string | null
           email_contato: string | null
@@ -521,6 +528,13 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean | null
+          address_bairro?: string | null
+          address_cep?: string | null
+          address_cidade?: string | null
+          address_complemento?: string | null
+          address_logradouro?: string | null
+          address_numero?: string | null
+          address_uf?: string | null
           created_at?: string | null
           documento?: string | null
           email_contato?: string | null
@@ -535,6 +549,13 @@ export type Database = {
         }
         Update: {
           ativo?: boolean | null
+          address_bairro?: string | null
+          address_cep?: string | null
+          address_cidade?: string | null
+          address_complemento?: string | null
+          address_logradouro?: string | null
+          address_numero?: string | null
+          address_uf?: string | null
           created_at?: string | null
           documento?: string | null
           email_contato?: string | null
