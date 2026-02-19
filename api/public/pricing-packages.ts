@@ -7,6 +7,7 @@ export default async function handler(req: any, res: any) {
   const { data, error } = await supabaseAdmin
     .from('content_packages')
     .select('id, name, description, price_cents, created_at')
+    .eq('show_on_public', true)
     .order('created_at', { ascending: false });
 
   if (error) {

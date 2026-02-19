@@ -8,6 +8,7 @@ type PackageForm = {
   name: string;
   description: string;
   price: string;
+  showOnPublic: boolean;
   pages: string[];
   courseIds: string[];
   trainingIds: string[];
@@ -55,6 +56,7 @@ const emptyForm: PackageForm = {
   name: '',
   description: '',
   price: '',
+  showOnPublic: false,
   pages: [],
   courseIds: [],
   trainingIds: [],
@@ -205,6 +207,7 @@ const AdminPackages: React.FC = () => {
       name: pkg.name || '',
       description: pkg.description || '',
       price: formatCentsToInput(pkg.price_cents),
+      showOnPublic: !!pkg.show_on_public,
       pages: pkg.pages || [],
       courseIds: [],
       trainingIds: [],
@@ -243,6 +246,7 @@ const AdminPackages: React.FC = () => {
         name: form.name.trim(),
         description: form.description.trim(),
         price_cents: parseAmountToCents(form.price),
+        show_on_public: form.showOnPublic,
         pages: form.pages,
       };
       let packageId = editingPackageId;
@@ -428,6 +432,13 @@ const AdminPackages: React.FC = () => {
                 <span className="px-2 py-1 rounded-full bg-slate-100">Cursos: {counts.courses}</span>
                 <span className="px-2 py-1 rounded-full bg-slate-100">Treinamentos: {counts.trainings}</span>
                 <span className="px-2 py-1 rounded-full bg-slate-100">Páginas: {pkg.pages?.length || 0}</span>
+                <span
+                  className={`px-2 py-1 rounded-full ${
+                    pkg.show_on_public ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'
+                  }`}
+                >
+                  {pkg.show_on_public ? 'Visível no site' : 'Oculto no site'}
+                </span>
               </div>
               {pkg.pages?.length > 0 && (
                 <p className="text-xs text-gray-500">
@@ -482,6 +493,30 @@ const AdminPackages: React.FC = () => {
                   placeholder="0,00"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Exibir no site público?</label>
+                <div className="flex items-center gap-6 text-sm text-gray-700">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="showOnPublic"
+                      checked={form.showOnPublic}
+                      onChange={() => setForm((prev) => ({ ...prev, showOnPublic: true }))}
+                    />
+                    Sim
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="showOnPublic"
+                      checked={!form.showOnPublic}
+                      onChange={() => setForm((prev) => ({ ...prev, showOnPublic: false }))}
+                    />
+                    Não
+                  </label>
+                </div>
+                <p className="mt-1 text-xs text-gray-500">Se marcado como “Sim”, o pacote aparece em /precos.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Cursos inclusos</label>
