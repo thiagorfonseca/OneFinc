@@ -173,7 +173,7 @@ const AdminAgenda: React.FC = () => {
       }
       const { data, error } = await sb
         .from('profiles')
-        .select('id, full_name, role, google_connected, last_google_sync_at')
+        .select('id, full_name, role, google_connected, last_google_sync_at, show_in_team_agenda')
         .in('role', ['system_owner', 'super_admin', 'one_doctor_admin', 'one_doctor_sales'])
         .order('full_name', { ascending: true });
       let list = (data || []) as Array<{
@@ -182,7 +182,9 @@ const AdminAgenda: React.FC = () => {
         role?: string | null;
         google_connected?: boolean | null;
         last_google_sync_at?: string | null;
+        show_in_team_agenda?: boolean | null;
       }>;
+      list = list.filter((row) => row.show_in_team_agenda !== false);
       if (user?.id && !list.some((row) => row.id === user.id)) {
         list = [
           {
@@ -191,6 +193,7 @@ const AdminAgenda: React.FC = () => {
             role: profile?.role ?? null,
             google_connected: (profile as any)?.google_connected ?? null,
             last_google_sync_at: (profile as any)?.last_google_sync_at ?? null,
+            show_in_team_agenda: true,
           },
           ...list,
         ];

@@ -95,6 +95,7 @@ const AdminTeam: React.FC = () => {
     email: '',
     avatar_url: null as string | null,
     admin_pages: [] as string[],
+    show_in_team_agenda: true,
   });
   const [editAvatarFile, setEditAvatarFile] = useState<File | null>(null);
   const [editAvatarPreview, setEditAvatarPreview] = useState<string | null>(null);
@@ -142,7 +143,7 @@ const AdminTeam: React.FC = () => {
     }
     const { data: fallback, error: fallbackError } = await supabase
       .from('profiles')
-      .select('id, full_name, role, created_at, avatar_url, admin_pages')
+      .select('id, full_name, role, created_at, avatar_url, admin_pages, show_in_team_agenda')
       .in('role', ['system_owner', 'super_admin'])
       .order('created_at', { ascending: false });
     if (!fallbackError && fallback) setMembers(fallback as any[]);
@@ -259,7 +260,7 @@ const AdminTeam: React.FC = () => {
 
   const resetEditForm = () => {
     setEditingMemberId(null);
-    setEditForm({ full_name: '', role: 'super_admin', email: '', avatar_url: null, admin_pages: [] });
+    setEditForm({ full_name: '', role: 'super_admin', email: '', avatar_url: null, admin_pages: [], show_in_team_agenda: true });
     setEditAvatarFile(null);
     setEditAvatarPreview(null);
     setEditAvatarError(null);
@@ -273,6 +274,7 @@ const AdminTeam: React.FC = () => {
       email: member.email || '',
       avatar_url: member.avatar_url || null,
       admin_pages: member.admin_pages || [],
+      show_in_team_agenda: member.show_in_team_agenda !== false,
     });
     setError(null);
     setEditAvatarFile(null);
@@ -314,6 +316,7 @@ const AdminTeam: React.FC = () => {
         role: editForm.role,
         avatar_url: avatarUrl,
         admin_pages: cleanedAdminPages,
+        show_in_team_agenda: editForm.show_in_team_agenda,
       };
       const { error: updateError } = await supabase
         .from('profiles')
@@ -625,6 +628,17 @@ const AdminTeam: React.FC = () => {
                     <option value="system_owner">System Owner</option>
                     <option value="super_admin">Super Admin</option>
                   </select>
+                </div>
+                <div className="flex items-center gap-2 md:col-span-2">
+                  <input
+                    id="show-in-agenda"
+                    type="checkbox"
+                    checked={editForm.show_in_team_agenda}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, show_in_team_agenda: e.target.checked }))}
+                  />
+                  <label htmlFor="show-in-agenda" className="text-sm text-gray-700">
+                    Mostrar este consultor na agenda do time
+                  </label>
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Páginas de admin</label>
