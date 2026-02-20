@@ -310,6 +310,30 @@ export const cancelEvent = async (eventId: string, clinicIds: string[]) => {
   await emitEventWebhook('cancel', current as ScheduleEvent, clinicIds);
 };
 
+export const deleteEvent = async (eventId: string, clinicIds: string[]) => {
+  const { data: current, error: currentError } = await sb
+    .from('schedule_events')
+    .select('id, consultant_id, start_at, end_at, title, timezone')
+    .eq('id', eventId)
+    .single();
+  if (currentError) throw currentError;
+
+  await sb.from('schedule_event_attendees').delete().eq('event_id', eventId);
+  const { error } = await sb.from('schedule_events').delete().eq('id', eventId);
+  if (error) throw error;
+
+  if (clinicIds.length) {
+    const notificationsPayload = clinicIds.map((clinicId) => ({
+      target: 'clinic',
+      clinic_id: clinicId,
+      type: 'event_cancelled',
+      payload: { event_id: eventId, clinic_id: clinicId },
+    }));
+    await sb.from('notifications').insert(notificationsPayload);
+  }
+  await emitEventWebhook('cancel', current as ScheduleEvent, clinicIds);
+};
+
 export const confirmEventAttendance = async (eventId: string, clinicId: string) => {
   const { error } = await sb.rpc('confirm_schedule_event', {
     p_event_id: eventId,

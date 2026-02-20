@@ -15,6 +15,7 @@ import { useModalControls } from '../hooks/useModalControls';
 import {
   buildRecurrenceRule,
   cancelEvent,
+  deleteEvent,
   createEvent,
   expandRecurringOccurrences,
   listChangeRequests,
@@ -500,6 +501,19 @@ const AdminAgenda: React.FC = () => {
     }
   };
 
+  const handleDelete = async () => {
+    if (!selectedEvent) return;
+    if (!confirm('Apagar definitivamente este agendamento? Essa ação não poderá ser desfeita.')) return;
+    try {
+      await deleteEvent(selectedEvent.id, selectedEvent.attendees.map((a) => a.clinic_id));
+      push({ title: 'Agendamento removido.', variant: 'success' });
+      setDrawerOpen(false);
+      if (range) await fetchEvents(range.end);
+    } catch (err: any) {
+      push({ title: 'Erro ao apagar agendamento.', description: err?.message, variant: 'error' });
+    }
+  };
+
   const handleDatesSet = (info: DatesSetArg) => {
     setRange({ start: info.start, end: info.end });
     setCalendarLabel(formatMonthYear(info.view.currentStart));
@@ -957,6 +971,7 @@ const AdminAgenda: React.FC = () => {
           }
         }}
         onCancel={handleCancel}
+        onDelete={handleDelete}
       />
 
       {rescheduleModalOpen && (

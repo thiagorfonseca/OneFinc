@@ -23,6 +23,7 @@ type EventDrawerProps = {
   externalLink?: string | null;
   onEdit?: () => void;
   onCancel?: () => void;
+  onDelete?: () => void;
   onConfirm?: () => void;
 };
 
@@ -39,6 +40,7 @@ const EventDrawer: React.FC<EventDrawerProps> = ({
   externalLink = null,
   onEdit,
   onCancel,
+  onDelete,
   onConfirm,
 }) => {
   const modalControls = useModalControls({ isOpen: open, onClose });
@@ -228,6 +230,15 @@ const EventDrawer: React.FC<EventDrawerProps> = ({
               >
                 Cancelar evento
               </button>
+              {onDelete && (
+                <button
+                  type="button"
+                  onClick={onDelete}
+                  className="w-full sm:w-auto px-4 py-2 rounded-lg bg-rose-600 text-white text-sm"
+                >
+                  Apagar definitivamente
+                </button>
+              )}
             </>
           )}
         </div>
