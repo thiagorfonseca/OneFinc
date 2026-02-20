@@ -129,3 +129,27 @@ Este documento governa decisões arquiteturais e de segurança do projeto.
 - E-mail nunca participa de autorização
 - RLS é obrigatório
 - Este documento é lei
+
+---
+
+## Runbook — Troca de Clínica (System Admin)
+
+**Sintoma**
+- `system_owner`/`super_admin` troca a clínica no seletor, mas a UI continua exibindo dados da clínica anterior (ex.: One Doctor).
+
+**Causa**
+- O RLS exige que `profiles.clinic_id` esteja alinhado com a clínica selecionada.
+- O front-end mudou o estado local antes de persistir `profiles.clinic_id`, criando uma corrida: as queries rodavam antes do update no Supabase.
+
+**Correção Padrão**
+1. Atualizar `profiles.clinic_id` no Supabase ao trocar a clínica.
+2. Só atualizar `selectedClinicId` e o estado local **após** o update confirmar.
+3. Garantir que o carregamento da clínica use `effectiveClinicId`.
+
+**Implementação de Referência**
+- `src/auth/AuthProvider.tsx` — `setSelectedClinicId` aguarda update em `profiles`.
+- `components/admin/ClinicSwitcher.tsx` — remove “Todas” e força clínica ativa.
+
+**Notas**
+- Este comportamento é obrigatório quando RLS restringe por clínica.
+- Se voltar a ocorrer, revisar novamente o fluxo acima.
