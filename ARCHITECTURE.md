@@ -153,3 +153,20 @@ Este documento governa decisões arquiteturais e de segurança do projeto.
 **Notas**
 - Este comportamento é obrigatório quando RLS restringe por clínica.
 - Se voltar a ocorrer, revisar novamente o fluxo acima.
+
+---
+
+## Runbook — Pacotes de Páginas e System Admin
+
+**Sintoma**
+- `system_owner/super_admin` vê páginas que não fazem parte do pacote da clínica selecionada.
+
+**Causa**
+- `hasPageAccess` ignorava pacote para system admin, liberando tudo fora de `/admin`.
+
+**Correção Padrão**
+1. Manter acesso irrestrito somente em rotas `/admin`.
+2. Para demais rotas, aplicar as mesmas regras de pacote usadas para usuários da clínica.
+
+**Implementação de Referência**
+- `src/auth/AuthProvider.tsx` → `hasPageAccess` agora valida pacote também para system admin.

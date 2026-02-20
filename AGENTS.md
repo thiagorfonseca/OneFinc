@@ -17,3 +17,18 @@ RLS depende de `profiles.clinic_id`. Se o front muda o estado local antes de per
 
 **Referência**  
 Veja o runbook completo em `ARCHITECTURE.md`.
+
+## Runbook rápido — Pacotes e System Admin
+
+**Sintoma**  
+System admin vê páginas fora do pacote da clínica selecionada.
+
+**Causa**  
+`hasPageAccess` ignorava regras de pacote para system admin.
+
+**Correção padrão**
+1. `/admin` segue livre para system admin.
+2. Demais rotas aplicam pacote igual aos usuários da clínica.
+
+**Referência**  
+Veja o runbook completo em `ARCHITECTURE.md`.
