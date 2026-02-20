@@ -76,6 +76,11 @@ export default async function handler(req: any, res: any) {
       });
     }
 
+    await supabaseAdmin
+      .from('profiles')
+      .update({ last_google_sync_at: new Date().toISOString() })
+      .eq('id', consultorId);
+
     const redirectBase = (APP_URL || '').replace(/\/$/, '');
     const returnTo = typeof state.return_to === 'string' && state.return_to.startsWith('/') ? state.return_to : '';
     const fallback = '/profile?gcal=connected';

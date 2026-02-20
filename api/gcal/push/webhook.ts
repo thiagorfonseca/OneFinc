@@ -1,5 +1,6 @@
 import { methodNotAllowed } from '../../_utils/http.js';
 import { findSyncStateByChannel, getCalendarClientForConsultant, syncGoogleEvents, updateSyncState } from '../../_utils/gcal.js';
+import { supabaseAdmin } from '../../_utils/supabase.js';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return methodNotAllowed(res, ['POST']);
@@ -64,6 +65,11 @@ export default async function handler(req: any, res: any) {
         sync_token: nextSyncToken,
       });
     }
+
+    await supabaseAdmin
+      .from('profiles')
+      .update({ last_google_sync_at: new Date().toISOString() })
+      .eq('id', syncState.consultor_id);
 
     res.statusCode = 200;
     res.end();

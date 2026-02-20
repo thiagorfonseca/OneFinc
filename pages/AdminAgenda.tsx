@@ -99,7 +99,13 @@ const AdminAgenda: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState<ScheduleAdminEvent[]>([]);
   const [clinics, setClinics] = useState<Array<{ id: string; name: string }>>([]);
-  const [consultants, setConsultants] = useState<Array<{ id: string; full_name: string | null; role?: string | null; google_connected?: boolean | null }>>([]);
+  const [consultants, setConsultants] = useState<Array<{
+    id: string;
+    full_name: string | null;
+    role?: string | null;
+    google_connected?: boolean | null;
+    last_google_sync_at?: string | null;
+  }>>([]);
   const [selectedConsultantId, setSelectedConsultantId] = useState<string | null>(null);
   const [view, setView] = useState<'timeGridDay' | 'timeGridWeek' | 'dayGridMonth'>('dayGridMonth');
   const [range, setRange] = useState<{ start: Date; end: Date } | null>(null);
@@ -128,6 +134,8 @@ const AdminAgenda: React.FC = () => {
   const lastHelperCount = useRef(0);
   const [syncingGoogle, setSyncingGoogle] = useState(false);
   const notifiedRef = useRef<Set<string>>(new Set());
+  const autoSyncRef = useRef<Map<string, number>>(new Map());
+  const AUTO_SYNC_MINUTES = 15;
 
   const sb = supabase as any;
 
@@ -157,6 +165,7 @@ const AdminAgenda: React.FC = () => {
             full_name: profile?.full_name || user.email || 'Você',
             role: profile?.role ?? null,
             google_connected: (profile as any)?.google_connected ?? null,
+            last_google_sync_at: (profile as any)?.last_google_sync_at ?? null,
           },
         ]);
         setSelectedConsultantId(user.id);
@@ -164,10 +173,16 @@ const AdminAgenda: React.FC = () => {
       }
       const { data, error } = await sb
         .from('profiles')
-        .select('id, full_name, role, google_connected')
+        .select('id, full_name, role, google_connected, last_google_sync_at')
         .in('role', ['system_owner', 'super_admin', 'one_doctor_admin', 'one_doctor_sales'])
         .order('full_name', { ascending: true });
-      let list = (data || []) as Array<{ id: string; full_name: string | null; role?: string | null; google_connected?: boolean | null }>;
+      let list = (data || []) as Array<{
+        id: string;
+        full_name: string | null;
+        role?: string | null;
+        google_connected?: boolean | null;
+        last_google_sync_at?: string | null;
+      }>;
       if (user?.id && !list.some((row) => row.id === user.id)) {
         list = [
           {
@@ -175,6 +190,7 @@ const AdminAgenda: React.FC = () => {
             full_name: profile?.full_name || user.email || 'Você',
             role: profile?.role ?? null,
             google_connected: (profile as any)?.google_connected ?? null,
+            last_google_sync_at: (profile as any)?.last_google_sync_at ?? null,
           },
           ...list,
         ];
@@ -200,6 +216,11 @@ const AdminAgenda: React.FC = () => {
     () => consultants.find((row) => row.id === selectedConsultantId) || null,
     [consultants, selectedConsultantId],
   );
+  const lastSyncLabel = useMemo(() => {
+    const value = selectedConsultant?.last_google_sync_at;
+    if (!value) return 'Última sincronização: —';
+    return `Última sincronização: ${formatDateTime(value)}`;
+  }, [selectedConsultant?.last_google_sync_at]);
 
   const fetchEvents = async (end?: Date) => {
     if (!selectedConsultantId) return;
@@ -721,7 +742,7 @@ const AdminAgenda: React.FC = () => {
     }
   };
 
-  const handleManualSync = async () => {
+  const handleManualSync = async (options: { silent?: boolean } = {}) => {
     if (!selectedConsultantId) return;
     setSyncingGoogle(true);
     try {
@@ -740,7 +761,17 @@ const AdminAgenda: React.FC = () => {
         const body = await response.json().catch(() => ({}));
         throw new Error(body?.error || 'Falha ao sincronizar.');
       }
-      push({ title: 'Sincronização concluída.', variant: 'success' });
+      const nowIso = new Date().toISOString();
+      setConsultants((prev) =>
+        prev.map((consultant) =>
+          consultant.id === selectedConsultantId
+            ? { ...consultant, last_google_sync_at: nowIso }
+            : consultant,
+        ),
+      );
+      if (!options.silent) {
+        push({ title: 'Sincronização concluída.', variant: 'success' });
+      }
       if (range) await fetchEvents(range.end);
     } catch (err: any) {
       push({ title: 'Erro ao sincronizar.', description: err?.message, variant: 'error' });
@@ -748,6 +779,20 @@ const AdminAgenda: React.FC = () => {
       setSyncingGoogle(false);
     }
   };
+
+  useEffect(() => {
+    if (!selectedConsultantId || syncingGoogle) return;
+    const consultant = selectedConsultant;
+    if (!consultant?.google_connected) return;
+    const lastSync = consultant.last_google_sync_at ? new Date(consultant.last_google_sync_at).getTime() : 0;
+    const now = Date.now();
+    const diffMinutes = lastSync ? (now - lastSync) / 60000 : Number.POSITIVE_INFINITY;
+    if (diffMinutes < AUTO_SYNC_MINUTES) return;
+    const lastAttempt = autoSyncRef.current.get(selectedConsultantId) || 0;
+    if (now - lastAttempt < 5 * 60 * 1000) return;
+    autoSyncRef.current.set(selectedConsultantId, now);
+    void handleManualSync({ silent: true });
+  }, [selectedConsultantId, selectedConsultant?.google_connected, selectedConsultant?.last_google_sync_at, syncingGoogle]);
 
   const switchView = (next: typeof view) => {
     setView(next);
@@ -1002,15 +1047,14 @@ const AdminAgenda: React.FC = () => {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={handleManualSync}
+              onClick={() => handleManualSync()}
               disabled={syncingGoogle}
               className="px-3 py-2 text-sm border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-60"
             >
               {syncingGoogle ? 'Sincronizando...' : 'Sincronizar Google'}
             </button>
-            <span className="text-[11px] text-gray-500 leading-tight max-w-[220px]">
-              1) Conecte o Google no Perfil do consultor. 2) Selecione o consultor aqui. 3) Clique para puxar os
-              eventos do Google.
+            <span className="text-[11px] text-gray-500 leading-tight max-w-[240px]">
+              {lastSyncLabel} • Auto-sync a cada {AUTO_SYNC_MINUTES} min quando conectado.
             </span>
           </div>
           <button

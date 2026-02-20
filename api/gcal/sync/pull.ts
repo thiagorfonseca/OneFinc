@@ -75,6 +75,11 @@ export default async function handler(req: any, res: any) {
       });
     }
 
+    await supabaseAdmin
+      .from('profiles')
+      .update({ last_google_sync_at: new Date().toISOString() })
+      .eq('id', syncState.consultor_id);
+
     res.statusCode = 200;
     res.end(JSON.stringify({ ok: true }));
   } catch (err: any) {
