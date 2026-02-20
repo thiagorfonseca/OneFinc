@@ -21,6 +21,10 @@ const ProtectedRoute: React.FC<Props> = ({ children, page }) => {
   const isOnboardingWelcome = location.pathname === '/app/onboarding/boas-vindas';
   const pageKey = page || `${location.pathname}${location.search}`;
   if (!isOnboardingWelcome && pageKey && isSystemAdmin && !hasPageAccess(pageKey)) {
+    const fallback = allowedPages?.length ? allowedPages[0] : '/admin/dashboard';
+    if (fallback && fallback !== pageKey) {
+      return <Navigate to={fallback} replace />;
+    }
     return <Navigate to="/admin/dashboard" replace />;
   }
 
