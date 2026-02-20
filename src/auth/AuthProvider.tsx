@@ -427,14 +427,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('adminActiveClinicId') : null;
-    if (saved) setSelectedClinicIdState(saved);
-  }, [isSystemAdmin]);
+    if (saved) {
+      setSelectedClinicIdState(saved);
+      return;
+    }
+    if (profile?.clinic_id) {
+      setSelectedClinicIdState(profile.clinic_id);
+    }
+  }, [isSystemAdmin, profile?.clinic_id]);
 
   const setSelectedClinicId = (id: string | null) => {
     setSelectedClinicIdState(id);
     if (typeof window !== 'undefined') {
       if (id === null) window.localStorage.removeItem('adminActiveClinicId');
       else window.localStorage.setItem('adminActiveClinicId', id);
+    }
+    if (isSystemAdmin && user?.id) {
+      supabase
+        .from('profiles')
+        .update({ clinic_id: id })
+        .eq('id', user.id);
     }
   };
 
