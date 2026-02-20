@@ -24,7 +24,6 @@ type EventDrawerProps = {
   onEdit?: () => void;
   onCancel?: () => void;
   onConfirm?: () => void;
-  onRequestReschedule?: () => void;
 };
 
 const EventDrawer: React.FC<EventDrawerProps> = ({
@@ -41,7 +40,6 @@ const EventDrawer: React.FC<EventDrawerProps> = ({
   onEdit,
   onCancel,
   onConfirm,
-  onRequestReschedule,
 }) => {
   const modalControls = useModalControls({ isOpen: open, onClose });
   if (!open || !event) return null;

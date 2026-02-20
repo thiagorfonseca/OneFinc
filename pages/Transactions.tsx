@@ -207,8 +207,6 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
   const [paymentDate, setPaymentDate] = useState('');
   const [dueDateDirty, setDueDateDirty] = useState(false);
   const [saleNumberOverride, setSaleNumberOverride] = useState<string | null>(null);
-  const requiresNSU = isIncome && (formData.payment_method === 'Cartão de Crédito' || formData.payment_method === 'Cartão de Débito');
-  const isNSUValid = !requiresNSU || !!formData.nsu.trim();
 
   useEffect(() => {
     if (!isIncome || !isSalesView || salesTab !== 'sold') return;
@@ -302,6 +300,8 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
   };
   type FormDataType = typeof INITIAL_FORM_DATA;
   const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_DATA);
+  const requiresNSU = isIncome && (formData.payment_method === 'Cartão de Crédito' || formData.payment_method === 'Cartão de Débito');
+  const isNSUValid = !requiresNSU || !!formData.nsu.trim();
 
   // --- Data Fetching ---
   const fetchData = async () => {
