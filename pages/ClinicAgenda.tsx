@@ -405,7 +405,6 @@ const ClinicAgenda: React.FC = () => {
         event={selectedEvent}
         clinicView
         onConfirm={handleConfirm}
-        onRequestReschedule={() => setRescheduleOpen(true)}
       />
 
       <RescheduleModal
