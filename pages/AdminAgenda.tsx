@@ -38,6 +38,7 @@ const emptyForm: EventFormState = {
   meeting_url: '',
   recurrence: 'none',
   consultant_id: '',
+  consultant_ids: [],
 };
 
 const toLocalInput = (value: string | Date) => {
@@ -107,6 +108,7 @@ const AdminAgenda: React.FC = () => {
     last_google_sync_at?: string | null;
   }>>([]);
   const [selectedConsultantId, setSelectedConsultantId] = useState<string | null>(null);
+  const [selectedConsultantIds, setSelectedConsultantIds] = useState<string[]>([]);
   const [view, setView] = useState<'timeGridDay' | 'timeGridWeek' | 'dayGridMonth'>('dayGridMonth');
   const [range, setRange] = useState<{ start: Date; end: Date } | null>(null);
   const [calendarLabel, setCalendarLabel] = useState('');
@@ -408,8 +410,10 @@ const AdminAgenda: React.FC = () => {
       start: start ? toLocalInput(start) : '',
       end: end ? toLocalInput(end) : '',
       consultant_id: consultantId,
+      consultant_ids: consultantId ? [consultantId] : [],
     });
     setSelectedClinics([]);
+    setSelectedConsultantIds(consultantId ? [consultantId] : []);
     setSuggestions([]);
     setPendingRescheduleRequest(null);
     setModalOpen(true);
@@ -428,8 +432,10 @@ const AdminAgenda: React.FC = () => {
       meeting_url: event.meeting_url || '',
       recurrence: resolveRecurrenceOption(event.recurrence_rule),
       consultant_id: event.consultant_id,
+      consultant_ids: [event.consultant_id],
     });
     setSelectedClinics(event.attendees.map((att) => att.clinic_id));
+    setSelectedConsultantIds([event.consultant_id]);
     setSuggestions([]);
     setPendingRescheduleRequest(null);
     setModalOpen(true);
@@ -437,9 +443,14 @@ const AdminAgenda: React.FC = () => {
 
   const handleSave = async () => {
     if (!user?.id) return;
-    const consultantId = isConsultantOnly ? user.id : (form.consultant_id || selectedConsultantId || '');
-    if (!consultantId) {
-      push({ title: 'Selecione um consultor.', variant: 'error' });
+    const consultantIds = isConsultantOnly
+      ? [user.id]
+      : modalMode === 'create'
+        ? (selectedConsultantIds.length ? selectedConsultantIds : (form.consultant_ids || []))
+        : [form.consultant_id || selectedConsultantId || ''];
+    const cleanedConsultantIds = Array.from(new Set(consultantIds.filter(Boolean)));
+    if (cleanedConsultantIds.length === 0) {
+      push({ title: 'Selecione ao menos um consultor.', variant: 'error' });
       return;
     }
     if (!form.title.trim() || !form.start || !form.end) {
@@ -464,8 +475,7 @@ const AdminAgenda: React.FC = () => {
     try {
       const startAt = startDate.toISOString();
       const endAt = endDate.toISOString();
-      const eventPayload = {
-        consultant_id: consultantId,
+      const basePayload = {
         title: form.title.trim(),
         description: form.description.trim() || null,
         start_at: startAt,
@@ -473,41 +483,63 @@ const AdminAgenda: React.FC = () => {
         timezone: form.timezone || 'America/Sao_Paulo',
         location: form.location.trim() || null,
         meeting_url: form.meeting_url.trim() || null,
-        status: modalMode === 'create' ? 'pending_confirmation' : (selectedEvent?.status || 'pending_confirmation'),
         recurrence_rule: buildRecurrenceRule(form.recurrence, startAt),
       } as const;
 
       if (modalMode === 'create') {
-        await createEvent({ event: eventPayload, clinicIds: selectedClinics });
-        push({ title: 'Agendamento criado.', variant: 'success' });
-        if (consultantId !== selectedConsultantId) {
-          setSelectedConsultantId(consultantId);
+        const created: string[] = [];
+        const failed: string[] = [];
+        for (const consultantId of cleanedConsultantIds) {
+          const eventPayload = {
+            consultant_id: consultantId,
+            status: 'pending_confirmation' as const,
+            ...basePayload,
+          };
+          try {
+            await createEvent({ event: eventPayload, clinicIds: selectedClinics });
+            created.push(consultantId);
+          } catch {
+            failed.push(consultantId);
+          }
+        }
+        if (created.length > 0) {
+          push({
+            title: `Agendamento criado para ${created.length} consultor(es).`,
+            variant: 'success',
+          });
+        }
+        if (failed.length > 0) {
+          const failedNames = failed
+            .map((id) => consultants.find((c) => c.id === id)?.full_name || id.slice(0, 8))
+            .join(', ');
+          push({
+            title: 'Alguns consultores não puderam ser agendados.',
+            description: failedNames,
+            variant: 'error',
+          });
         }
       } else if (selectedEvent) {
         const hasTimeChanged =
-          eventPayload.start_at !== selectedEvent.start_at || eventPayload.end_at !== selectedEvent.end_at;
+          basePayload.start_at !== selectedEvent.start_at || basePayload.end_at !== selectedEvent.end_at;
         const nextStatus =
           selectedEvent.status === 'reschedule_requested' && hasTimeChanged ? 'rescheduled' : selectedEvent.status;
         await updateEvent({
           eventId: selectedEvent.id,
           updates: {
-            title: eventPayload.title,
-            description: eventPayload.description,
-            start_at: eventPayload.start_at,
-            end_at: eventPayload.end_at,
-            timezone: eventPayload.timezone,
-            location: eventPayload.location,
-            meeting_url: eventPayload.meeting_url,
-            recurrence_rule: eventPayload.recurrence_rule,
-            consultant_id: consultantId,
+            title: basePayload.title,
+            description: basePayload.description,
+            start_at: basePayload.start_at,
+            end_at: basePayload.end_at,
+            timezone: basePayload.timezone,
+            location: basePayload.location,
+            meeting_url: basePayload.meeting_url,
+            recurrence_rule: basePayload.recurrence_rule,
+            consultant_id: cleanedConsultantIds[0],
             status: nextStatus,
           },
           clinicIds: selectedClinics,
           forceStatus: nextStatus,
         });
-        if (consultantId !== selectedConsultantId) {
-          setSelectedConsultantId(consultantId);
-        }
 
         if (pendingRescheduleRequest && selectedClinics.length) {
           await sb
@@ -526,8 +558,8 @@ const AdminAgenda: React.FC = () => {
             payload: {
               event_id: selectedEvent.id,
               clinic_id: clinicId,
-              start_at: eventPayload.start_at,
-              end_at: eventPayload.end_at,
+              start_at: basePayload.start_at,
+              end_at: basePayload.end_at,
               reason: pendingRescheduleRequest.reason,
             },
           }));
@@ -836,6 +868,7 @@ const AdminAgenda: React.FC = () => {
       meeting_url: targetEvent.meeting_url || '',
       recurrence: resolveRecurrenceOption(targetEvent.recurrence_rule),
       consultant_id: targetEvent.consultant_id,
+      consultant_ids: [targetEvent.consultant_id],
     });
     setPendingRescheduleRequest(req);
     setRescheduleModalOpen(false);
@@ -1160,12 +1193,17 @@ const AdminAgenda: React.FC = () => {
           google_connected: c.google_connected ?? null,
         }))}
         consultantLocked={isConsultantOnly}
+        allowMultiConsultant={modalMode === 'create'}
+        selectedConsultants={selectedConsultantIds}
         selectedClinics={selectedClinics}
         suggestions={suggestions}
         saving={saving}
         suggesting={suggesting}
         onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
         onSelectConsultant={(id) => setSelectedConsultantId(id || null)}
+        onToggleConsultant={(id) =>
+          setSelectedConsultantIds((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]))
+        }
         onToggleClinic={(id) =>
           setSelectedClinics((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]))
         }

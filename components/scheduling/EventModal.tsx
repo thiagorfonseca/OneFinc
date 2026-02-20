@@ -14,6 +14,7 @@ export type EventFormState = {
   meeting_url: string;
   recurrence: RecurrenceOption;
   consultant_id?: string;
+  consultant_ids?: string[];
 };
 
 type ClinicOption = {
@@ -28,12 +29,15 @@ type EventModalProps = {
   clinics: ClinicOption[];
   consultants?: Array<{ id: string; name: string; google_connected?: boolean | null }>;
   consultantLocked?: boolean;
+  allowMultiConsultant?: boolean;
+  selectedConsultants?: string[];
   selectedClinics: string[];
   suggestions: SuggestedSlot[];
   saving: boolean;
   suggesting: boolean;
   onChange: (patch: Partial<EventFormState>) => void;
   onSelectConsultant?: (id: string) => void;
+  onToggleConsultant?: (id: string) => void;
   onToggleClinic: (id: string) => void;
   onSave: () => void;
   onSuggest: () => void;
@@ -47,12 +51,15 @@ const EventModal: React.FC<EventModalProps> = ({
   clinics,
   consultants = [],
   consultantLocked = false,
+  allowMultiConsultant = false,
+  selectedConsultants = [],
   selectedClinics,
   suggestions,
   saving,
   suggesting,
   onChange,
   onSelectConsultant,
+  onToggleConsultant,
   onToggleClinic,
   onSave,
   onSuggest,
@@ -88,7 +95,7 @@ const EventModal: React.FC<EventModalProps> = ({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {consultants.length > 0 && (
+          {consultants.length > 0 && !allowMultiConsultant && (
             <div className="md:col-span-2">
               <label className="text-sm font-medium text-gray-700">Consultor *</label>
               <select
@@ -193,6 +200,61 @@ const EventModal: React.FC<EventModalProps> = ({
             />
           </div>
         </div>
+
+        {consultants.length > 0 && allowMultiConsultant && (
+          <div className="rounded-xl border border-gray-100 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-gray-800">Consultores participantes</p>
+                <p className="text-xs text-gray-500">Selecione um ou mais consultores para o evento.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    consultants.forEach((consultant) => {
+                      if (!selectedConsultants.includes(consultant.id)) onToggleConsultant?.(consultant.id);
+                    });
+                  }}
+                  className="text-xs px-2 py-1 rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50"
+                  disabled={consultantLocked}
+                >
+                  Selecionar todos
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    selectedConsultants.slice().forEach((id) => onToggleConsultant?.(id));
+                  }}
+                  className="text-xs px-2 py-1 rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50"
+                  disabled={consultantLocked}
+                >
+                  Limpar
+                </button>
+                <span className="text-xs text-gray-400">{selectedConsultants.length} selecionados</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-auto">
+              {consultants.map((consultant) => (
+                <label key={consultant.id} className="flex items-center gap-2 text-sm text-gray-600">
+                  <input
+                    type="checkbox"
+                    checked={selectedConsultants.includes(consultant.id)}
+                    onChange={() => onToggleConsultant?.(consultant.id)}
+                    disabled={consultantLocked}
+                  />
+                  <span>
+                    {consultant.name}
+                    {consultant.google_connected ? ' • Google conectado' : ''}
+                  </span>
+                </label>
+              ))}
+              {consultants.length === 0 && (
+                <p className="text-xs text-gray-400">Nenhum consultor disponível.</p>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="rounded-xl border border-gray-100 p-4 space-y-3">
           <div className="flex items-center justify-between">
