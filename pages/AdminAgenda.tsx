@@ -37,6 +37,7 @@ const emptyForm: EventFormState = {
   location: '',
   meeting_url: '',
   recurrence: 'none',
+  consultant_id: '',
 };
 
 const toLocalInput = (value: string | Date) => {
@@ -61,8 +62,38 @@ const overlapsRange = (startAt: string, endAt: string, range?: { start: Date; en
   return end > range.start && start < range.end;
 };
 
+const resolveStatusBadge = (value?: string | null) => {
+  const normalized = (value || '').toLowerCase();
+  if (normalized === 'confirmed') {
+    return { label: 'CONFIRMADO', className: 'bg-emerald-200 text-gray-900' };
+  }
+  if (normalized === 'pending' || normalized === 'pending_confirmation') {
+    return { label: 'A CONFIRMAR', className: 'bg-rose-100 text-rose-800' };
+  }
+  if (normalized === 'declined') {
+    return { label: 'RECUSADO', className: 'bg-gray-200 text-gray-700' };
+  }
+  if (normalized === 'reschedule_requested') {
+    return { label: 'REAGENDAR', className: 'bg-amber-100 text-amber-700' };
+  }
+  if (normalized === 'rescheduled') {
+    return { label: 'REAGENDADO', className: 'bg-sky-100 text-sky-700' };
+  }
+  if (normalized === 'cancelled') {
+    return { label: 'CANCELADO', className: 'bg-gray-200 text-gray-700' };
+  }
+  return { label: value || '-', className: 'bg-gray-100 text-gray-600' };
+};
+
+const resolveEventBadge = (event: ScheduleAdminEvent) => {
+  if (event.is_external) {
+    return { label: 'EXTERNO', className: 'bg-slate-200 text-slate-700' };
+  }
+  return resolveStatusBadge(event.status);
+};
+
 const AdminAgenda: React.FC = () => {
-  const { user, profile, isSystemAdmin } = useAuth();
+  const { user, profile, isSystemAdmin, isOneDoctorInternal } = useAuth();
   const calendarRef = useRef<FullCalendar | null>(null);
   const { toasts, push, dismiss } = useToast();
   const [loading, setLoading] = useState(true);
@@ -96,8 +127,11 @@ const AdminAgenda: React.FC = () => {
   const [helperLoading, setHelperLoading] = useState(false);
   const lastHelperCount = useRef(0);
   const [syncingGoogle, setSyncingGoogle] = useState(false);
+  const notifiedRef = useRef<Set<string>>(new Set());
 
   const sb = supabase as any;
+
+  const isConsultantOnly = isOneDoctorInternal && !isSystemAdmin;
 
   const rescheduleModalControls = useModalControls({
     isOpen: rescheduleModalOpen,
@@ -105,17 +139,29 @@ const AdminAgenda: React.FC = () => {
   });
 
   useEffect(() => {
-    if (!isSystemAdmin) return;
+    if (!isSystemAdmin && !isOneDoctorInternal) return;
     const loadClinics = async () => {
       const { data } = await sb.from('clinics').select('id, name').order('name', { ascending: true });
       setClinics((data || []).map((row: any) => ({ id: row.id, name: row.name })));
     };
     loadClinics();
-  }, [isSystemAdmin]);
+  }, [isSystemAdmin, isOneDoctorInternal]);
 
   useEffect(() => {
-    if (!isSystemAdmin) return;
+    if (!isSystemAdmin && !isOneDoctorInternal) return;
     const loadConsultants = async () => {
+      if (isConsultantOnly && user?.id) {
+        setConsultants([
+          {
+            id: user.id,
+            full_name: profile?.full_name || user.email || 'Você',
+            role: profile?.role ?? null,
+            google_connected: (profile as any)?.google_connected ?? null,
+          },
+        ]);
+        setSelectedConsultantId(user.id);
+        return;
+      }
       const { data, error } = await sb
         .from('profiles')
         .select('id, full_name, role, google_connected')
@@ -142,7 +188,7 @@ const AdminAgenda: React.FC = () => {
       }
     };
     loadConsultants();
-  }, [isSystemAdmin, user?.id, user?.email, profile?.full_name, profile?.role]);
+  }, [isSystemAdmin, isOneDoctorInternal, isConsultantOnly, user?.id, user?.email, profile?.full_name, profile?.role]);
 
   useEffect(() => {
     if (user?.id && !selectedConsultantId) {
@@ -176,6 +222,34 @@ const AdminAgenda: React.FC = () => {
     if (!range) return;
     fetchEvents(range.end);
   }, [range?.start?.toISOString(), range?.end?.toISOString(), selectedConsultantId]);
+
+  useEffect(() => {
+    if (!isConsultantOnly || !user?.id || !selectedConsultantId || user.id !== selectedConsultantId) return;
+    const checkAlerts = () => {
+      const now = Date.now();
+      events.forEach((event) => {
+        if (event.status === 'cancelled') return;
+        if (event.consultant_confirm_status === 'declined') return;
+        const start = new Date(event.start_at).getTime();
+        const diffMinutes = Math.round((start - now) / 60000);
+        [60, 30].forEach((threshold) => {
+          if (diffMinutes <= threshold && diffMinutes >= threshold - 1) {
+            const key = `${event.id}-${threshold}`;
+            if (notifiedRef.current.has(key)) return;
+            notifiedRef.current.add(key);
+            push({
+              title: `Agendamento em ${threshold} minutos`,
+              description: `${event.title} • ${formatDateTime(event.start_at)}`,
+              variant: 'info',
+            });
+          }
+        });
+      });
+    };
+    checkAlerts();
+    const interval = window.setInterval(checkAlerts, 30000);
+    return () => window.clearInterval(interval);
+  }, [events, isConsultantOnly, selectedConsultantId, user?.id]);
 
   const loadRescheduleRequests = useCallback(async () => {
     if (!isSystemAdmin) return;
@@ -294,12 +368,22 @@ const AdminAgenda: React.FC = () => {
     });
   }, [events, range]);
 
+  const upcoming = useMemo(() => {
+    const now = new Date();
+    return events
+      .filter((event) => new Date(event.start_at) >= now && event.status !== 'cancelled')
+      .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())
+      .slice(0, 6);
+  }, [events]);
+
   const openCreate = (start?: Date, end?: Date) => {
+    const consultantId = isConsultantOnly ? user?.id || '' : selectedConsultantId || '';
     setModalMode('create');
     setForm({
       ...emptyForm,
       start: start ? toLocalInput(start) : '',
       end: end ? toLocalInput(end) : '',
+      consultant_id: consultantId,
     });
     setSelectedClinics([]);
     setSuggestions([]);
@@ -319,6 +403,7 @@ const AdminAgenda: React.FC = () => {
       location: event.location || '',
       meeting_url: event.meeting_url || '',
       recurrence: resolveRecurrenceOption(event.recurrence_rule),
+      consultant_id: event.consultant_id,
     });
     setSelectedClinics(event.attendees.map((att) => att.clinic_id));
     setSuggestions([]);
@@ -328,7 +413,8 @@ const AdminAgenda: React.FC = () => {
 
   const handleSave = async () => {
     if (!user?.id) return;
-    if (!selectedConsultantId) {
+    const consultantId = isConsultantOnly ? user.id : (form.consultant_id || selectedConsultantId || '');
+    if (!consultantId) {
       push({ title: 'Selecione um consultor.', variant: 'error' });
       return;
     }
@@ -355,7 +441,7 @@ const AdminAgenda: React.FC = () => {
       const startAt = startDate.toISOString();
       const endAt = endDate.toISOString();
       const eventPayload = {
-        consultant_id: selectedConsultantId,
+        consultant_id: consultantId,
         title: form.title.trim(),
         description: form.description.trim() || null,
         start_at: startAt,
@@ -370,6 +456,9 @@ const AdminAgenda: React.FC = () => {
       if (modalMode === 'create') {
         await createEvent({ event: eventPayload, clinicIds: selectedClinics });
         push({ title: 'Agendamento criado.', variant: 'success' });
+        if (consultantId !== selectedConsultantId) {
+          setSelectedConsultantId(consultantId);
+        }
       } else if (selectedEvent) {
         const hasTimeChanged =
           eventPayload.start_at !== selectedEvent.start_at || eventPayload.end_at !== selectedEvent.end_at;
@@ -386,11 +475,15 @@ const AdminAgenda: React.FC = () => {
             location: eventPayload.location,
             meeting_url: eventPayload.meeting_url,
             recurrence_rule: eventPayload.recurrence_rule,
+            consultant_id: consultantId,
             status: nextStatus,
           },
           clinicIds: selectedClinics,
           forceStatus: nextStatus,
         });
+        if (consultantId !== selectedConsultantId) {
+          setSelectedConsultantId(consultantId);
+        }
 
         if (pendingRescheduleRequest && selectedClinics.length) {
           await sb
@@ -498,6 +591,27 @@ const AdminAgenda: React.FC = () => {
       if (range) await fetchEvents(range.end);
     } catch (err: any) {
       push({ title: 'Erro ao cancelar agendamento.', description: err?.message, variant: 'error' });
+    }
+  };
+
+  const handleConsultantConfirm = async (status: 'confirmed' | 'declined') => {
+    if (!selectedEvent || !user?.id) return;
+    try {
+      await updateEvent({
+        eventId: selectedEvent.id,
+        updates: {
+          consultant_confirm_status: status,
+          consultant_confirmed_at: new Date().toISOString(),
+          consultant_confirmed_by: user.id,
+        },
+      });
+      push({
+        title: status === 'confirmed' ? 'Participação confirmada.' : 'Participação recusada.',
+        variant: status === 'confirmed' ? 'success' : 'info',
+      });
+      if (range) await fetchEvents(range.end);
+    } catch (err: any) {
+      push({ title: 'Erro ao confirmar participação.', description: err?.message, variant: 'error' });
     }
   };
 
@@ -673,6 +787,7 @@ const AdminAgenda: React.FC = () => {
       location: targetEvent.location || '',
       meeting_url: targetEvent.meeting_url || '',
       recurrence: resolveRecurrenceOption(targetEvent.recurrence_rule),
+      consultant_id: targetEvent.consultant_id,
     });
     setPendingRescheduleRequest(req);
     setRescheduleModalOpen(false);
@@ -793,11 +908,11 @@ const AdminAgenda: React.FC = () => {
     }
   };
 
-  if (!isSystemAdmin) {
+  if (!isSystemAdmin && !isOneDoctorInternal) {
     return <div className="text-sm text-gray-500">Acesso restrito aos consultores One Doctor.</div>;
   }
 
-    return (
+  return (
     <div className="space-y-6">
       <ToastStack items={toasts} onDismiss={dismiss} />
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -806,23 +921,25 @@ const AdminAgenda: React.FC = () => {
           <p className="text-sm text-gray-500">Admin • Agenda do consultor</p>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Consultor</span>
-            <select
-              className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white text-gray-700"
-              value={selectedConsultantId || ''}
-              onChange={(event) => setSelectedConsultantId(event.target.value || null)}
-            >
-              {consultants.length === 0 && <option value="">Carregando...</option>}
-              {consultants.map((consultant) => (
-                <option key={consultant.id} value={consultant.id}>
-                  {consultant.full_name || consultant.id.slice(0, 8)}
-                  {consultant.google_connected ? ' • Google conectado' : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-          {rescheduleRequests.length > 0 && (
+          {!isConsultantOnly && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">Consultor</span>
+              <select
+                className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white text-gray-700"
+                value={selectedConsultantId || ''}
+                onChange={(event) => setSelectedConsultantId(event.target.value || null)}
+              >
+                {consultants.length === 0 && <option value="">Carregando...</option>}
+                {consultants.map((consultant) => (
+                  <option key={consultant.id} value={consultant.id}>
+                    {consultant.full_name || consultant.id.slice(0, 8)}
+                    {consultant.google_connected ? ' • Google conectado' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {!isConsultantOnly && rescheduleRequests.length > 0 && (
             <button
               type="button"
               onClick={() => setRescheduleModalOpen(true)}
@@ -831,7 +948,7 @@ const AdminAgenda: React.FC = () => {
               Solicitações ({rescheduleRequests.length})
             </button>
           )}
-          {helperRequests.length > 0 && (
+          {!isConsultantOnly && helperRequests.length > 0 && (
             <button
               type="button"
               onClick={() => setHelperModalOpen(true)}
@@ -906,34 +1023,83 @@ const AdminAgenda: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
-        <div className="flex items-center justify-between gap-2 text-sm text-gray-500 mb-1">
-          <Calendar size={16} /> {loading ? 'Carregando agenda...' : 'Agenda do consultor'}
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-4">
+        <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-2 text-sm text-gray-500 mb-1">
+            <Calendar size={16} /> {loading ? 'Carregando agenda...' : 'Agenda do consultor'}
+          </div>
+          <div className="mb-3 text-lg font-semibold text-gray-800">
+            {selectedConsultant?.full_name ? `Consultor: ${selectedConsultant.full_name}` : 'Consultor —'}
+            <span className="ml-2 text-sm font-normal text-gray-500">{calendarLabel || '—'}</span>
+          </div>
+          <FullCalendar
+            ref={calendarRef}
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+            initialView={view}
+            height="auto"
+            selectable
+            editable
+            eventResizableFromStart
+            eventTimeFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
+            slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
+            events={calendarEvents}
+            select={handleSelect}
+            eventClick={handleEventClick}
+            eventDrop={handleEventDrop}
+            eventResize={handleEventResize}
+            datesSet={handleDatesSet}
+            headerToolbar={false}
+            dayMaxEventRows
+            nowIndicator
+          />
         </div>
-        <div className="mb-3 text-lg font-semibold text-gray-800">
-          {selectedConsultant?.full_name ? `Consultor: ${selectedConsultant.full_name}` : 'Consultor —'}
-          <span className="ml-2 text-sm font-normal text-gray-500">{calendarLabel || '—'}</span>
+
+        <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-3">
+            Próximos agendamentos do consultor
+          </div>
+          {upcoming.length === 0 && (
+            <p className="text-sm text-gray-500">Nenhum agendamento futuro encontrado.</p>
+          )}
+          <div className="space-y-3">
+            {upcoming.map((event) => {
+              const eventBadge = resolveEventBadge(event);
+              const consultantBadge = resolveStatusBadge(event.consultant_confirm_status);
+              return (
+                <button
+                  key={event.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedEvent(event);
+                    setDrawerOpen(true);
+                  }}
+                  className="w-full text-left border border-gray-100 rounded-xl px-3 py-3 hover:border-brand-200 hover:bg-brand-50 transition"
+                >
+                  <div className="text-sm font-semibold text-gray-800">{event.title}</div>
+                  <div className="text-xs text-gray-500">
+                    {formatDateTime(event.start_at)} • {formatDateTime(event.end_at)}
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                    <span className="flex items-center gap-1">
+                      <span>Status:</span>
+                      <span className={`px-2 py-1 rounded-full text-[10px] font-semibold ${eventBadge.className}`}>
+                        {eventBadge.label}
+                      </span>
+                    </span>
+                    {!event.is_external && (
+                      <span className="flex items-center gap-1">
+                        <span>Consultor:</span>
+                        <span className={`px-2 py-1 rounded-full text-[10px] font-semibold ${consultantBadge.className}`}>
+                          {consultantBadge.label}
+                        </span>
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <FullCalendar
-          ref={calendarRef}
-          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          initialView={view}
-          height="auto"
-          selectable
-          editable
-          eventResizableFromStart
-          eventTimeFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
-          slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
-          events={calendarEvents}
-          select={handleSelect}
-          eventClick={handleEventClick}
-          eventDrop={handleEventDrop}
-          eventResize={handleEventResize}
-          datesSet={handleDatesSet}
-          headerToolbar={false}
-          dayMaxEventRows
-          nowIndicator
-        />
       </div>
 
       <EventModal
@@ -941,11 +1107,18 @@ const AdminAgenda: React.FC = () => {
         mode={modalMode}
         form={form}
         clinics={clinics}
+        consultants={consultants.map((c) => ({
+          id: c.id,
+          name: c.full_name || c.id.slice(0, 8),
+          google_connected: c.google_connected ?? null,
+        }))}
+        consultantLocked={isConsultantOnly}
         selectedClinics={selectedClinics}
         suggestions={suggestions}
         saving={saving}
         suggesting={suggesting}
         onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
+        onSelectConsultant={(id) => setSelectedConsultantId(id || null)}
         onToggleClinic={(id) =>
           setSelectedClinics((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]))
         }
@@ -964,14 +1137,24 @@ const AdminAgenda: React.FC = () => {
         readOnly={Boolean(selectedEvent?.is_external)}
         externalAttendees={selectedEvent?.external_block?.attendees || []}
         externalLink={selectedEvent?.external_block?.html_link || null}
-        onEdit={() => {
-          if (selectedEvent) {
-            openEdit(selectedEvent);
-            setDrawerOpen(false);
-          }
-        }}
-        onCancel={handleCancel}
+        onEdit={
+          selectedEvent && (!isConsultantOnly || selectedEvent.consultant_id === user?.id)
+            ? () => {
+                if (selectedEvent) {
+                  openEdit(selectedEvent);
+                  setDrawerOpen(false);
+                }
+              }
+            : undefined
+        }
+        onCancel={
+          selectedEvent && (!isConsultantOnly || selectedEvent.consultant_id === user?.id)
+            ? handleCancel
+            : undefined
+        }
         onDelete={handleDelete}
+        consultantView={isConsultantOnly}
+        onConsultantConfirm={handleConsultantConfirm}
       />
 
       {rescheduleModalOpen && (

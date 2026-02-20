@@ -20,6 +20,9 @@ export type ScheduleEvent = {
   location?: string | null;
   meeting_url?: string | null;
   status: ScheduleStatus;
+  consultant_confirm_status?: ScheduleConfirmStatus;
+  consultant_confirmed_at?: string | null;
+  consultant_confirmed_by?: string | null;
   recurrence_rule?: string | null;
   google_event_id?: string | null;
   google_etag?: string | null;

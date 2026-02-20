@@ -13,6 +13,7 @@ export type EventFormState = {
   location: string;
   meeting_url: string;
   recurrence: RecurrenceOption;
+  consultant_id?: string;
 };
 
 type ClinicOption = {
@@ -25,11 +26,14 @@ type EventModalProps = {
   mode: 'create' | 'edit';
   form: EventFormState;
   clinics: ClinicOption[];
+  consultants?: Array<{ id: string; name: string; google_connected?: boolean | null }>;
+  consultantLocked?: boolean;
   selectedClinics: string[];
   suggestions: SuggestedSlot[];
   saving: boolean;
   suggesting: boolean;
   onChange: (patch: Partial<EventFormState>) => void;
+  onSelectConsultant?: (id: string) => void;
   onToggleClinic: (id: string) => void;
   onSave: () => void;
   onSuggest: () => void;
@@ -41,11 +45,14 @@ const EventModal: React.FC<EventModalProps> = ({
   mode,
   form,
   clinics,
+  consultants = [],
+  consultantLocked = false,
   selectedClinics,
   suggestions,
   saving,
   suggesting,
   onChange,
+  onSelectConsultant,
   onToggleClinic,
   onSave,
   onSuggest,
@@ -81,6 +88,29 @@ const EventModal: React.FC<EventModalProps> = ({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {consultants.length > 0 && (
+            <div className="md:col-span-2">
+              <label className="text-sm font-medium text-gray-700">Consultor *</label>
+              <select
+                value={form.consultant_id || ''}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  onChange({ consultant_id: value });
+                  onSelectConsultant?.(value);
+                }}
+                disabled={consultantLocked}
+                className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700 disabled:bg-gray-100"
+              >
+                <option value="">Selecione</option>
+                {consultants.map((consultant) => (
+                  <option key={consultant.id} value={consultant.id}>
+                    {consultant.name}
+                    {consultant.google_connected ? ' • Google conectado' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="md:col-span-2">
             <label className="text-sm font-medium text-gray-700">Título *</label>
             <input

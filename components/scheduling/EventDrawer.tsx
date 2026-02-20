@@ -21,9 +21,11 @@ type EventDrawerProps = {
     organizer?: boolean | null;
   }>;
   externalLink?: string | null;
+  consultantView?: boolean;
   onEdit?: () => void;
   onCancel?: () => void;
   onDelete?: () => void;
+  onConsultantConfirm?: (status: 'confirmed' | 'declined') => void;
   onConfirm?: () => void;
 };
 
@@ -38,9 +40,11 @@ const EventDrawer: React.FC<EventDrawerProps> = ({
   isExternal = false,
   externalAttendees = [],
   externalLink = null,
+  consultantView = false,
   onEdit,
   onCancel,
   onDelete,
+  onConsultantConfirm,
   onConfirm,
 }) => {
   const modalControls = useModalControls({ isOpen: open, onClose });
@@ -57,11 +61,24 @@ const EventDrawer: React.FC<EventDrawerProps> = ({
     if (normalized === 'pending' || normalized === 'pending_confirmation') {
       return { label: 'PENDENTE', className: 'bg-rose-100 text-rose-800' };
     }
+    if (normalized === 'declined') {
+      return { label: 'RECUSADO', className: 'bg-gray-200 text-gray-700' };
+    }
+    if (normalized === 'reschedule_requested') {
+      return { label: 'REAGENDAR', className: 'bg-amber-100 text-amber-700' };
+    }
+    if (normalized === 'rescheduled') {
+      return { label: 'REAGENDADO', className: 'bg-sky-100 text-sky-700' };
+    }
+    if (normalized === 'cancelled') {
+      return { label: 'CANCELADO', className: 'bg-gray-200 text-gray-700' };
+    }
     return { label: value || '-', className: 'bg-gray-100 text-gray-600' };
   };
   const eventStatusBadge = isExternal
     ? { label: 'EXTERNO', className: 'bg-slate-200 text-slate-700' }
     : resolveStatusBadge(event.status);
+  const consultantBadge = resolveStatusBadge((event as any).consultant_confirm_status);
 
   return (
     <div
@@ -81,6 +98,14 @@ const EventDrawer: React.FC<EventDrawerProps> = ({
                 {eventStatusBadge.label}
               </span>
             </div>
+            {!isExternal && (
+              <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
+                <span>Consultor:</span>
+                <span className={`px-2 py-1 rounded-full text-[10px] font-semibold ${consultantBadge.className}`}>
+                  {consultantBadge.label}
+                </span>
+              </div>
+            )}
           </div>
           <button
             type="button"
@@ -216,20 +241,42 @@ const EventDrawer: React.FC<EventDrawerProps> = ({
             </button>
           ) : (
             <>
-              <button
-                type="button"
-                onClick={onEdit}
-                className="w-full sm:w-auto px-4 py-2 rounded-lg bg-brand-600 text-white text-sm"
-              >
-                Editar
-              </button>
-              <button
-                type="button"
-                onClick={onCancel}
-                className="w-full sm:w-auto px-4 py-2 rounded-lg border border-rose-200 text-rose-600 text-sm"
-              >
-                Cancelar evento
-              </button>
+              {consultantView && onConsultantConfirm && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => onConsultantConfirm('confirmed')}
+                    className="w-full sm:w-auto px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm"
+                  >
+                    Confirmar participação
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onConsultantConfirm('declined')}
+                    className="w-full sm:w-auto px-4 py-2 rounded-lg border border-rose-200 text-rose-600 text-sm"
+                  >
+                    Não vou participar
+                  </button>
+                </>
+              )}
+              {onEdit && (
+                <button
+                  type="button"
+                  onClick={onEdit}
+                  className="w-full sm:w-auto px-4 py-2 rounded-lg bg-brand-600 text-white text-sm"
+                >
+                  Editar
+                </button>
+              )}
+              {onCancel && (
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  className="w-full sm:w-auto px-4 py-2 rounded-lg border border-rose-200 text-rose-600 text-sm"
+                >
+                  Cancelar evento
+                </button>
+              )}
               {onDelete && (
                 <button
                   type="button"

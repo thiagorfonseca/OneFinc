@@ -382,7 +382,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const normalized = normalizeAdminPage(page);
     if (!normalized) return false;
 
-    const crmPages = ['/admin/clientes', '/admin/contratos', '/admin/propostas', '/admin/comercial/relatorios'];
+    const crmPages = ['/admin/clientes', '/admin/contratos', '/admin/propostas', '/admin/comercial/relatorios', '/admin/agenda'];
 
     if (isSystemAdmin) {
       if (systemRole === 'system_owner') return true;
@@ -394,7 +394,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     if (isOneDoctorInternal) {
-      const allowedDefaults = ['/admin/clientes', '/admin/contratos', '/admin/propostas', '/admin/comercial/relatorios'];
+      const allowedDefaults = ['/admin/clientes', '/admin/contratos', '/admin/propostas', '/admin/comercial/relatorios', '/admin/agenda'];
       const allowed = adminPages.length ? adminPages : allowedDefaults;
       const [base] = normalized.split('?');
       if (allowed.includes(base)) return true;
