@@ -1,6 +1,8 @@
 alter table public.profiles
   add column if not exists show_in_team_agenda boolean not null default true;
 
+drop function if exists public.list_system_admins();
+
 create or replace function public.list_system_admins()
 returns table (
   id uuid,
