@@ -335,14 +335,24 @@ const AdminAgenda: React.FC = () => {
       push({ title: 'Preencha título, início e fim.', variant: 'error' });
       return;
     }
+    const startDate = new Date(form.start);
+    const endDate = new Date(form.end);
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+      push({ title: 'Datas inválidas. Verifique início e fim.', variant: 'error' });
+      return;
+    }
+    if (endDate <= startDate) {
+      push({ title: 'O fim precisa ser depois do início.', variant: 'error' });
+      return;
+    }
     if (selectedClinics.length === 0) {
       push({ title: 'Selecione ao menos uma clínica.', variant: 'error' });
       return;
     }
     setSaving(true);
     try {
-      const startAt = new Date(form.start).toISOString();
-      const endAt = new Date(form.end).toISOString();
+      const startAt = startDate.toISOString();
+      const endAt = endDate.toISOString();
       const eventPayload = {
         consultant_id: selectedConsultantId,
         title: form.title.trim(),
