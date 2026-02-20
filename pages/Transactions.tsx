@@ -324,21 +324,40 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
       if (!session) return;
 
       // Fetch Aux Data
-      const { data: cats } = await supabase
+      let catsQuery = supabase
         .from('categories')
         .select('*')
         .eq('tipo', isIncome ? 'receita' : 'despesa');
+      if (effectiveClinic) catsQuery = catsQuery.eq('clinic_id', effectiveClinic);
+      const { data: cats } = await catsQuery;
 
       let accQuery = supabase.from('bank_accounts').select('*');
       if (effectiveClinic) accQuery = accQuery.eq('clinic_id', effectiveClinic);
       const { data: accs } = await accQuery;
 
-      const { data: fees } = await supabase.from('card_fees').select('*');
-      const { data: custs } = await supabase.from('customers').select('*');
-      const { data: procs } = await supabase.from('procedures').select('*');
-      const { data: profs } = await supabase.from('professionals').select('*');
-      const { data: sups } = await supabase.from('suppliers').select('*');
-      const { data: allRev } = await supabase.from('revenues').select('id, data_competencia, paciente');
+      let feesQuery = supabase.from('card_fees').select('*');
+      if (effectiveClinic) feesQuery = feesQuery.eq('clinic_id', effectiveClinic);
+      const { data: fees } = await feesQuery;
+
+      let custsQuery = supabase.from('customers').select('*');
+      if (effectiveClinic) custsQuery = custsQuery.eq('clinic_id', effectiveClinic);
+      const { data: custs } = await custsQuery;
+
+      let procsQuery = supabase.from('procedures').select('*');
+      if (effectiveClinic) procsQuery = procsQuery.eq('clinic_id', effectiveClinic);
+      const { data: procs } = await procsQuery;
+
+      let profsQuery = supabase.from('professionals').select('*');
+      if (effectiveClinic) profsQuery = profsQuery.eq('clinic_id', effectiveClinic);
+      const { data: profs } = await profsQuery;
+
+      let supsQuery = supabase.from('suppliers').select('*');
+      if (effectiveClinic) supsQuery = supsQuery.eq('clinic_id', effectiveClinic);
+      const { data: sups } = await supsQuery;
+
+      let revQuery = supabase.from('revenues').select('id, data_competencia, paciente');
+      if (effectiveClinic) revQuery = revQuery.eq('clinic_id', effectiveClinic);
+      const { data: allRev } = await revQuery;
 
       if (cats) setCategories(cats as any);
       if (accs) {
