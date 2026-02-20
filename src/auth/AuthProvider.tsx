@@ -439,20 +439,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [isSystemAdmin, profile?.clinic_id]);
 
   const setSelectedClinicId = (id: string | null) => {
-    setSelectedClinicIdState(id);
-    if (isSystemAdmin) {
-      setProfile((prev) => (prev ? { ...prev, clinic_id: id } : prev));
-    }
-    if (typeof window !== 'undefined') {
-      if (id === null) window.localStorage.removeItem('adminActiveClinicId');
-      else window.localStorage.setItem('adminActiveClinicId', id);
-    }
-    if (isSystemAdmin && user?.id) {
-      supabase
-        .from('profiles')
-        .update({ clinic_id: id })
-        .eq('id', user.id);
-    }
+    const applySelection = async () => {
+      if (isSystemAdmin && user?.id) {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ clinic_id: id })
+          .eq('id', user.id);
+        if (error) {
+          console.error('Erro ao atualizar clínica selecionada:', error.message);
+          alert('Não foi possível trocar a clínica selecionada. Tente novamente.');
+          return;
+        }
+      }
+
+      setSelectedClinicIdState(id);
+      if (isSystemAdmin) {
+        setProfile((prev) => (prev ? { ...prev, clinic_id: id } : prev));
+      }
+      if (typeof window !== 'undefined') {
+        if (id === null) window.localStorage.removeItem('adminActiveClinicId');
+        else window.localStorage.setItem('adminActiveClinicId', id);
+      }
+    };
+    void applySelection();
   };
 
   // Logs de diagnóstico (apenas dev)
