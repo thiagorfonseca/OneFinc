@@ -147,6 +147,8 @@ const ModuleCard: React.FC<{ moduleId: string }> = ({ moduleId }) => {
     panda_video_url: string;
     order_index: number;
     published: boolean;
+    required_for_meeting: boolean;
+    meeting_tag: string;
   }>>({});
 
   const [newLesson, setNewLesson] = useState({
@@ -156,6 +158,8 @@ const ModuleCard: React.FC<{ moduleId: string }> = ({ moduleId }) => {
     panda_video_url: '',
     order_index: 1,
     published: false,
+    required_for_meeting: false,
+    meeting_tag: '',
   });
 
   useEffect(() => {
@@ -166,6 +170,8 @@ const ModuleCard: React.FC<{ moduleId: string }> = ({ moduleId }) => {
       panda_video_url: string;
       order_index: number;
       published: boolean;
+      required_for_meeting: boolean;
+      meeting_tag: string;
     }> = {};
     lessons.forEach((lesson) => {
       map[lesson.id] = {
@@ -175,6 +181,8 @@ const ModuleCard: React.FC<{ moduleId: string }> = ({ moduleId }) => {
         panda_video_url: lesson.panda_video_url || '',
         order_index: lesson.order_index ?? 0,
         published: !!lesson.published,
+        required_for_meeting: !!lesson.required_for_meeting,
+        meeting_tag: lesson.meeting_tag || '',
       };
     });
     setDrafts(map);
@@ -196,6 +204,8 @@ const ModuleCard: React.FC<{ moduleId: string }> = ({ moduleId }) => {
         panda_video_url: draft.panda_video_url || null,
         order_index: draft.order_index,
         published: draft.published,
+        required_for_meeting: draft.required_for_meeting,
+        meeting_tag: draft.meeting_tag || null,
       })
       .eq('id', lessonId);
     if (error) {
@@ -229,6 +239,8 @@ const ModuleCard: React.FC<{ moduleId: string }> = ({ moduleId }) => {
       panda_video_url: newLesson.panda_video_url || null,
       order_index: newLesson.order_index,
       published: newLesson.published,
+      required_for_meeting: newLesson.required_for_meeting,
+      meeting_tag: newLesson.meeting_tag || null,
     });
     if (error) {
       alert(`Erro ao criar aula: ${error.message}`);
@@ -241,6 +253,8 @@ const ModuleCard: React.FC<{ moduleId: string }> = ({ moduleId }) => {
       panda_video_url: '',
       order_index: newLesson.order_index + 1,
       published: false,
+      required_for_meeting: false,
+      meeting_tag: '',
     });
     refresh();
   };
@@ -349,6 +363,32 @@ const ModuleCard: React.FC<{ moduleId: string }> = ({ moduleId }) => {
                         />
                         Publicado
                       </label>
+                      <label className="flex items-center gap-2 text-xs text-gray-500 mt-2">
+                        <input
+                          type="checkbox"
+                          checked={!!draft?.required_for_meeting}
+                          onChange={(e) =>
+                            setDrafts((prev) => ({
+                              ...prev,
+                              [lesson.id]: { ...prev[lesson.id], required_for_meeting: e.target.checked },
+                            }))
+                          }
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        Obrigatória para reunião
+                      </label>
+                      <input
+                        value={draft?.meeting_tag || ''}
+                        onChange={(e) =>
+                          setDrafts((prev) => ({
+                            ...prev,
+                            [lesson.id]: { ...prev[lesson.id], meeting_tag: e.target.value },
+                          }))
+                        }
+                        onClick={(e) => e.stopPropagation()}
+                        placeholder="Tag da reunião (ex: Onboarding 1)"
+                        className="mt-2 w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                      />
                     </td>
                     <td className="px-3 py-2">
                       <textarea
@@ -489,6 +529,14 @@ const ModuleCard: React.FC<{ moduleId: string }> = ({ moduleId }) => {
             />
             Publicado
           </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={newLesson.required_for_meeting}
+              onChange={(e) => setNewLesson((prev) => ({ ...prev, required_for_meeting: e.target.checked }))}
+            />
+            Obrigatória para reunião
+          </label>
           <button
             type="button"
             onClick={handleCreateLesson}
@@ -497,6 +545,12 @@ const ModuleCard: React.FC<{ moduleId: string }> = ({ moduleId }) => {
             Adicionar aula
           </button>
         </div>
+        <input
+          value={newLesson.meeting_tag}
+          onChange={(e) => setNewLesson((prev) => ({ ...prev, meeting_tag: e.target.value }))}
+          placeholder="Tag da reunião (ex: Onboarding 1)"
+          className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+        />
       </div>
     </div>
   );

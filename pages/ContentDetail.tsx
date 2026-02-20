@@ -139,7 +139,7 @@ const isPandaOrigin = (origin: string) => {
 const ContentDetail: React.FC = () => {
   const { type, contentId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { clinicId, clinicPackageIds } = useAuth();
+  const { clinicId, clinicPackageIds, user } = useAuth();
   const lessonParam = useMemo(() => searchParams.get('lesson'), [searchParams]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -162,6 +162,12 @@ const ContentDetail: React.FC = () => {
   const [resumeSeconds, setResumeSeconds] = useState(0);
   const [lessonProgress, setLessonProgress] = useState<Record<string, number>>({});
   const lastSavedSecondsRef = useRef(0);
+  const progressPersistRef = useRef<{ at: number; seconds: number; lessonId: string | null }>({
+    at: 0,
+    seconds: 0,
+    lessonId: null,
+  });
+  const durationRef = useRef<number | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const autoAdvanceLessonRef = useRef<string | null>(null);
@@ -290,6 +296,46 @@ const ContentDetail: React.FC = () => {
     [contentProgressKey, selectedLessonId]
   );
 
+  const persistLessonProgress = useCallback(
+    async (seconds: number, options?: { force?: boolean; completed?: boolean }) => {
+      if (!user?.id || !clinicId || !contentId || !selectedLessonId) return;
+      const now = Date.now();
+      const last = progressPersistRef.current;
+      const shouldSend =
+        options?.force ||
+        selectedLessonId !== last.lessonId ||
+        Math.abs(seconds - last.seconds) >= 10 ||
+        now - last.at >= 15000;
+      if (!shouldSend) return;
+      progressPersistRef.current = { at: now, seconds, lessonId: selectedLessonId };
+      const duration = durationRef.current;
+      const percentRaw =
+        typeof duration === 'number' && duration > 0 ? (seconds / duration) * 100 : null;
+      const percent = percentRaw !== null ? Math.min(100, Math.max(0, percentRaw)) : null;
+      const payload: any = {
+        user_id: user.id,
+        clinic_id: clinicId,
+        content_id: contentId,
+        lesson_id: selectedLessonId,
+        watched_seconds: Math.max(0, Math.floor(seconds)),
+        duration_seconds: typeof duration === 'number' ? Math.max(0, Math.floor(duration)) : null,
+        watched_percent: percent !== null ? Number(percent.toFixed(2)) : 0,
+        last_watched_at: new Date().toISOString(),
+      };
+      if (options?.completed || (percent !== null && percent >= 90)) {
+        payload.completed_at = new Date().toISOString();
+      }
+      const { error } = await supabase.from('content_lesson_progress').upsert(payload, {
+        onConflict: 'user_id,lesson_id,clinic_id',
+      });
+      if (error) {
+        // Evita interromper a experiência do aluno
+        return;
+      }
+    },
+    [user?.id, clinicId, contentId, selectedLessonId]
+  );
+
   const updateLessonProgress = useCallback(
     (seconds: number) => {
       if (!selectedLessonId) return;
@@ -304,10 +350,10 @@ const ContentDetail: React.FC = () => {
   );
 
   const saveVideoProgress = useCallback(
-    (seconds: number) => {
+    (seconds: number, options?: { force?: boolean; completed?: boolean }) => {
       if (!videoProgressKey || typeof window === 'undefined') return;
       const rounded = Math.max(0, Math.floor(seconds));
-      if (rounded === lastSavedSecondsRef.current) return;
+      if (rounded === lastSavedSecondsRef.current && !options?.force) return;
       lastSavedSecondsRef.current = rounded;
       try {
         window.localStorage.setItem(videoProgressKey, String(rounded));
@@ -316,13 +362,14 @@ const ContentDetail: React.FC = () => {
       } catch {
         // Silencia erro de storage para não interromper a aula.
       }
+      void persistLessonProgress(rounded, options);
     },
-    [videoProgressKey, touchContentProgress, updateLessonProgress]
+    [videoProgressKey, touchContentProgress, updateLessonProgress, persistLessonProgress]
   );
 
   const saveCurrentProgress = useCallback(() => {
     if (videoRef.current) {
-      saveVideoProgress(videoRef.current.currentTime || 0);
+      saveVideoProgress(videoRef.current.currentTime || 0, { force: true });
     }
   }, [saveVideoProgress]);
 
@@ -375,6 +422,11 @@ const ContentDetail: React.FC = () => {
       lastSavedSecondsRef.current = 0;
     }
   }, [videoProgressKey]);
+
+  useEffect(() => {
+    progressPersistRef.current = { at: 0, seconds: 0, lessonId: selectedLessonId ?? null };
+    durationRef.current = null;
+  }, [selectedLessonId]);
 
   useEffect(() => {
     if (!videoRef.current) return;
@@ -514,7 +566,7 @@ const ContentDetail: React.FC = () => {
     );
   }, [modules]);
 
-  const handleClearProgress = useCallback(() => {
+  const handleClearProgress = useCallback(async () => {
     if (typeof window === 'undefined') return;
     orderedLessons.forEach((lesson) => {
       try {
@@ -533,7 +585,15 @@ const ContentDetail: React.FC = () => {
     setLessonProgress({});
     setResumeSeconds(0);
     lastSavedSecondsRef.current = 0;
-  }, [orderedLessons, contentProgressKey]);
+    if (user?.id && clinicId && contentId) {
+      await supabase
+        .from('content_lesson_progress')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('clinic_id', clinicId)
+        .eq('content_id', contentId);
+    }
+  }, [orderedLessons, contentProgressKey, user?.id, clinicId, contentId]);
 
   const loadLessonProgress = useCallback(() => {
     if (typeof window === 'undefined') return;
@@ -550,9 +610,38 @@ const ContentDetail: React.FC = () => {
     setLessonProgress(next);
   }, [orderedLessons]);
 
+  const loadRemoteLessonProgress = useCallback(async () => {
+    if (!user?.id || !clinicId || !contentId) return;
+    try {
+      const { data, error } = await supabase
+        .from('content_lesson_progress')
+        .select('lesson_id, watched_seconds')
+        .eq('content_id', contentId)
+        .eq('clinic_id', clinicId)
+        .eq('user_id', user.id);
+      if (error) return;
+      setLessonProgress((prev) => {
+        const merged = { ...prev };
+        (data || []).forEach((row: any) => {
+          const watched = Number(row.watched_seconds || 0);
+          if (row.lesson_id && watched > (merged[row.lesson_id] || 0)) {
+            merged[row.lesson_id] = watched;
+          }
+        });
+        return merged;
+      });
+    } catch {
+      // ignore
+    }
+  }, [user?.id, clinicId, contentId]);
+
   useEffect(() => {
     loadLessonProgress();
   }, [loadLessonProgress]);
+
+  useEffect(() => {
+    loadRemoteLessonProgress();
+  }, [loadRemoteLessonProgress]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -610,6 +699,9 @@ const ContentDetail: React.FC = () => {
       }
       const eventName = extractEventName(event.data);
       const duration = extractDurationSeconds(event.data);
+      if (typeof duration === 'number' && Number.isFinite(duration)) {
+        durationRef.current = duration;
+      }
       if (eventName) {
         const normalized = eventName.toLowerCase();
         if (
@@ -618,6 +710,11 @@ const ContentDetail: React.FC = () => {
           normalized.includes('complete') ||
           normalized === 'end'
         ) {
+          const finalSeconds =
+            typeof seconds === 'number' && Number.isFinite(seconds)
+              ? seconds
+              : (durationRef.current ?? 0);
+          saveVideoProgress(finalSeconds, { force: true, completed: true });
           handleAutoAdvance();
         }
         return;
@@ -628,6 +725,7 @@ const ContentDetail: React.FC = () => {
         duration > 0 &&
         seconds >= duration - 0.5
       ) {
+        saveVideoProgress(seconds, { force: true, completed: true });
         handleAutoAdvance();
       }
     };
@@ -735,14 +833,26 @@ const ContentDetail: React.FC = () => {
               playsInline
               className="w-full h-full"
               onLoadedMetadata={() => {
+                if (videoRef.current?.duration) {
+                  durationRef.current = videoRef.current.duration;
+                }
                 if (resumeSeconds > 0 && videoRef.current) {
                   videoRef.current.currentTime = resumeSeconds;
                 }
               }}
-              onTimeUpdate={(e) => saveVideoProgress(e.currentTarget.currentTime)}
-              onPause={(e) => saveVideoProgress(e.currentTarget.currentTime)}
-              onEnded={() => {
-                saveVideoProgress(0);
+              onTimeUpdate={(e) => {
+                if (e.currentTarget.duration) {
+                  durationRef.current = e.currentTarget.duration;
+                }
+                saveVideoProgress(e.currentTarget.currentTime);
+              }}
+              onPause={(e) => saveVideoProgress(e.currentTarget.currentTime, { force: true })}
+              onEnded={(e) => {
+                const finalSeconds = e.currentTarget.duration || e.currentTarget.currentTime || 0;
+                if (e.currentTarget.duration) {
+                  durationRef.current = e.currentTarget.duration;
+                }
+                saveVideoProgress(finalSeconds, { force: true, completed: true });
                 handleAutoAdvance();
               }}
             />

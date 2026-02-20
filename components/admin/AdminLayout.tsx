@@ -38,6 +38,7 @@ const AdminLayout: React.FC = () => {
     { name: 'Equipe', href: '/admin/team', icon: Users },
     { name: 'Pacotes', href: '/admin/packages', icon: Package },
     { name: 'Conteúdos', href: '/admin/content', icon: BookOpen },
+    { name: 'Briefing Aulas', href: '/admin/content/briefing', icon: ClipboardList },
     {
       name: 'Comercial',
       icon: Briefcase,

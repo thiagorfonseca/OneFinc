@@ -207,6 +207,8 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
   const [paymentDate, setPaymentDate] = useState('');
   const [dueDateDirty, setDueDateDirty] = useState(false);
   const [saleNumberOverride, setSaleNumberOverride] = useState<string | null>(null);
+  const requiresNSU = isIncome && (formData.payment_method === 'Cartão de Crédito' || formData.payment_method === 'Cartão de Débito');
+  const isNSUValid = !requiresNSU || !!formData.nsu.trim();
 
   useEffect(() => {
     if (!isIncome || !isSalesView || salesTab !== 'sold') return;
@@ -801,11 +803,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
         ? manualParcelas.slice(0, parcelasInformadas)
         : [];
 
-      if (
-        isIncome &&
-        (formData.payment_method === 'Cartão de Crédito' || formData.payment_method === 'Cartão de Débito') &&
-        !formData.nsu.trim()
-      ) {
+      if (requiresNSU && !formData.nsu.trim()) {
         alert('Informe o NSU para pagamentos em cartão de crédito ou débito.');
         setSubmitting(false);
         return;
@@ -3002,15 +3000,21 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">NSU</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            NSU <span className="text-red-500">*</span>
+                          </label>
                           <input
                             name="nsu"
                             value={formData.nsu}
                             onChange={handleInputChange}
                             required
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                            aria-invalid={!isNSUValid}
+                            className={`w-full px-3 py-2 border rounded-lg focus:ring-brand-500 outline-none ${!isNSUValid ? 'border-red-400' : 'border-gray-300'}`}
                             placeholder="Código autorizador"
                           />
+                          {!isNSUValid && (
+                            <p className="mt-1 text-xs text-red-500">NSU é obrigatório para cartão.</p>
+                          )}
                         </div>
                         <div className="text-sm text-gray-600 flex items-center">Crédito: D+30 dias</div>
                       </div>
@@ -3019,15 +3023,21 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
                     {formData.payment_method === 'Cartão de Débito' && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">NSU</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            NSU <span className="text-red-500">*</span>
+                          </label>
                           <input
                             name="nsu"
                             value={formData.nsu}
                             onChange={handleInputChange}
                             required
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-brand-500 outline-none"
+                            aria-invalid={!isNSUValid}
+                            className={`w-full px-3 py-2 border rounded-lg focus:ring-brand-500 outline-none ${!isNSUValid ? 'border-red-400' : 'border-gray-300'}`}
                             placeholder="Código autorizador"
                           />
+                          {!isNSUValid && (
+                            <p className="mt-1 text-xs text-red-500">NSU é obrigatório para cartão.</p>
+                          )}
                         </div>
                         <div className="text-sm text-gray-600 flex items-center">Débito: D+1 dia útil</div>
                       </div>
@@ -3292,7 +3302,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ type, view = 'defau
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || !isNSUValid}
                   className="px-4 py-2 bg-brand-600 rounded-lg text-white hover:bg-brand-700 transition-colors disabled:opacity-50 flex items-center gap-2"
                 >
                   {submitting && <Loader2 size={16} className="animate-spin" />}

@@ -170,7 +170,29 @@ const EventModal: React.FC<EventModalProps> = ({
               <p className="text-sm font-semibold text-gray-800">Clínicas participantes</p>
               <p className="text-xs text-gray-500">Selecione uma ou mais clínicas para o evento.</p>
             </div>
-            <span className="text-xs text-gray-400">{selectedClinics.length} selecionadas</span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  clinics.forEach((clinic) => {
+                    if (!selectedClinics.includes(clinic.id)) onToggleClinic(clinic.id);
+                  });
+                }}
+                className="text-xs px-2 py-1 rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50"
+              >
+                Selecionar todas
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  selectedClinics.slice().forEach((id) => onToggleClinic(id));
+                }}
+                className="text-xs px-2 py-1 rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50"
+              >
+                Limpar
+              </button>
+              <span className="text-xs text-gray-400">{selectedClinics.length} selecionadas</span>
+            </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-auto">
             {clinics.map((clinic) => (

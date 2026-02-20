@@ -33,11 +33,11 @@ const ClinicAgenda: React.FC = () => {
   const normalizeStatus = (value?: string | null) => (value || '').toLowerCase();
   const resolveStatusBadge = (value?: string | null) => {
     const normalized = normalizeStatus(value);
-    if (normalized === 'confirmed') {
-      return { label: 'CONFIRMADO', className: 'bg-emerald-200 text-gray-900' };
+    if (normalized.includes('confirmado') || normalized === 'confirmed') {
+      return { label: 'CONFIRMADO', className: 'bg-emerald-500 text-white' };
     }
-    if (normalized === 'pending' || normalized === 'pending_confirmation') {
-      return { label: 'PENDENTE', className: 'bg-rose-100 text-rose-800' };
+    if (normalized.includes('confirmar') || normalized === 'pending' || normalized === 'pending_confirmation') {
+      return { label: 'A CONFIRMAR', className: 'bg-rose-500 text-white' };
     }
     return { label: value || '-', className: 'bg-gray-100 text-gray-600' };
   };
@@ -232,7 +232,7 @@ const ClinicAgenda: React.FC = () => {
     }
     const remaining = Math.max(0, helperQuota - helperUsed);
     if (remaining <= 0) {
-      push({ title: 'Limite de agendas helpers atingido.', variant: 'error' });
+      push({ title: 'Limite de agendas DRN atingido.', variant: 'error' });
       return;
     }
     setHelperSubmitting(true);
@@ -246,7 +246,7 @@ const ClinicAgenda: React.FC = () => {
         p_reason: helperForm.reason.trim(),
       });
       if (error) throw error;
-      push({ title: 'Solicitação enviada para os helpers.', variant: 'success' });
+      push({ title: 'Solicitação enviada para os DRN.', variant: 'success' });
       setHelperModalOpen(false);
       setHelperForm({ start: '', end: '', reason: '' });
       await refreshHelperQuota();
@@ -290,7 +290,7 @@ const ClinicAgenda: React.FC = () => {
             }}
             className="px-3 py-2 text-xs rounded-lg border border-gray-200 bg-white text-gray-600 hover:border-gray-300"
           >
-            {helperLoading ? 'Helpers: carregando...' : `Helpers: ${helperRemaining} de ${helperQuota}`}
+            {helperLoading ? 'DRN: carregando...' : `DRN: ${helperRemaining} de ${helperQuota}`}
           </button>
           <button
             type="button"
@@ -298,7 +298,7 @@ const ClinicAgenda: React.FC = () => {
             disabled={helperRemaining <= 0 || helperLoading}
             className="px-3 py-2 text-sm bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50 flex items-center gap-2"
           >
-            <Plus size={16} /> Solicitar agenda helper
+            <Plus size={16} /> Solicitar agenda DRN
           </button>
           <button
             type="button"
@@ -429,7 +429,7 @@ const ClinicAgenda: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
-              <h4 className="text-lg font-semibold text-gray-800">Solicitar agenda de helpers</h4>
+              <h4 className="text-lg font-semibold text-gray-800">Solicitar agenda de DRN</h4>
               <button
                 type="button"
                 onClick={() => setHelperModalOpen(false)}
@@ -510,7 +510,7 @@ const ClinicAgenda: React.FC = () => {
           >
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="text-lg font-semibold text-gray-800">Solicitações de helpers</h4>
+                <h4 className="text-lg font-semibold text-gray-800">Solicitação Agenda DRN</h4>
                 <p className="text-sm text-gray-500">Resumo das solicitações enviadas pela clínica.</p>
               </div>
               <button
@@ -529,22 +529,25 @@ const ClinicAgenda: React.FC = () => {
             )}
             {!helperRequestsLoading && helperRequests.length > 0 && (
               <div className="space-y-3">
-                {helperRequests.map((req) => (
-                  <div key={req.id} className="border border-gray-100 rounded-xl p-3 text-sm text-gray-600">
+                {helperRequests.map((req) => {
+                  const statusBadge = resolveStatusBadge(req.status);
+                  return (
+                    <div key={req.id} className="border border-gray-100 rounded-xl p-3 text-sm text-gray-600">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="text-xs text-gray-400">
                         {formatDateTime(req.created_at)}
                       </div>
-                      <span className="px-2 py-1 text-[10px] rounded-full bg-gray-100 text-gray-600 uppercase">
-                        {req.status}
+                      <span className={`px-2 py-1 text-[10px] rounded-full uppercase font-semibold ${statusBadge.className}`}>
+                        {statusBadge.label}
                       </span>
                     </div>
                     <div className="mt-2 text-sm text-gray-800">
                       {formatDateTime(req.preferred_start_at)} → {formatDateTime(req.preferred_end_at)}
                     </div>
                     <div className="mt-1 text-xs text-gray-500">{req.reason}</div>
-                  </div>
-                ))}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

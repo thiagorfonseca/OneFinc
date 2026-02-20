@@ -30,7 +30,7 @@ const getIncomeBilledValue = (income: any) =>
   Number(income?.valor_bruto ?? income?.valor ?? income?.valor_liquido ?? 0) || 0;
 
 const Dashboard: React.FC = () => {
-  const { effectiveClinicId, isAdmin, isSystemAdmin, selectedClinicId } = useAuth();
+  const { effectiveClinicId, isAdmin, isSystemAdmin, selectedClinicId, systemRole } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -787,10 +787,10 @@ const Dashboard: React.FC = () => {
   };
 
   const sb = supabase as any;
-  const canClearData = isSystemAdmin;
+  const canClearData = systemRole === 'system_owner';
 
   const handleClearAllData = async () => {
-    if (!isSystemAdmin) {
+    if (systemRole !== 'system_owner') {
       setClearError('Apenas o administrador geral pode realizar esta ação.');
       return;
     }

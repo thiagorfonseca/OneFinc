@@ -35,6 +35,7 @@ const ContentsTrainings = lazy(() => import('./pages/ContentsTrainings'));
 const ContentDetail = lazy(() => import('./pages/ContentDetail'));
 const AdminContentList = lazy(() => import('./pages/AdminContentList'));
 const AdminContentDetail = lazy(() => import('./pages/AdminContentDetail'));
+const AdminContentBriefing = lazy(() => import('./pages/AdminContentBriefing'));
 const AdminTeam = lazy(() => import('./pages/AdminTeam'));
 const AdminAgenda = lazy(() => import('./pages/AdminAgenda'));
 const AdminPackages = lazy(() => import('./pages/AdminPackages'));
@@ -362,6 +363,7 @@ function App() {
               <Route path="agenda" element={<AdminAgenda />} />
               <Route path="packages" element={<AdminPackages />} />
               <Route path="content" element={<AdminContentList />} />
+              <Route path="content/briefing" element={<AdminContentBriefing />} />
               <Route path="content/:id" element={<AdminContentDetail />} />
               <Route path="profile" element={<AdminProfile />} />
               <Route path="clientes" element={<AdminODClients />} />

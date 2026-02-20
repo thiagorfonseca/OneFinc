@@ -29,6 +29,8 @@ type ContentLesson = {
   panda_video_url: string | null;
   order_index: number | null;
   published: boolean | null;
+  required_for_meeting: boolean | null;
+  meeting_tag: string | null;
 };
 
 type ContentLessonFile = {

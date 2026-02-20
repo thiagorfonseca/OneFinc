@@ -207,22 +207,13 @@ const EventDrawer: React.FC<EventDrawerProps> = ({
         {!readOnly && (
           <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 pt-2">
           {clinicView ? (
-            <>
-              <button
-                type="button"
-                onClick={onConfirm}
-                className="w-full sm:w-auto px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm"
-              >
-                Confirmar
-              </button>
-              <button
-                type="button"
-                onClick={onRequestReschedule}
-                className="w-full sm:w-auto px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600"
-              >
-                Solicitar reagendamento
-              </button>
-            </>
+            <button
+              type="button"
+              onClick={onConfirm}
+              className="w-full sm:w-auto px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm"
+            >
+              Confirmar
+            </button>
           ) : (
             <>
               <button

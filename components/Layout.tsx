@@ -179,6 +179,21 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     });
   };
 
+  const handleNavClick = (event: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    const currentPath = location.pathname;
+    if (currentPath.startsWith(href)) {
+      event.preventDefault();
+      if (href === '/sales') {
+        const params = new URLSearchParams(location.search);
+        params.set('new', '1');
+        const nextSearch = params.toString();
+        navigate(`${href}?${nextSearch}`, { replace: true });
+        return;
+      }
+      navigate(href, { replace: true, state: { refresh: Date.now() } });
+    }
+  };
+
   const filteredNavigation = React.useMemo(() => {
     return navigation
       .map((item) => {
@@ -309,6 +324,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   ) : (
                     <Link
                       to={itemHref}
+                      onClick={(event) => handleNavClick(event, itemHref)}
                       className={`
                         flex items-center gap-3 ${isCollapsed ? 'justify-center px-2' : 'px-4'} py-3 text-sm font-medium rounded-lg transition-colors
                         ${isHighlight

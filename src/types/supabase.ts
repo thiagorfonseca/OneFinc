@@ -759,33 +759,39 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string
+          meeting_tag: string | null
           module_id: string | null
           order_index: number | null
           panda_video_id: string | null
           panda_video_url: string | null
           published: boolean | null
+          required_for_meeting: boolean | null
           title: string | null
         }
         Insert: {
           created_at?: string | null
           description?: string | null
           id?: string
+          meeting_tag?: string | null
           module_id?: string | null
           order_index?: number | null
           panda_video_id?: string | null
           panda_video_url?: string | null
           published?: boolean | null
+          required_for_meeting?: boolean | null
           title?: string | null
         }
         Update: {
           created_at?: string | null
           description?: string | null
           id?: string
+          meeting_tag?: string | null
           module_id?: string | null
           order_index?: number | null
           panda_video_id?: string | null
           panda_video_url?: string | null
           published?: boolean | null
+          required_for_meeting?: boolean | null
           title?: string | null
         }
         Relationships: [
@@ -794,6 +800,80 @@ export type Database = {
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "content_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_lesson_progress: {
+        Row: {
+          clinic_id: string | null
+          completed_at: string | null
+          content_id: string | null
+          created_at: string | null
+          duration_seconds: number | null
+          id: string
+          last_watched_at: string | null
+          lesson_id: string
+          updated_at: string | null
+          user_id: string
+          watched_percent: number | null
+          watched_seconds: number
+        }
+        Insert: {
+          clinic_id?: string | null
+          completed_at?: string | null
+          content_id?: string | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          id?: string
+          last_watched_at?: string | null
+          lesson_id: string
+          updated_at?: string | null
+          user_id: string
+          watched_percent?: number | null
+          watched_seconds?: number
+        }
+        Update: {
+          clinic_id?: string | null
+          completed_at?: string | null
+          content_id?: string | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          id?: string
+          last_watched_at?: string | null
+          lesson_id?: string
+          updated_at?: string | null
+          user_id?: string
+          watched_percent?: number | null
+          watched_seconds?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_lesson_progress_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_lesson_progress_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_lesson_progress_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "content_lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_lesson_progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
