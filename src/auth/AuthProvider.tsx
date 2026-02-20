@@ -345,10 +345,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [clinicUser?.paginas_liberadas, clinicPackagePages]);
 
   const hasPageAccess = (page: string) => {
-    if (isSystemAdmin) return true;
-    if (!hasPageRules) return true;
     const normalized = normalizePage(page);
     if (!normalized) return false;
+    if (isSystemAdmin) {
+      if (normalized.startsWith('/admin')) return true;
+      if (!hasPageRules) return true;
+      if (allowedPagesSet.has(normalized)) return true;
+      const [base] = normalized.split('?');
+      if (base !== normalized) {
+        return allowedPagesSet.has(base);
+      }
+      for (const allowed of allowedPagesSet) {
+        if (allowed.startsWith(`${base}?`)) return true;
+      }
+      return false;
+    }
+    if (!hasPageRules) return true;
     if (allowedPagesSet.has(normalized)) return true;
     const [base] = normalized.split('?');
     if (base !== normalized) {
