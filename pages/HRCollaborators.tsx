@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Eye, Pencil, Plus, Search, Trash2, Users, LayoutGrid, List } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { buildPublicUrl, formatDate } from '../lib/utils';
+import { buildAppUrl, formatDate } from '../lib/utils';
 import { useAuth } from '../src/auth/AuthProvider';
 import { useModalControls } from '../hooks/useModalControls';
 import RichTextEditor from '../components/RichTextEditor';
@@ -157,7 +157,7 @@ const HRCollaborators: React.FC = () => {
     avatarUrl: null as string | null,
   });
 
-  const resetRedirectUrl = buildPublicUrl('/auth/reset');
+  const resetRedirectUrl = buildAppUrl('/auth/reset');
 
   const clinicPages = useMemo(() => {
     return (clinicPackagePages || []).map((page) => page.trim()).filter(Boolean);

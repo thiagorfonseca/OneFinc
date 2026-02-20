@@ -56,6 +56,13 @@ export const buildPublicUrl = (path: string) => {
   return `${base}${normalized}`;
 };
 
+export const buildAppUrl = (path: string) => {
+  const base = getAppUrl();
+  if (!base) return '';
+  const normalized = path.startsWith('/') ? path : `/${path}`;
+  return `${base}${normalized}`;
+};
+
 // Gera um hash simples baseado nos dados da transação para evitar duplicidade
 export const generateTransactionHash = (date: string, amount: number, description: string, fitid: string): string => {
   const data = `${date}-${amount}-${description}-${fitid}`;

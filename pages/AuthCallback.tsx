@@ -91,8 +91,8 @@ const AuthCallback: React.FC = () => {
 
         const safeRedirect =
           redirectToParam && redirectToParam.startsWith('/') && !redirectToParam.startsWith('//')
-            ? redirectToParam
-            : '/';
+            ? (redirectToParam === '/' ? '/app' : redirectToParam)
+            : '/app';
 
         setStatus('success');
         setMessage('Autenticado! Redirecionando...');

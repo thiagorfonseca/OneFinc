@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Plus, Loader2, Users, Mail, Shield, LayoutGrid, List } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { buildPublicUrl } from '../lib/utils';
+import { buildAppUrl } from '../lib/utils';
 import { useAuth } from '../src/auth/AuthProvider';
 import { useModalControls } from '../hooks/useModalControls';
 
@@ -114,7 +114,7 @@ const AdminTeam: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [teamViewMode, setTeamViewMode] = useState<'list' | 'boxes'>('list');
   const [resendingInviteId, setResendingInviteId] = useState<string | null>(null);
-  const callbackUrl = buildPublicUrl('/auth/callback');
+  const callbackUrl = buildAppUrl('/auth/callback');
   const adminPagesRef = useRef<HTMLDetailsElement | null>(null);
 
   const hydrateAvatars = async (rows: any[]) => {

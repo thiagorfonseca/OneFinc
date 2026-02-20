@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { buildPublicUrl } from '../lib/utils';
+import { buildAppUrl } from '../lib/utils';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -11,14 +11,16 @@ const Login: React.FC = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const callbackUrl = buildPublicUrl('/auth/callback');
-  const redirectToParam = new URLSearchParams(location.search).get('redirectTo') || '/';
+  const callbackUrl = buildAppUrl('/auth/callback');
+  const redirectToParam = new URLSearchParams(location.search).get('redirectTo') || '/app';
   const safeRedirectTo =
-    redirectToParam.startsWith('/') && !redirectToParam.startsWith('//') ? redirectToParam : '/';
+    redirectToParam.startsWith('/') && !redirectToParam.startsWith('//')
+      ? (redirectToParam === '/' ? '/app' : redirectToParam)
+      : '/app';
   const callbackUrlWithRedirect = callbackUrl
     ? `${callbackUrl}?redirectTo=${encodeURIComponent(safeRedirectTo)}`
     : undefined;
-  const resetRedirectUrl = buildPublicUrl('/auth/reset');
+  const resetRedirectUrl = buildAppUrl('/auth/reset');
   const trimmedEmail = email.trim();
   const canUseEmail = trimmedEmail.length > 0;
   const canUsePassword = canUseEmail && password.trim().length > 0;
