@@ -213,41 +213,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return 'user';
   }, [clinicUser?.role, profile?.role]);
 
-  const clinicId = useMemo(() => {
-    return clinicUser?.clinic_id || profile?.clinic_id || null;
-  }, [clinicUser?.clinic_id, profile?.clinic_id]);
-
   const isAdmin = role === 'admin' || role === 'owner';
   const isSystemAdmin = systemRole !== null;
-  const packageClinicId = useMemo(
-    () => (isSystemAdmin ? selectedClinicId ?? null : clinicId),
-    [isSystemAdmin, selectedClinicId, clinicId]
-  );
 
-  useEffect(() => {
-    let active = true;
-    const loadClinic = async () => {
-      if (!clinicId) {
-        if (active) setClinic(null);
-        if (active) setClinicLoading(false);
-        return;
-      }
-      setClinicLoading(true);
-      const { data } = await supabase
-        .from('clinics')
-        .select('*')
-        .eq('id', clinicId)
-        .maybeSingle();
-      if (active) {
-        setClinic(data ?? null);
-        setClinicLoading(false);
-      }
-    };
-    loadClinic();
-    return () => {
-      active = false;
-    };
-  }, [clinicId]);
+  const clinicId = useMemo(() => {
+    if (isSystemAdmin) return selectedClinicId ?? profile?.clinic_id ?? null;
+    return clinicUser?.clinic_id || profile?.clinic_id || null;
+  }, [isSystemAdmin, selectedClinicId, clinicUser?.clinic_id, profile?.clinic_id]);
+
+  const packageClinicId = useMemo(() => {
+    if (isSystemAdmin) return selectedClinicId ?? profile?.clinic_id ?? null;
+    return clinicId;
+  }, [isSystemAdmin, selectedClinicId, profile?.clinic_id, clinicId]);
 
   useEffect(() => {
     let active = true;
@@ -416,9 +393,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const effectiveClinicId = useMemo(() => {
-    if (isSystemAdmin) return selectedClinicId ?? null;
+    if (isSystemAdmin) return selectedClinicId ?? profile?.clinic_id ?? null;
     return clinicId;
-  }, [isSystemAdmin, clinicId, selectedClinicId]);
+  }, [isSystemAdmin, selectedClinicId, profile?.clinic_id, clinicId]);
+
+  useEffect(() => {
+    let active = true;
+    const loadClinic = async () => {
+      if (!effectiveClinicId) {
+        if (active) setClinic(null);
+        if (active) setClinicLoading(false);
+        return;
+      }
+      setClinicLoading(true);
+      const { data } = await supabase
+        .from('clinics')
+        .select('*')
+        .eq('id', effectiveClinicId)
+        .maybeSingle();
+      if (active) {
+        setClinic(data ?? null);
+        setClinicLoading(false);
+      }
+    };
+    loadClinic();
+    return () => {
+      active = false;
+    };
+  }, [effectiveClinicId]);
 
   // Persistência do clinic selecionado (admin)
   useEffect(() => {
@@ -438,6 +440,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const setSelectedClinicId = (id: string | null) => {
     setSelectedClinicIdState(id);
+    if (isSystemAdmin) {
+      setProfile((prev) => (prev ? { ...prev, clinic_id: id } : prev));
+    }
     if (typeof window !== 'undefined') {
       if (id === null) window.localStorage.removeItem('adminActiveClinicId');
       else window.localStorage.setItem('adminActiveClinicId', id);

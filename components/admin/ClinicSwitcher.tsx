@@ -20,11 +20,15 @@ const ClinicSwitcher: React.FC = () => {
         .from('clinics')
         .select('id, name')
         .order('created_at', { ascending: false });
-      setClinics(data || []);
+      const rows = data || [];
+      setClinics(rows);
+      if (!selectedClinicId && rows.length) {
+        setSelectedClinicId(rows[0].id);
+      }
       setLoading(false);
     };
     load();
-  }, [isSystemAdmin]);
+  }, [isSystemAdmin, selectedClinicId, setSelectedClinicId]);
 
   if (!isSystemAdmin) return null;
 
@@ -36,7 +40,6 @@ const ClinicSwitcher: React.FC = () => {
         onChange={(e) => setSelectedClinicId(e.target.value || null)}
         className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700"
       >
-        <option value="">Todas</option>
         {clinics.map((c) => (
           <option key={c.id} value={c.id}>{c.name}</option>
         ))}
